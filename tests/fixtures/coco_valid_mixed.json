@@ -1,0 +1,45 @@
+{
+  "images": [
+    {
+      "id": 1,
+      "file_name": "img_0001.jpg",
+      "width": 5,
+      "height": 4
+    }
+  ],
+  "categories": [
+    {
+      "id": 3,
+      "name": "cat",
+      "supercategory": "animal"
+    },
+    {
+      "id": 7,
+      "name": "dog",
+      "supercategory": "animal"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 10,
+      "image_id": 1,
+      "category_id": 3,
+      "bbox": [1.0, 1.0, 2.0, 2.0],
+      "area": 4.0,
+      "iscrowd": 0,
+      "segmentation": [[1.0, 1.0, 3.0, 1.0, 3.0, 3.0, 1.0, 3.0]]
+    },
+    {
+      "id": 11,
+      "image_id": 1,
+      "category_id": 7,
+      "bbox": [0.0, 0.0, 2.0, 2.0],
+      "area": 4.0,
+      "iscrowd": 1,
+      "segmentation": {
+        "size": [4, 5],
+        "counts": [0, 2, 2, 2, 14]
+      }
+    }
+  ]
+}

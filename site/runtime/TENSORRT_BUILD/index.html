@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.com/apex-x/runtime/TENSORRT_BUILD/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>TensorRT Build Guide - Apex-X Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Apex-X Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../PRD/" class="nav-link">PRD</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../ENGINEERING_SPEC/" class="nav-link">Engineering Spec</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../QAT/" class="nav-link">QAT Policy</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../FP8/" class="nav-link">FP8 Policy</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../PERF/" class="nav-link">Performance Regression</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../PLUGIN_SPEC/" class="nav-link">Runtime Plugin Spec</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../PLUGIN_SPECS/" class="nav-link">Runtime Plugin Specs Alias</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../CAPS/" class="nav-link">Runtime Capability Detection</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../PARITY/" class="nav-link">Runtime Parity Framework</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TENSORRT/" class="nav-link">TensorRT Runtime Notes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">TensorRT Build Guide</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON/" class="nav-link">Triton Runtime Notes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_TILEPACK/" class="nav-link">Triton TilePack</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_TILEUNPACK/" class="nav-link">Triton TileUnpack</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_FUSION/" class="nav-link">Triton FusionGate</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_SSM/" class="nav-link">Triton TileSSM Scan</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_FUSED_STAGE1/" class="nav-link">Triton Fused Stage-1</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../CONTEXT/" class="nav-link">Context</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../DECISIONS/" class="nav-link">Decisions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../TODO/" class="nav-link">TODO</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../TENSORRT/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../TRITON/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://example.com/apex-x" class="nav-link">apex-x</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#tensorrt-plugin-build-and-harness" class="nav-link">TensorRT Plugin Build and Harness</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#scope" class="nav-link">Scope</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#cmake-targets" class="nav-link">CMake Targets</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#environment-variables" class="nav-link">Environment Variables</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#build-default-auto-detect" class="nav-link">Build: Default (Auto-Detect)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#build-explicit-tensorrt-cuda-paths" class="nav-link">Build: Explicit TensorRT + CUDA Paths</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#build-force-skip-shared-plugins-portable-ci" class="nav-link">Build: Force Skip Shared Plugins (Portable CI)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#build-disable-real-tilepack-plugin-but-keep-shared-stub-library" class="nav-link">Build: Disable Real TilePack Plugin but Keep Shared Stub Library</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#harness-usage" class="nav-link">Harness Usage</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#minimal-harness-contract" class="nav-link">Minimal Harness Contract</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#tilepack-c-test-harness" class="nav-link">TilePack C++ Test Harness</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#python-parity-test-optional" class="nav-link">Python Parity Test (Optional)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="tensorrt-plugin-build-and-harness">TensorRT Plugin Build and Harness</h1>
+<h2 id="scope">Scope</h2>
+<p>This document describes how to build Apex-X TensorRT plugin artifacts and run the minimal runtime harness.</p>
+<p>Directory:
+- <code>runtime/tensorrt/</code></p>
+<h2 id="cmake-targets">CMake Targets</h2>
+<ul>
+<li><code>apexx_trt_plugin_core</code> (always built)</li>
+<li>static stub/core target used for metadata utilities</li>
+<li><code>apexx_trt_plugins</code> (shared library, conditional)</li>
+<li>built only when both TensorRT headers and CUDA compiler are found</li>
+<li>linked only when TensorRT/CUDA runtime libraries are discoverable (<code>nvinfer</code>, <code>cudart</code>)</li>
+<li><code>apexx_trt_plugin_info</code> (always built)</li>
+<li>prints plugin build summary</li>
+<li><code>apexx_trt_plugin_harness</code> (conditional)</li>
+<li>built only when shared plugin library is built</li>
+<li>loads the shared library dynamically and invokes minimal plugin call path</li>
+<li><code>apexx_trt_tilepack_test</code> (conditional)</li>
+<li>built only when real TilePack TensorRT plugin is enabled</li>
+<li>runs C++ parity check for TilePack plugin enqueue output vs host reference</li>
+</ul>
+<h2 id="environment-variables">Environment Variables</h2>
+<ul>
+<li><code>TENSORRT_ROOT</code></li>
+<li>optional root directory containing TensorRT headers (e.g. <code>${TENSORRT_ROOT}/include/NvInfer.h</code>)</li>
+<li><code>CUDA_HOME</code></li>
+<li>optional CUDA root path</li>
+<li><code>CMAKE_PREFIX_PATH</code></li>
+<li>optional path list for dependency discovery</li>
+<li><code>APEXX_TRT_PLUGIN_LIB</code></li>
+<li>runtime path for harness to load plugin shared library</li>
+<li>if not set, harness uses platform default library name</li>
+<li><code>APEXX_ENABLE_REAL_TILEPACK_PLUGIN</code></li>
+<li>CMake option to enable real TensorRT TilePack plugin build</li>
+<li>default: <code>ON</code></li>
+</ul>
+<h2 id="build-default-auto-detect">Build: Default (Auto-Detect)</h2>
+<pre><code class="language-bash">cd runtime/tensorrt
+cmake -S . -B build
+cmake --build build -j
+</code></pre>
+<p>Run summary:</p>
+<pre><code class="language-bash">./build/apexx_trt_plugin_info
+</code></pre>
+<p>If TensorRT/CUDA are unavailable:
+- shared plugin target is skipped
+- harness target is skipped
+- core/info targets still build</p>
+<h2 id="build-explicit-tensorrt-cuda-paths">Build: Explicit TensorRT + CUDA Paths</h2>
+<pre><code class="language-bash">cd runtime/tensorrt
+cmake -S . -B build \
+  -DAPEXX_ENABLE_REAL_TILEPACK_PLUGIN=ON \
+  -DTENSORRT_INCLUDE_DIR=&quot;${TENSORRT_ROOT}/include&quot; \
+  -DCMAKE_CUDA_COMPILER=&quot;${CUDA_HOME}/bin/nvcc&quot;
+cmake --build build -j
+</code></pre>
+<p>If CMake cannot locate runtime libraries automatically, provide search paths via:
+- <code>CMAKE_PREFIX_PATH</code>
+- <code>LD_LIBRARY_PATH</code> / <code>DYLD_LIBRARY_PATH</code> / <code>PATH</code> (platform dependent)</p>
+<h2 id="build-force-skip-shared-plugins-portable-ci">Build: Force Skip Shared Plugins (Portable CI)</h2>
+<pre><code class="language-bash">cd runtime/tensorrt
+cmake -S . -B build \
+  -DAPEXX_ENABLE_TENSORRT=OFF \
+  -DAPEXX_ENABLE_CUDA=OFF \
+  -DAPEXX_BUILD_PLUGIN_TEST_HARNESS=OFF
+cmake --build build -j
+</code></pre>
+<h2 id="build-disable-real-tilepack-plugin-but-keep-shared-stub-library">Build: Disable Real TilePack Plugin but Keep Shared Stub Library</h2>
+<pre><code class="language-bash">cd runtime/tensorrt
+cmake -S . -B build \
+  -DAPEXX_ENABLE_REAL_TILEPACK_PLUGIN=OFF
+cmake --build build -j
+</code></pre>
+<h2 id="harness-usage">Harness Usage</h2>
+<p>If <code>apexx_trt_plugins</code> and harness are built:</p>
+<pre><code class="language-bash">cd runtime/tensorrt
+./build/apexx_trt_plugin_harness ./build/libapexx_trt_plugins.so
+</code></pre>
+<p>Or with env var:</p>
+<pre><code class="language-bash">export APEXX_TRT_PLUGIN_LIB=./build/libapexx_trt_plugins.so
+./build/apexx_trt_plugin_harness
+</code></pre>
+<p>macOS example library name:
+- <code>libapexx_trt_plugins.dylib</code></p>
+<p>Windows example library name:
+- <code>apexx_trt_plugins.dll</code></p>
+<h2 id="minimal-harness-contract">Minimal Harness Contract</h2>
+<p>Harness resolves C ABI symbols from the shared library:
+- <code>apexx_trt_abi_version</code>
+- <code>apexx_trt_build_summary_cstr</code>
+- <code>apexx_trt_invoke_minimal</code></p>
+<p>Harness then:
+- creates dummy float buffers
+- calls minimal plugin path for:
+  - <code>TilePack</code>
+  - <code>TileSSMScan</code>
+  - <code>TileUnpackFusion</code>
+  - <code>DecodeNMS</code></p>
+<p>This validates loadability and basic enqueue-like plugin call flow.</p>
+<h2 id="tilepack-c-test-harness">TilePack C++ Test Harness</h2>
+<p>When <code>apexx_trt_tilepack_test</code> is built:</p>
+<pre><code class="language-bash">cd runtime/tensorrt
+./build/apexx_trt_tilepack_test
+</code></pre>
+<p>This test:
+- creates TilePack plugin through creator
+- serializes/deserializes plugin instance
+- executes <code>enqueue()</code> with CUDA buffers
+- compares output against a host reference implementation</p>
+<h2 id="python-parity-test-optional">Python Parity Test (Optional)</h2>
+<p>If TensorRT Python package is available:</p>
+<pre><code class="language-bash">export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so
+python -m pytest -q tests/test_tensorrt_tilepack_parity.py
+</code></pre>
+<p>The test builds a TensorRT engine containing TilePack and compares output to PyTorch reference.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

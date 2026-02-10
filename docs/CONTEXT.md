@@ -1,0 +1,3142 @@
+# Apex-X Project Context (Persistent Memory)
+
+## Authoritative Links (Mandatory)
+- PRD: `docs/PRD.md`
+- Engineering spec: `docs/ENGINEERING_SPEC.md`
+- Runtime plugin spec: `docs/runtime/PLUGIN_SPEC.md`
+- Decisions log: `docs/DECISIONS.md`
+- Active worklist: `docs/TODO.md`
+
+## Project Identity
+- Name: `apex-x`
+- Version: `0.1.0`
+- License: `Apache-2.0`
+- Current baseline: CPU-only reference implementation
+
+## Current Architecture Snapshot
+- Dual-stream concept established in docs (PV dense + FF sparse)
+- Utility-based router contracts defined
+- Continuous and deterministic budgeting contracts defined
+- Quadtree nesting policy defined (`L0/L1/L2`)
+- TilePack/TileUnpack and ordering contracts defined
+- Tile-SSM placeholder behavior defined
+
+## What Exists Right Now (2026-02-07)
+- Repository scaffold created:
+  - `apex_x/`, `tests/`, `docs/`, `docs/runtime/`, `examples/`, `scripts/`, `runtime/`, `.github/workflows/`
+- Governance/Open-source files added:
+  - `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`
+- Authoritative docs added/updated:
+  - `docs/PRD.md` (full)
+  - `docs/ENGINEERING_SPEC.md` (full)
+  - `docs/runtime/PLUGIN_SPEC.md`
+- CPU baseline code added:
+  - `apex_x/config/schema.py`
+  - `apex_x/routing/core.py`
+  - `apex_x/tiles/ops.py`
+  - `apex_x/utils/ssm.py`
+  - `apex_x/model/core.py`
+- Validation assets added:
+  - `tests/test_router.py`
+  - `tests/test_tile_ops.py`
+  - `tests/test_model.py`
+  - `scripts/perf_regression.py`
+  - `.github/workflows/ci.yml`
+- Tooling and developer workflow baseline:
+  - `pyproject.toml` now targets `python>=3.11`
+  - runtime deps: `torch`, `numpy`, `typer`, `rich`, `pydantic`
+  - dev deps/tools: `pytest`, `ruff`, `black`, `mypy`, `pre-commit`
+  - pre-commit hooks: `.pre-commit-config.yaml`
+  - CI now runs lint + typecheck + tests on `ubuntu-latest` with CPU torch index
+- Package skeleton and public API surfaces:
+  - Created package layout: `apex_x/config/`, `apex_x/model/`, `apex_x/tiles/`, `apex_x/routing/`, `apex_x/losses/`, `apex_x/train/`, `apex_x/infer/`, `apex_x/data/`, `apex_x/export/`, `apex_x/bench/`, `apex_x/runtime/`, `apex_x/utils/`
+  - Root API now exports required surfaces in `apex_x/__init__.py`:
+    - `ApexXConfig`, `ApexXModel`
+    - `Router`, `BudgetController`
+    - `TilePack`, `TileUnpack`
+    - `Exporter`
+  - Added import smoke coverage in `tests/test_import_smoke.py`
+  - Migrated baseline code into package modules and removed legacy flat modules to avoid namespace ambiguity
+- Nested configuration system implemented:
+  - New nested config domains in `apex_x/config/schema.py`:
+    - `ModelConfig` (profiles, channels, strides, tile sizes, Kmax, nesting depth)
+    - `RoutingConfig` (budgets B/B1/B2/B3, costs, hysteresis/split thresholds)
+    - `TrainConfig` (curriculum, dual-`mu` parameters, distill weights, PCGrad++, QAT toggles)
+    - `DataConfig` (COCO paths and augmentation knobs)
+    - `RuntimeConfig` (precision profile, export/runtime toggles)
+  - Top-level `ApexXConfig` now nests all sections and performs cross-section validation
+  - Added YAML + CLI-style override support in `apex_x/config/io.py`:
+    - `load_yaml_config(path, overrides=...)`
+    - `apply_overrides(cfg, [\"section.key=value\", ...])`
+  - Added config validation test coverage in `tests/test_config.py` + fixture `tests/fixtures/apex_x_config.yaml`
+  - Updated model to consume nested config fields in `apex_x/model/core.py`
+  - Added `PyYAML` + `types-PyYAML` to project dependencies for runtime + typing support
+- Reproducibility and logging utilities implemented:
+  - Added `apex_x/utils/repro.py`:
+    - `seed_all()`
+    - `set_deterministic_mode()`
+    - `deterministic_mode()` context manager
+    - `get_determinism_state()`
+    - `reproducibility_notes()` (CPU vs CUDA behavior notes)
+  - Added `apex_x/utils/logging.py`:
+    - `configure_logging()`
+    - `get_logger()` shared `apex_x.*` logger namespace
+    - `log_event()` structured key/value logging with `rich`
+  - Wired shared logger usage in:
+    - `apex_x/config/io.py`
+    - `apex_x/model/core.py`
+  - Added determinism tests in `tests/test_repro.py`
+- CLI surface implemented:
+  - Added Typer CLI entrypoint in `apex_x/cli.py` with commands:
+    - `apex-x train`
+    - `apex-x eval`
+    - `apex-x predict`
+    - `apex-x bench`
+    - `apex-x ablate`
+    - `apex-x export`
+  - All commands load config via YAML and support repeated `--set section.key=value` overrides
+  - Added console script entrypoint in `pyproject.toml`:
+    - `[project.scripts] apex-x = \"apex_x.cli:main\"`
+  - Added CLI parsing/behavior tests in `tests/test_cli.py`
+- Documentation scaffold implemented:
+  - Added MkDocs config in `mkdocs.yml`
+  - Added docs home page in `docs/index.md` linking PRD/spec/runtime/context/decisions/TODO
+  - Added docs build instructions in `docs/index.md` and `README.md`
+  - Added docs dependency group in `pyproject.toml`:
+    - `.[docs]` with `mkdocs`
+  - Added CI docs build job in `.github/workflows/ci.yml` running:
+    - `mkdocs build --strict`
+- Protocol typing standardization implemented:
+  - Added explicit protocol names and aliases for consistency:
+    - `RouterProtocol`
+    - `BudgetControllerProtocol`
+    - `TilePackerProtocol`
+    - `RuntimeAdapterProtocol`
+  - Kept backward-compatible aliases in existing modules (`Router`, `BudgetController`, `TilePack`, etc.)
+  - Added runtime adapter interface + reference adapter:
+    - `apex_x/runtime/interfaces.py`
+    - `apex_x/runtime/adapters.py` (`NullRuntimeAdapter`)
+  - Updated model typing to consume protocol-based interfaces in `apex_x/model/core.py`
+  - Added minimal protocol-conformance tests:
+    - `tests/test_protocols.py`
+  - Updated import-smoke expectations in `tests/test_import_smoke.py`
+- CPU smoke example added:
+  - Added `examples/smoke_cpu.py` that:
+    - loads YAML config
+    - instantiates `ApexXModel` stub
+    - runs one forward pass on random input
+  - Added `examples/smoke_cpu.yaml` default config for fast CPU smoke runs
+  - Added `tests/test_smoke_cpu_example.py` as a quick smoke pytest
+- Documentation governance updates:
+  - Added initial convention ADRs in `docs/DECISIONS.md` for:
+    - naming conventions
+    - tensor shape contracts
+    - determinism rules
+  - Expanded `docs/TODO.md` with known future implementation tracks:
+    - full Triton fused kernels
+    - full TensorRT plugin stack
+    - ONNX Runtime custom-op sparse path and parity gates
+  - Strengthened `CONTRIBUTING.md` policy to require:
+    - `docs/CONTEXT.md` update in every significant PR
+    - `docs/DECISIONS.md` update when architectural/convention decisions change
+- L0 tiling mapping implemented and validated:
+  - Added `apex_x/tiles/mapping.py` with explicit L0 mapping API:
+    - `l0_grid_shape(feature_h, feature_w, tile_size)` with strict divisibility checks
+    - `l0_tile_to_index(ty, tx, grid_h, grid_w)` and `l0_index_to_tile(index, grid_h, grid_w)` with bounds checks
+    - batched helpers:
+      - `l0_indices_to_coords(indices[B,K], grid_h, grid_w) -> coords[B,K,2]`
+      - `l0_coords_to_indices(coords[B,K,2], grid_h, grid_w) -> indices[B,K]`
+  - Wired tile ops grid sizing to strict mapping validation:
+    - `apex_x/tiles/ops.py::tile_grid_shape` now uses `l0_grid_shape(...)`
+  - Exported mapping API through `apex_x/tiles/__init__.py`
+  - Added focused tests in `tests/test_tile_mapping.py`:
+    - index/coord bijection
+    - batched `[B,K]` roundtrip
+    - invalid size/divisibility
+    - out-of-bounds and shape/dtype validation
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Hilbert ordering implemented for coordinates and indices:
+  - Added `apex_x/tiles/ordering.py` with explicit Hilbert APIs:
+    - `hilbert_distance(tx, ty, order_n)`
+    - `hilbert_order_coords(grid_h, grid_w)` for full-grid coordinate traversal
+    - `hilbert_order_indices(indices, grid_h, grid_w)` for subset index ordering
+    - `hilbert_full_indices(grid_h, grid_w)` for complete index traversal
+  - Updated `apex_x/tiles/ops.py`:
+    - `order_idx(..., mode=\"hilbert\")` now uses `hilbert_order_indices(...)`
+  - Exported ordering APIs from `apex_x/tiles/__init__.py`
+  - Added fixtures:
+    - `tests/fixtures/hilbert_2x2.json`
+    - `tests/fixtures/hilbert_4x4.json`
+    - `tests/fixtures/hilbert_8x8.json`
+  - Added fixture-driven tests in `tests/test_tile_hilbert.py`:
+    - exact traversal match vs fixtures
+    - determinism across repeated calls
+    - full coverage of all coordinates/indices
+    - subset index ordering stability + parity with `order_idx(..., mode=\"hilbert\")`
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Scan ordering variants and stable dispatcher implemented:
+  - Extended `apex_x/tiles/ordering.py` with scan modes and dispatcher utilities:
+    - Scan variants: `l2r`, `r2l`, `u2d`, `d2u`
+    - Stable dispatcher: `order_tile_indices(indices, grid_h, grid_w, mode=...)`
+    - Mode normalization and aliases: `normalize_order_mode(...)`
+      - supports `scan_lr/scan_rl/scan_ud/scan_du` + short aliases + canonical names
+    - Scan inverse mapping helper: `inverse_scan_mode(...)`
+    - Explicit scan ordering APIs:
+      - `scan_order_coords(grid_h, grid_w, mode)`
+      - `scan_order_indices(indices, grid_h, grid_w, mode)`
+  - Updated `apex_x/tiles/ops.py`:
+    - `order_idx(...)` now delegates to `order_tile_indices(...)` (single path for ordering semantics)
+  - Exported new ordering APIs from `apex_x/tiles/__init__.py`
+  - Added tests in `tests/test_tile_scan_ordering.py`:
+    - deterministic ordering for all scan variants
+    - alias/normalization correctness
+    - stable ordering behavior on duplicate indices
+    - reversible mapping checks:
+      - `L2R <-> R2L` by horizontal mirror
+      - `U2D <-> D2U` by vertical mirror
+    - dispatcher parity with `order_idx(...)`
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- L0->L1 quadtree mapping and metadata implemented:
+  - Added `apex_x/tiles/quadtree.py` with deterministic L0/L1 mapping APIs:
+    - `l1_grid_shape_from_l0(l0_grid_h, l0_grid_w)`
+    - `l0_l1_grid_shapes_from_feature(feature_h, feature_w, tile_size_l0, tile_size_l1)`
+    - `l0_to_l1_children_coords(l0_ty, l0_tx, l0_grid_h, l0_grid_w)` (TL, TR, BL, BR order)
+    - `l0_to_l1_children_indices(l0_index, l0_grid_h, l0_grid_w)`
+    - reverse mapping:
+      - `l1_to_l0_parent_coord(l1_ty, l1_tx, l0_grid_h, l0_grid_w)`
+      - `l1_to_l0_parent_index(l1_index, l0_grid_h, l0_grid_w)`
+    - metadata builder:
+      - `build_l0_l1_quadtree_meta(parent_indices, l0_grid_h, l0_grid_w) -> L0L1QuadtreeMeta`
+  - Exported new quadtree APIs in `apex_x/tiles/__init__.py`
+  - Added tests in `tests/test_tile_quadtree.py`:
+    - boundary tile mapping correctness (bottom-right L0 tile to L1 children)
+    - reverse parent mapping across full L1 grids
+    - multiple config coverage via `(feature_h, feature_w, tile_size_l0, tile_size_l1)` parametrization
+    - metadata shape/content checks
+    - invalid ratio/divisibility/out-of-bounds validation checks
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- L2 nesting and overlap priority contract implemented:
+  - Extended `apex_x/tiles/quadtree.py` with L1->L2 and combined depth-2 utilities:
+    - grid shapes:
+      - `l2_grid_shape_from_l1(...)`
+      - `l1_l2_grid_shapes_from_feature(...)`
+      - `l0_l1_l2_grid_shapes_from_feature(...)`
+    - mappings:
+      - `l1_to_l2_children_coords(...)`, `l1_to_l2_children_indices(...)`
+      - `l2_to_l1_parent_coord(...)`, `l2_to_l1_parent_index(...)`
+      - `l0_to_l2_descendant_indices(...)`
+    - metadata:
+      - `L1L2QuadtreeMeta`
+      - `L0L1L2QuadtreeMeta`
+      - `build_l1_l2_quadtree_meta(...)`
+      - `build_l0_l1_l2_quadtree_meta(...)`
+  - Defined explicit overlap priority tags and helper:
+    - `OVERLAP_PRIORITY_L0 = 1`
+    - `OVERLAP_PRIORITY_L1 = 2`
+    - `OVERLAP_PRIORITY_L2 = 3`
+    - `overlap_priority_for_level(...)`
+    - contract enforces `L2 > L1 > L0`
+  - Exported new L2 and priority APIs through `apex_x/tiles/__init__.py`
+  - Added/expanded tests:
+    - `tests/test_tile_quadtree.py`:
+      - L1->L2 mapping correctness (including boundary tiles)
+      - L2->L1 reverse mapping correctness
+      - L0->L2 descendant index correctness
+      - combined `L0/L1/L2` metadata consistency
+      - priority tag contract checks
+      - multi-config and validation coverage for depth-2 shapes
+    - `tests/test_tile_ops.py`:
+      - overlap behavior check using unpack priorities confirming `L2` overrides `L1` and `L0`
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Tile selection debug dataclasses implemented:
+  - Added `apex_x/tiles/selection.py` with:
+    - `TileSelection`
+      - fields: `level`, `indices`, `ordered_indices`, `meta`, `budgets_used`
+      - validation:
+        - `level` constrained to `l0/l1/l2`
+        - `ordered_indices` must be a permutation of `indices`
+        - budgets must be finite and non-negative
+      - JSON persistence:
+        - `to_dict()/from_dict()`
+        - `save_json()/load_json()`
+    - `TileSelectionTrace` for multi-level selection records
+      - fields: `selections`, `run_meta`
+      - helpers:
+        - `to_dict()/from_dict()`
+        - `save_json()/load_json()`
+        - `for_level(level)`
+  - JSON serialization includes recursive normalization of NumPy arrays/scalars for debug/ablation dumps.
+  - Exported APIs via `apex_x/tiles/__init__.py`:
+    - `TileSelection`
+    - `TileSelectionTrace`
+  - Added unit tests in `tests/test_tile_selection.py`:
+    - roundtrip dict serialization
+    - file save/load JSON
+    - validation error cases
+    - trace roundtrip and level lookup
+    - non-empty trace guard
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Tile overlay visualization utility implemented:
+  - Added `apex_x/utils/visualization.py` with dependency-free overlay rendering:
+    - `draw_selected_tiles_overlay(...)`
+      - supports `HWC`, `CHW`, and batch-size-1 image inputs
+      - deterministic tile overlay rendering from selected tile indices + grid/tile size
+      - fill + border blending with deterministic integer alpha math
+    - `save_overlay_ppm(...)`
+      - saves overlay to `.ppm` for debug/ablation without extra image libraries
+    - `draw_and_save_selected_tiles_overlay(...)`
+      - convenience wrapper combining render + save
+  - Exported visualization utilities through `apex_x/utils/__init__.py`
+  - Added deterministic tests in `tests/test_visualization.py`:
+    - overlay output shape/dtype checks
+    - stable SHA256 hash checks for rendered overlay bytes
+    - stable SHA256 hash checks for saved PPM file bytes
+    - save-path extension validation for `.ppm`
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Cost model interface and reference implementation added:
+  - Extended routing interfaces in `apex_x/routing/interfaces.py`:
+    - `CostModelProtocol`
+    - backward-compatible alias `CostModel`
+  - Added `apex_x/routing/cost_model.py`:
+    - `LevelCost`:
+      - per-level cost terms:
+        - `c_cheap (C_c)`
+        - `c_heavy (C_h)`
+        - `pack_overhead`
+        - `unpack_overhead`
+        - `split_overhead (O_split)`
+    - `CalibrationRecord`:
+      - stores empirical calibration measurements, blend factor, and apply flag
+    - `StaticCostModel`:
+      - level-aware cost computations:
+        - `cheap_cost(...)`
+        - `heavy_cost(...)`
+        - `delta_cost(...)`
+        - `split_overhead(...)`
+        - `expected_level_cost(...)`
+        - `total_cost(...)`
+      - optional empirical calibration hook:
+        - `apply_empirical_calibration(level, measured_timings, blend, apply)`
+        - stores records in `calibration_history`
+      - serialization:
+        - `to_dict()/from_dict()`
+        - `save_json()/load_json()`
+  - Exported cost model symbols through:
+    - `apex_x/routing/__init__.py`
+    - `apex_x/__init__.py` (public API now includes `CostModel`, `CostModelProtocol`, `StaticCostModel`)
+  - Added tests in `tests/test_cost_model.py`:
+    - deterministic cost computations and totals
+    - calibration update behavior and history storage
+    - JSON serialization roundtrip
+    - validation/error paths
+    - protocol conformance check (`isinstance(..., CostModelProtocol)`)
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Oracle set sampler implemented (`S` sampling for utility oracle training):
+  - Added `apex_x/routing/oracle_sampling.py`:
+    - `OracleSetSample` dataclass:
+      - `indices`
+      - `random_indices`
+      - `uncertainty_indices`
+    - `sample_oracle_set(u_hat, random_fraction, uncertainty_fraction, seed)`:
+      - random fraction sampling over all tiles
+      - uncertainty-biased sampling over remaining tiles using PV uncertainty `u_hat`
+      - deterministic behavior under fixed seed
+  - Exported sampler APIs through `apex_x/routing/__init__.py`:
+    - `OracleSetSample`
+    - `sample_oracle_set`
+  - Added tests in `tests/test_oracle_sampling.py`:
+    - seed determinism checks
+    - count/uniqueness checks for random + uncertainty components
+    - uncertainty-biased distribution check across many seeds
+    - validation/error checks for fraction bounds and invalid uncertainty values
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- Stable tie-breaking helper for selections implemented:
+  - Updated `apex_x/routing/core.py`:
+    - added `stable_rank_tile_ids(scores)` with deterministic ordering policy:
+      - primary key: score descending
+      - secondary key: tile id ascending
+    - wired `greedy_utility_per_cost(...)` to use `stable_rank_tile_ids(...)` for score-ratio ranking
+  - Exported helper via `apex_x/routing/__init__.py`:
+    - `stable_rank_tile_ids`
+  - Added tests in `tests/test_router.py`:
+    - explicit tie-break behavior validation
+    - repeat-run determinism checks
+    - integration check that greedy selection follows stable tie-breaking under equal utility/cost ratios
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- PV->FF tile vector aggregation implemented:
+  - Added `apex_x/routing/aggregation.py`:
+    - `compute_ff_tile_bounds_on_pv_grid(...)`
+      - computes PV-aligned bounds for each FF tile on coarse PV maps
+    - `aggregate_pv_maps_to_ff_tile_vectors(...)`
+      - pools per-tile stats from PV maps aligned to FF grid
+      - supported stats: `mean`, `max`, `var`
+      - deterministic feature ordering using sorted PV map names
+    - `PVTileAggregation` dataclass:
+      - `vectors` (`[B, K, D]`)
+      - `tile_bounds_pv` (`[K,4]`)
+      - `feature_layout` (feature names per channel/stat/map)
+  - Exported aggregation APIs via `apex_x/routing/__init__.py`:
+    - `PVTileAggregation`
+    - `compute_ff_tile_bounds_on_pv_grid`
+    - `aggregate_pv_maps_to_ff_tile_vectors`
+  - Added tests in `tests/test_pv_aggregation.py`:
+    - alignment on simple integer scale mapping
+    - pooled stat correctness (`mean/max/var`)
+    - output shape and feature layout checks
+    - deterministic outputs across map ordering
+    - non-integer scale edge/boundary alignment
+    - validation error paths
+  - Verification status:
+    - `python -m pytest -q` passed
+    - `ruff check .` passed
+    - `mypy` passed
+- RouterTinyMLP implemented with utility/split/temporal outputs:
+  - Added `apex_x/routing/tiny_mlp.py`:
+    - `RouterTinyOutput` dataclass carrying per-tile tensors:
+      - `U` (`[B,K]`) utility logits
+      - `S` (`[B,K]`) split utility logits
+      - optional `T` (`[B,K]`) temporal keep logits
+    - `RouterTinyMLP(nn.Module)`:
+      - configurable `input_dim`, `hidden_dim`, `num_layers`, `temporal_head`
+      - forward contract on `x[B,K,D]` with strict input validation
+      - compatibility method `predict_utilities(...)` for `RouterProtocol` usage (`input_dim=1`)
+  - Exported in `apex_x/routing/__init__.py`:
+    - `RouterTinyOutput`
+    - `RouterTinyMLP`
+  - Added tests in `tests/test_router_tiny_mlp.py`:
+    - shape checks for `U/S` and optional `T`
+    - deterministic outputs for fixed seed/model initialization
+    - backward/gradient-flow checks through router outputs
+    - `predict_utilities(...)` behavior and validation paths
+    - runtime protocol conformance (`isinstance(..., RouterProtocol)`)
+  - Minor typing fix to keep strict typecheck green:
+    - `apex_x/utils/visualization.py` now uses an explicit typed cast in `_as_hwc_uint8(...)`
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Lightweight spline activation + RouterKANLike implemented:
+  - Added `apex_x/routing/kan_like.py`:
+    - `LightweightSplineActivation`:
+      - compact per-feature piecewise-linear spline on fixed knot grid
+      - identity initialization for stable startup
+      - explicit `nan/inf` sanitization + bounded input clamp
+    - `RouterKANLike`:
+      - small-parameter KAN-like router (`LayerNorm -> Linear -> Spline -> Linear`)
+      - outputs `U`, `S`, and optional `T` via `RouterKANOutput`
+      - bounded head logits via configurable `logit_clip`
+      - protocol-compatible `predict_utilities(...)` and `parameter_count()`
+  - Exported via `apex_x/routing/__init__.py`:
+    - `LightweightSplineActivation`
+    - `RouterKANOutput`
+    - `RouterKANLike`
+  - Added numerical stability tests in `tests/test_router_kan_like.py`:
+    - finite outputs under extreme/nonnumeric input values
+    - finite gradients for spline params and inputs
+    - router output shape + finite output checks at large input magnitudes
+    - deterministic initialization/output checks under fixed seeds
+    - small-parameter-count guard
+    - `RouterProtocol` conformance check
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Tensor STE gating implemented for continuous-budget training path:
+  - Added `apex_x/routing/gating.py`:
+    - `sigmoid_probabilities(U, temperature)`:
+      - computes `p = sigmoid(U)` with temperature support
+      - clamps/sanitizes extreme and non-finite logits for numerical stability
+    - `ste_hard_gate(p, mode, threshold)`:
+      - forward hard gate modes:
+        - `threshold`: `g = 1[p >= threshold]`
+        - `bernoulli`: `g ~ Bernoulli(p)`
+      - backward straight-through estimator via detach trick (`dg/dp = 1`)
+    - `ste_gate_from_utilities(U, ...) -> (p, g)` convenience function
+  - Exported in `apex_x/routing/__init__.py`:
+    - `GateMode`
+    - `sigmoid_probabilities`
+    - `ste_hard_gate`
+    - `ste_gate_from_utilities`
+  - Added autograd and numerical tests in `tests/test_ste_gating.py`:
+    - non-zero and finite gradient checks w.r.t. `U` in threshold mode
+    - non-zero and finite gradient checks w.r.t. `U` in Bernoulli mode
+    - explicit gradient-form check against sigmoid derivative under linear loss
+    - finite probability checks under extreme/non-finite utility inputs
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- BudgetDualController implemented for continuous-budget dual optimization:
+  - Added `apex_x/routing/dual_budget.py`:
+    - `BudgetDualController` (stateful dual variable controller) with:
+      - expected cost:
+        - `E[C] = sum_i(p_i * C_h + (1 - p_i) * C_c)` via `expected_cost(...)`
+      - budget term:
+        - `L_budget = mu * (E[C] - B)` via `budget_loss(...)`
+      - projected/clamped dual update:
+        - `mu <- clamp(mu + mu_lr * (E[C] - B), [mu_min, mu_max])` via `update_mu(...)`
+      - structured debug logging on each update (`event='dual_mu_update'`) including:
+        - `expected_cost`, `budget`, `delta`, `mu_prev`, `mu_next`, `clamped`
+      - support for both sequence and tensor probabilities in expected-cost path
+  - Exported in `apex_x/routing/__init__.py`:
+    - `BudgetDualController`
+  - Added tests in `tests/test_budget_dual_controller.py`:
+    - expected-cost and budget-loss formula checks
+    - `mu` moves in correct direction (`E[C] > B` increases, `E[C] < B` decreases)
+    - `mu` clamp bounds respected (`mu_min` / `mu_max`)
+    - tensor-path budget loss backpropagates with finite non-zero gradients
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Deterministic greedy inference budgeting implemented with explicit Kmax buffer contract:
+  - Added `apex_x/routing/inference_budget.py`:
+    - `deterministic_greedy_selection(...)`:
+      - computes scores exactly as `score_i = U_i / DeltaC_i`
+      - deterministic ordering by:
+        - primary: score descending
+        - secondary: tile id ascending
+      - selects until budget exhausted and `kmax` reached
+      - returns `GreedySelectionResult` with:
+        - `selected_indices`
+        - `spent_budget`
+        - `ordered_candidates`
+        - `scores`
+        - `kmax_buffer` (fixed-length padded buffer)
+        - `valid_count`
+    - `build_kmax_buffer(...)` helper for fixed-size runtime buffers
+  - Wired existing public helper to the new deterministic path:
+    - `apex_x/routing/core.py::greedy_utility_per_cost(...)` now delegates to
+      `deterministic_greedy_selection(...)` and preserves existing return signature
+  - Exported in `apex_x/routing/__init__.py`:
+    - `GreedySelectionResult`
+    - `build_kmax_buffer`
+    - `deterministic_greedy_selection`
+  - Added tests in `tests/test_inference_budget.py`:
+    - repeat-run determinism for ordering and selections
+    - budget enforcement and `kmax` cap behavior
+    - stable tie handling (`tile_id` ascending under equal scores)
+    - Kmax buffer padding/truncation semantics
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Two-stage nesting selection implemented (`L0` under `B1`, split under `B2`):
+  - Extended `apex_x/routing/inference_budget.py`:
+    - `TwoStageSelectionResult` dataclass carrying:
+      - `l0` selection result
+      - split parent ordering/selection
+      - spent split budget
+      - generated `L1` indices
+      - ordered `L1` indices + fixed-size `L1` Kmax buffer
+    - `deterministic_two_stage_selection(...)`:
+      - stage 1: deterministic `L0` selection using `U / DeltaC` under `budget_b1` + `kmax_l0`
+      - stage 2: split parent ranking by `S / O_split` under `budget_b2`
+      - expands selected `L0` parents to `L1` children via quadtree mapping
+      - enforces `kmax_l1` capacity during split expansion
+      - applies deterministic `L1` ordering via configured order mode (Hilbert/scan)
+  - Exported in `apex_x/routing/__init__.py`:
+    - `TwoStageSelectionResult`
+    - `deterministic_two_stage_selection`
+  - Added tests in `tests/test_two_stage_selection.py`:
+    - `L0` selection under `B1`
+    - split candidate selection under `B2` with `S/O_split`
+    - deterministic tie handling on split parents (`tile_id` ascending)
+    - `L1` children generation and ordering behavior
+    - determinism across repeated runs
+    - `kmax_l1` capacity/buffer enforcement
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Temporal hysteresis rollout and toggle analysis implemented:
+  - Extended `apex_x/routing/core.py` hysteresis APIs:
+    - `hysteresis_update(...)` now validates:
+      - `theta_on > theta_off`
+      - equal lengths for `utilities_t` and `prev_mask`
+    - added `hysteresis_rollout(...)`:
+      - applies rule over full time sequence with carried `z(t-1)` state
+    - added `count_mask_toggles(...)`:
+      - counts total 0/1 transitions across time (for anti-flicker evaluation)
+  - Exported in `apex_x/routing/__init__.py`:
+    - `hysteresis_rollout`
+    - `count_mask_toggles`
+  - Added tests in `tests/test_hysteresis_temporal.py`:
+    - deadband behavior preserves previous mask state (`z(t-1)`) when utility remains between thresholds
+    - synthetic noisy sequence shows reduced toggling vs single-threshold baseline
+    - validation/error-path checks for threshold ordering and shape consistency
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Routing diagnostics implemented and surfaced in model/train/infer paths:
+  - Added `apex_x/routing/diagnostics.py`:
+    - `utility_histogram(...)` for per-level utility histogram summaries
+    - `build_routing_diagnostics(...)` producing:
+      - selected ratios/counts per level
+      - utility histograms per level
+      - budget usage (`used`, `budget`, `ratio`)
+      - dual variable history (`mu_history`)
+  - Exported diagnostics APIs through `apex_x/routing/__init__.py`
+  - Integrated diagnostics into `apex_x/model/core.py`:
+    - model outputs now include `routing_diagnostics`
+    - dual controller (`BudgetDualController`) state tracked in `mu_history`
+    - optional dual update path enabled via `forward(..., update_dual=True)`
+    - structured logs now include selected ratio, budget usage ratio, and latest `mu`
+  - Updated `apex_x/train/__init__.py` and `apex_x/infer/__init__.py`:
+    - train placeholder logs/returns routing diagnostics summary fields
+    - infer placeholder returns diagnostics from model outputs
+  - Updated CLI integration in `apex_x/cli.py`:
+    - `train` now performs short warmup forwards with dual updates and reports diagnostics
+    - `predict` now reads infer diagnostics and logs budget usage ratio
+  - Added tests in `tests/test_routing_diagnostics.py`:
+    - diagnostics presence in inference outputs
+    - diagnostics propagation through train/infer placeholders
+    - `mu_history` progression when dual updates are enabled
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Config-driven feature toggles added for forced-off routing/training paths:
+  - Extended `apex_x/config/schema.py`:
+    - `ModelConfig` toggles:
+      - `force_dense_routing` (router off => dense tile activation)
+      - `disable_nesting` (effective nesting depth forced to 0)
+      - `disable_ssm` (bypass Tile-SSM mixing)
+    - `TrainConfig` toggles:
+      - `disable_distill`
+      - `disable_pcgradpp`
+    - Added helper methods:
+      - `ModelConfig.effective_nesting_depth()`
+      - `ModelConfig.router_enabled()`
+      - `ModelConfig.ssm_enabled()`
+      - `TrainConfig.distill_enabled()`
+      - `TrainConfig.pcgradpp_enabled()`
+    - Validation updated so `disable_nesting=true` can force nesting off without requiring manual `kmax_l1/l2` and `budget_b3` cleanup.
+  - Updated `apex_x/model/core.py` runtime behavior:
+    - router-off mode forces dense `L0` selection and skips budget controller routing selection
+    - no-SSM mode bypasses `tile_ssm_scan(...)` and uses zero modulation/state
+    - no-nesting mode uses effective depth for diagnostics totals (`L1/L2` counts become zero)
+    - output now includes `feature_toggles` summary for debug/smoke assertions
+  - Updated `apex_x/train/__init__.py` + `apex_x/cli.py`:
+    - train placeholder now accepts config and reports effective distill/PCGrad++ enabled flags
+    - CLI `train` passes config through to preserve toggle behavior in logs/output paths
+  - Added smoke coverage:
+    - `tests/test_feature_toggle_smoke.py`
+      - validates override behavior for `disable_nesting`
+      - executes all `2^5=32` toggle combinations:
+        - router off / on
+        - no nesting / nesting
+        - no SSM / SSM
+        - no distill / distill
+        - no PCGrad++ / PCGrad++
+      - asserts forward + train placeholder run without crashes and toggle semantics hold
+  - Verification status:
+    - `python -m ruff check .` passed
+    - `python -m pytest -q` passed
+    - `./.venv/bin/python -m mypy` passed
+- Torch tile packer implemented with contiguous output contract:
+  - Added `apex_x/tiles/torch_ops.py`:
+    - `TilePackTorch.pack(...)`:
+      - input: `F[B,C,H,W]`, `idx[B,K]`, `tile_size`
+      - output: `P[B,K,C,t,t]`, `meta`
+      - deterministic ordering via shared ordering dispatcher (`order_idx(...)`)
+      - strict shape/dtype/bounds validation
+      - guarantees contiguous packed tensor via `.contiguous()`
+    - `pack_tiles_torch(...)` convenience wrapper
+    - `TorchTileMeta` type alias (`dict[str, torch.Tensor]`)
+  - Exported through `apex_x/tiles/__init__.py`:
+    - `TorchTileMeta`
+    - `TilePackTorch`
+    - `pack_tiles_torch`
+  - Added tests in `tests/test_tile_pack_torch.py`:
+    - correctness vs NumPy reference `pack_tiles(...)`
+    - contiguous output assertion
+    - autograd gradient-flow check from packed output back to source feature map
+  - Verification status:
+    - `python -m ruff check ...` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_tile_pack_torch.py tests/test_tile_ops.py` passed
+- Torch tile unpacker implemented with overlap priority modes:
+  - Extended `apex_x/tiles/torch_ops.py`:
+    - `TileUnpackTorch.unpack(...)`:
+      - input: `base_map[B,C,H,W]`, `packed_out[B,K,C,t,t]`, `meta`, `level_priority`, optional `priority_map`
+      - overlap modes:
+        - `override`: incoming tile values replace existing values where priority allows
+        - `blend`: weighted fusion `out = (1-alpha)*current + alpha*incoming` where priority allows
+      - priority contract preserved via per-pixel `priority_map` updates
+      - strict validation for tensor ranks/shapes, bounds, and mode/alpha values
+    - `unpack_tiles_torch(...)` convenience wrapper
+    - `OverlapMode` type alias
+  - Exported through `apex_x/tiles/__init__.py`:
+    - `OverlapMode`
+    - `TileUnpackTorch`
+    - `unpack_tiles_torch`
+  - Added tests in `tests/test_tile_unpack_torch.py`:
+    - override-mode parity vs NumPy `unpack_tiles(...)`
+    - overlap priority enforcement and blend-mode numeric behavior
+    - autograd gradient-flow checks for blend mode (`base` and `packed_out`)
+    - helper/function parity (`TileUnpackTorch().unpack` vs `unpack_tiles_torch`)
+  - Verification status:
+    - `python -m ruff check apex_x/tiles/torch_ops.py apex_x/tiles/__init__.py tests/test_tile_unpack_torch.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_tile_pack_torch.py tests/test_tile_unpack_torch.py tests/test_tile_ops.py` passed
+- Fusion gate implemented with boundary/uncertainty-conditioned alpha:
+  - Added `apex_x/model/fusion_gate.py`:
+    - `FusionGate(nn.Module)` computes spatial gate:
+      - `alpha [B,1,H,W] = sigmoid(w_b * boundary_proxy + w_u * uncertainty_proxy + bias)`
+      - positive monotonic proxy weights enforced via `softplus(...)`
+    - outputs fused features:
+      - `fused = base + alpha * (heavy - base)`
+    - validates proxy shape contracts and aligns proxies to feature dtype/device
+  - Exported in `apex_x/model/__init__.py`:
+    - `FusionGate`
+  - Added tests in `tests/test_fusion_gate.py`:
+    - alpha shape/range and fusion formula correctness
+    - sensitivity checks: increasing boundary/uncertainty proxies increases mean alpha
+  - Verification status:
+    - `python -m ruff check apex_x/model/fusion_gate.py tests/test_fusion_gate.py apex_x/model/__init__.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_fusion_gate.py` passed
+- Cheap block implemented (`1x1 + norm + ReGLU + optional residual`):
+  - Added `apex_x/model/cheap_block.py`:
+    - `CheapBlock(nn.Module)`:
+      - path: `Conv2d(1x1) -> GroupNorm -> ReGLU`
+      - optional residual add
+      - automatic residual projection (`1x1`) when `in_channels != out_channels`
+      - validation for input channels and normalization group divisibility
+  - Exported in `apex_x/model/__init__.py`:
+    - `CheapBlock`
+  - Added tests in `tests/test_cheap_block.py`:
+    - shape checks with residual projection path
+    - residual identity behavior when main path is zeroed
+    - no-residual zero-output behavior when main path is zeroed
+    - gradient-flow checks for input and block parameters
+  - Verification status:
+    - `python -m ruff check apex_x/model/cheap_block.py apex_x/model/__init__.py tests/test_cheap_block.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_cheap_block.py tests/test_model.py` passed
+- Tile refine block implemented for packed tiles:
+  - Added `apex_x/model/tile_refine_block.py`:
+    - `TileRefineBlock(nn.Module)` operating on packed tensors `[B,K,C,t,t]`
+    - local refine path per tile:
+      - depthwise conv (`k x k`)
+      - pointwise conv
+      - `GroupNorm`
+      - ReGLU activation
+      - optional residual (with automatic projection when channels differ)
+    - implementation flattens `B*K` for conv processing and restores `[B,K,...]`, preserving per-tile independence
+  - Exported in `apex_x/model/__init__.py`:
+    - `TileRefineBlock`
+  - Added tests in `tests/test_tile_refine_block.py`:
+    - shape/projection path checks
+    - residual identity when main path is zeroed
+    - per-tile independence (no cross-tile mixing)
+    - gradient-flow checks for inputs and parameters
+  - Verification status:
+    - `python -m ruff check apex_x/model/tile_refine_block.py apex_x/model/__init__.py tests/test_tile_refine_block.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_tile_refine_block.py tests/test_cheap_block.py` passed
+- PV backbone implemented with P3/P4/P5 feature outputs:
+  - Added `apex_x/model/pv_backbone.py`:
+    - `PVBackbone(nn.Module)` returning feature dict:
+      - `P3` (stride 8)
+      - `P4` (stride 16)
+      - `P5` (stride 32)
+    - uses lightweight staged downsampling + `CheapBlock` refinement per level
+    - validates input shape/channel contract and minimum spatial size
+  - Exported in `apex_x/model/__init__.py`:
+    - `PVBackbone`
+  - Added tests in `tests/test_pv_backbone.py`:
+    - parameterized shape checks across multiple input sizes
+    - gradient-flow check
+    - input validation checks
+  - Verification status:
+    - `python -m ruff check apex_x/model/pv_backbone.py apex_x/model/__init__.py tests/test_pv_backbone.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_pv_backbone.py` passed
+- PV coarse heads implemented with explicit uncertainty proxy definition:
+  - Added `apex_x/model/pv_coarse_heads.py`:
+    - `PVCoarseHeads(nn.Module)` producing coarse PV maps from a selected backbone level (default `P4`):
+      - `objectness_logits`
+      - `objectness = sigmoid(objectness_logits)`
+      - `boundary_proxy = sigmoid(boundary_logits)`
+      - `variance_proxy = softplus(variance_logits)`
+      - `uncertainty_proxy`
+    - clear uncertainty definition:
+      - `u_hat = 4 * p * (1 - p)` where `p = objectness`
+      - normalized Bernoulli variance (`u_hat=1` at `p=0.5`, `u_hat=0` at `p in {0,1}`)
+    - output typed via `PVCoarseOutput` dataclass
+  - Exported in `apex_x/model/__init__.py`:
+    - `PVCoarseHeads`
+    - `PVCoarseOutput`
+  - Added tests in `tests/test_pv_coarse_heads.py`:
+    - parameterized shape/range checks across multiple image sizes (via `PVBackbone` + `P4`)
+    - uncertainty sensitivity checks with controlled objectness logits
+    - direct uncertainty formula parity check
+    - gradient-flow check through backbone + heads
+  - Verification status:
+    - `python -m ruff check apex_x/model/pv_coarse_heads.py apex_x/model/__init__.py tests/test_pv_coarse_heads.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_pv_coarse_heads.py` passed
+- PV module wired with backbone + coarse heads:
+  - Added `apex_x/model/pv_module.py`:
+    - `PVModule` composes:
+      - `PVBackbone` for `P3/P4/P5` feature extraction
+      - `PVCoarseHeads` for coarse proxies
+    - `PVModule.forward()` now returns `PVModuleOutput` containing:
+      - `features` dict (`P3/P4/P5`)
+      - `coarse` maps from selected level (`coarse_level`: `P3`/`P4`/`P5`)
+      - `proxy_maps` dict for routing-facing signals:
+        - `objectness`
+        - `uncertainty`
+        - `boundary`
+        - `variance`
+  - Exported in `apex_x/model/__init__.py`:
+    - `PVModule`
+    - `PVModuleOutput`
+  - Added tests in `tests/test_pv_module.py`:
+    - shape checks across multiple input sizes
+    - coarse-level selection checks (`P3` vs `P5`)
+    - `proxy_maps` key/shape checks
+    - finite-output assertions
+  - Added dedicated CPU smoke test in `tests/test_pv_module_smoke_cpu.py`:
+    - validates CPU forward path and proxy-map outputs are finite with expected shapes
+  - Verification status:
+    - `python -m ruff check apex_x/model/pv_module.py apex_x/model/__init__.py tests/test_pv_module.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_pv_module.py tests/test_pv_module_smoke_cpu.py tests/test_pv_backbone.py tests/test_pv_coarse_heads.py` passed
+- Stable state-space-like scan implemented with constrained parameters:
+  - Extended `apex_x/utils/ssm.py`:
+    - `StableStateSpaceScan(nn.Module)` with constrained recurrent parameters:
+      - decay constrained to `(min_decay, max_decay)` via sigmoid mapping
+      - positive input/output gains via softplus
+      - numerically safe token sanitization/clamp path
+    - `SSMScanStats` for explicit scan complexity accounting:
+      - `steps`
+      - `recurrent_updates`
+      - `pairwise_updates`
+    - `tile_ssm_scan(...)` now clamps alpha to stable bounds
+  - Exported in `apex_x/utils/__init__.py`:
+    - `StableStateSpaceScan`
+    - `SSMScanStats`
+  - Added tests in `tests/test_stable_ssm_scan.py`:
+    - no-NaN/finite checks on extreme inputs
+    - gradient-flow checks for inputs and scan parameters
+    - O(K) behavior checks via linear recurrent-update accounting and zero pairwise updates
+  - Verification status:
+    - `python -m ruff check apex_x/utils/ssm.py apex_x/utils/__init__.py tests/test_stable_ssm_scan.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_stable_ssm_scan.py` passed
+- Bidirectional scan and merge gate added on top of stable scan:
+  - Extended `apex_x/utils/ssm.py`:
+    - `StableBidirectionalStateSpaceScan(nn.Module)`:
+      - forward-direction stable scan
+      - backward-direction stable scan (reverse sequence + reverse outputs back)
+      - channel-wise constrained merge gate:
+        - `gate = sigmoid(merge_gate_logit)` in `[0,1]`
+        - merged output: `gate * y_fwd + (1 - gate) * y_bwd`
+      - complexity stats preserved as linear-time recurrent updates (no pairwise updates)
+  - Exported in `apex_x/utils/__init__.py`:
+    - `StableBidirectionalStateSpaceScan`
+  - Added tests in `tests/test_bidirectional_ssm_scan.py`:
+    - finite/no-NaN checks with extreme inputs
+    - merge formula correctness vs explicit gate-weighted combination
+    - gradient-flow checks for inputs and parameters (including merge gate path)
+    - O(K) scaling checks from recurrent update counts
+  - Verification status:
+    - `python -m ruff check apex_x/utils/ssm.py apex_x/utils/__init__.py tests/test_bidirectional_ssm_scan.py tests/test_stable_ssm_scan.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_stable_ssm_scan.py tests/test_bidirectional_ssm_scan.py` passed
+- FiLM modulation implemented from tokens to packed tiles:
+  - Added `apex_x/model/film.py`:
+    - `TileFiLM(nn.Module)`:
+      - computes FiLM parameters from tokens `tokens[B,K,Ct]`
+      - bounded gain path: `gamma = tanh(gamma_raw) * gamma_limit`
+      - shift path: `beta`
+      - applies modulation to packed tiles: `out = (1 + gamma) * tiles + beta`
+    - `apply_film(...)` functional helper with strict shape validation
+  - Updated `apex_x/model/core.py`:
+    - replaced additive-only packed modulation with FiLM-style modulation using SSM mixed tokens:
+      - `gamma = tanh(mixed)`
+      - `beta = mixed`
+      - `packed_out = (1 + gamma) * packed + beta`
+  - Exported in `apex_x/model/__init__.py`:
+    - `TileFiLM`
+    - `apply_film`
+  - Added tests in `tests/test_film_modulation.py`:
+    - formula and shape checks
+    - gamma range bound checks
+    - deterministic forward under fixed inputs
+    - gradient-flow checks through tokens, tiles, and module parameters
+  - Verification status:
+    - `python -m ruff check apex_x/model/film.py apex_x/model/core.py apex_x/model/__init__.py tests/test_film_modulation.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_film_modulation.py tests/test_model.py` passed
+- FF heavy path implemented end-to-end with aligned detail map output:
+  - Added `apex_x/model/ff_heavy_path.py`:
+    - `FFHeavyPath(nn.Module)` pipeline:
+      - `TilePackTorch` gather on selected FF tile indices
+      - tile tokenization via spatial pooling: `tokens[B,K,C]`
+      - stable scan (`forward` or `bidirectional`) over tokens
+      - FiLM modulation (`gamma`, `beta`) from mixed tokens to packed tiles
+      - local packed-tile refine via `TileRefineBlock`
+      - `TileUnpackTorch` scatter back to dense map shape
+      - optional proxy-conditioned fusion gate (`FusionGate`)
+    - output contract via `FFHeavyPathOutput`:
+      - `heavy_features[B,C,H,W]`
+      - `detail_map[B,C,H,W]` aligned to dense features
+      - `alpha[B,1,H,W]`
+      - diagnostics tensors (`tokens`, `mixed_tokens`, `gamma`, `beta`, `state`)
+    - includes robust CPU behavior for empty tile selections (`K=0`) with zero detail contribution.
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `FFHeavyPath`
+    - `FFHeavyPathOutput`
+  - Added CPU tests in `tests/test_ff_heavy_path.py`:
+    - shape/alignment checks and finite outputs
+    - empty-selection behavior (`K=0`) -> zero `detail_map`
+    - deterministic repeated forward and gradient-flow checks
+  - Verification status:
+    - `python -m ruff check apex_x/model/ff_heavy_path.py apex_x/model/__init__.py tests/test_ff_heavy_path.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_ff_heavy_path.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- FF module implemented for train/infer routing execution:
+  - Added `apex_x/model/ff_module.py`:
+    - `FFModule(nn.Module)` with two explicit entrypoints:
+      - `forward_train(...)`:
+        - STE routing gates via `ste_gate_from_utilities(...)`
+        - expected-cost computation via `BudgetDualController.expected_cost(...)`
+        - budget loss term via `BudgetDualController.budget_loss(...)`
+        - optional dual-`mu` update with persistent `mu_history`
+        - routed L0 heavy execution through `FFHeavyPath`
+      - `forward_infer(...)`:
+        - deterministic L0 greedy selection under `B1`/`Kmax_l0`
+        - optional L0->L1 two-stage selection under `B2`/`Kmax_l1`
+        - optional nesting execution (L1 heavy pass) when split utilities provided
+    - diagnostics integrated in both paths through `build_routing_diagnostics(...)`:
+      - selected counts/ratios
+      - utility histograms
+      - per-budget usage (`b1/b2/b3/total`)
+      - `mu_history`
+    - output dataclasses:
+      - `FFTrainOutput`
+      - `FFInferOutput`
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `FFModule`
+    - `FFTrainOutput`
+    - `FFInferOutput`
+  - Added tests in `tests/test_ff_module.py`:
+    - train path:
+      - STE + expected-cost + budget-loss outputs
+      - diagnostics presence
+      - dual-`mu` history update
+    - inference path:
+      - deterministic budgeted L0 selection
+      - optional nesting with deterministic L1 child selection under `B2`
+      - diagnostics coverage
+  - Verification status:
+    - `python -m ruff check apex_x/model/ff_module.py apex_x/model/__init__.py tests/test_ff_module.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_ff_module.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- Dual-path FPN implemented to combine PV low-res with FF high-res:
+  - Added `apex_x/model/fpn.py`:
+    - `DualPathFPN(nn.Module)`:
+      - inputs:
+        - PV features dict `P3/P4/P5`
+        - FF high-res feature/detail map
+      - fusion path:
+        - lateral 1x1 projections for PV `P3/P4/P5`
+        - lateral 1x1 projection for FF branch
+        - top-down FPN merge (`P5 -> P4 -> P3`)
+        - explicit FF injection at `P3` after spatial alignment
+        - smoothing with `CheapBlock` on `P3/P4/P5`
+      - output contract via `DualPathFPNOutput`:
+        - fused pyramid dict `P3/P4/P5`
+        - aligned FF feature map at P3 resolution (`ff_aligned`)
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `DualPathFPN`
+    - `DualPathFPNOutput`
+  - Added tests in `tests/test_fpn.py`:
+    - CPU shape and finite-value checks
+    - FF-branch sensitivity (changing FF input changes fused `P3`)
+    - gradient-flow checks through PV inputs, FF input, and FPN params
+  - Verification status:
+    - `python -m ruff check apex_x/model/fpn.py apex_x/model/__init__.py tests/test_fpn.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_fpn.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- DET head implemented over P3..P7 (cls/box/quality):
+  - Added `apex_x/model/det_head.py`:
+    - `DetHead(nn.Module)`:
+      - consumes pyramid features with required `P3/P4/P5`
+      - supports optional provided `P6/P7`; auto-generates missing levels from `P5`/`P6`
+      - per-level outputs:
+        - `cls_logits`: `[B, num_classes, H, W]`
+        - `box_reg`: `[B, 4, H, W]`
+        - `quality`: `[B, 1, H, W]`
+      - uses shared tower structure for cls/box/quality with GroupNorm + SiLU and export-friendly conv outputs
+    - output contract via `DetHeadOutput`:
+      - per-level dicts for `cls_logits`, `box_reg`, `quality`
+      - normalized `features` dict for effective `P3..P7` levels used by the head
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `DetHead`
+    - `DetHeadOutput`
+  - Added tests in `tests/test_det_head.py`:
+    - shape checks across all output levels `P3..P7` when only `P3..P5` are provided
+    - behavior check that explicitly provided `P6/P7` are used as-is
+    - gradient-flow checks through inputs and DET-head parameters
+  - Verification status:
+    - `python -m ruff check apex_x/model/det_head.py apex_x/model/__init__.py tests/test_det_head.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_det_head.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- SimOTA/OTA cost components implemented for DET matching:
+  - Added `apex_x/losses/simota.py`:
+    - classification cost:
+      - `classification_cost(...)` with modes:
+        - BCE-based positive-class cost
+        - focal-based positive-class cost
+    - IoU cost:
+      - `iou_cost(...)` implementing `1 - IoU` over pairwise GT/anchor boxes
+    - center prior cost:
+      - `center_prior_cost(...)` from GT center to anchor center distance (normalized by GT size)
+    - per-GT candidate generation:
+      - `topk_center_candidates(...)` selecting top-k nearest anchor centers per GT
+      - `candidate_mask_from_indices(...)` to build per-GT candidate masks
+    - integrated cost assembly:
+      - `compute_simota_cost(...)` combining weighted components and candidate masking
+      - `SimOTACostOutput` dataclass containing component matrices, combined cost, and candidates
+  - Updated exports in `apex_x/losses/__init__.py`:
+    - `classification_cost`, `iou_cost`, `center_prior_cost`
+    - `topk_center_candidates`, `candidate_mask_from_indices`
+    - `compute_simota_cost`, `SimOTACostOutput`, `ClassificationCostType`
+  - Added tests in `tests/test_simota_cost.py`:
+    - per-GT top-k center candidate selection correctness on synthetic anchors/GT
+    - classification-cost ranking behavior (higher positive logit -> lower cost)
+    - IoU cost sanity (`1 - IoU`)
+    - combined SimOTA ranking on synthetic setup (reasonable anchor wins; non-candidates penalized)
+    - center-prior ranking preference for nearby anchor centers
+  - Verification status:
+    - `python -m ruff check apex_x/losses/simota.py apex_x/losses/__init__.py tests/test_simota_cost.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_simota_cost.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- Dynamic-K SimOTA matching implemented (including conflict resolution):
+  - Extended `apex_x/losses/simota.py`:
+    - `DynamicKMatchingOutput` dataclass with:
+      - `dynamic_ks`
+      - `matching_matrix`
+      - `foreground_mask`
+      - `matched_gt_indices`
+      - `assigned_cost`
+      - `num_foreground`
+    - `dynamic_k_from_top_ious(...)`:
+      - computes per-GT `dynamic_k` from sum of top IoUs (with configurable `topk` and `min_k`)
+      - supports optional candidate mask
+    - `dynamic_k_matching(...)`:
+      - selects `dynamic_k` anchors per GT by minimal total cost
+      - resolves multi-GT conflicts by keeping the minimal-cost GT assignment per anchor
+      - outputs deterministic one-to-one anchor-to-GT assignment for foreground anchors
+  - Updated exports in `apex_x/losses/__init__.py`:
+    - `DynamicKMatchingOutput`
+    - `dynamic_k_from_top_ious`
+    - `dynamic_k_matching`
+  - Expanded `tests/test_simota_cost.py`:
+    - verifies dynamic-k computation from top-IoU sums
+    - verifies crowded conflict resolution picks minimal-cost GT per anchor
+    - verifies candidate-mask constraints are respected in crowded settings
+  - Verification status:
+    - `python -m ruff check apex_x/losses/simota.py apex_x/losses/__init__.py tests/test_simota_cost.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_simota_cost.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- SimOTA assignment integrated into DET loss with target generation:
+  - Added `apex_x/losses/det_loss.py`:
+    - `build_simota_targets_for_anchors(...)`:
+      - uses SimOTA cost + dynamic-k matching to select positive anchors
+      - builds per-anchor targets:
+        - `cls_target` (one-hot positives, zero background)
+        - `box_target` (assigned GT boxes)
+        - `quality_target` (matched IoU targets)
+      - returns `SimOTATargets` with matching diagnostics
+    - `det_loss_with_simota(...)`:
+      - computes DET loss from assignment targets:
+        - classification loss (BCE or focal)
+        - box loss (`1 - IoU`) on positives
+        - quality BCE loss
+      - returns `DetLossOutput` with component losses and targets
+    - stability features:
+      - canonicalized box ordering for robust IoU math
+      - optional assignment on detached predictions
+      - small-object positive weighting with clipped inverse-sqrt area scaling
+      - dynamic-k conflict-resolved assignment for crowded scenes
+  - Updated exports in `apex_x/losses/__init__.py`:
+    - `SimOTATargets`
+    - `DetLossOutput`
+    - `build_simota_targets_for_anchors`
+    - `det_loss_with_simota`
+    - `ClsLossType`
+  - Added tests in `tests/test_det_loss_simota.py`:
+    - target generation and per-anchor labeling correctness
+    - finite/stable loss on tiny-object crowded synthetic setup
+    - toy optimization loop verifying DET loss decreases over training steps
+  - Verification status:
+    - `python -m ruff check apex_x/losses/det_loss.py apex_x/losses/__init__.py tests/test_det_loss_simota.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_det_loss_simota.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- DET losses hardened for numerical stability and quality-focal support:
+  - Updated `apex_x/losses/det_loss.py`:
+    - added logit sanitization/clipping via `_sanitize_logits(...)`
+    - added `QualityLossType` with `bce` and `qfl` modes
+    - `det_loss_with_simota(...)` now supports:
+      - `quality_loss_type=\"qfl\"`
+      - `quality_focal_beta`
+      - `logit_clip`
+    - focal/BCE classification and QFL/BCE quality paths now run on sanitized logits for stable behavior under extreme values
+  - Updated exports in `apex_x/losses/__init__.py`:
+    - `QualityLossType`
+  - Expanded `tests/test_det_loss_simota.py`:
+    - toy decreasing-loss case now also exercises quality-focal path
+    - added extreme-logit + tiny-box finite test with backward gradient finiteness checks
+  - Verification status:
+    - `python -m ruff check apex_x/losses/det_loss.py apex_x/losses/__init__.py tests/test_det_loss_simota.py` passed
+    - `./.venv/bin/python -m mypy` passed
+    - `python -m pytest -q tests/test_det_loss_simota.py` passed
+    - full project checks passed:
+      - `python -m ruff check .`
+      - `./.venv/bin/python -m mypy`
+      - `python -m pytest -q`
+- Deterministic DET decode + NMS implemented:
+  - Added `apex_x/infer/detection.py`:
+    - `decode_anchor_free_candidates(...)`:
+      - decodes anchor-free `DetHeadOutput` maps into per-image candidate tensors
+      - supports configurable level strides and image clipping
+      - applies stable candidate ranking with deterministic tie behavior
+    - `deterministic_nms(...)`:
+      - class-wise NMS with deterministic ordering
+      - tie-breaking policy: score desc, then candidate index asc
+    - `batched_deterministic_nms(...)`:
+      - fixed-shape batched outputs with padding and `valid_counts`
+    - `decode_and_nms(...)`:
+      - end-to-end decode + NMS convenience entrypoint
+    - output dataclasses:
+      - `DetectionCandidates`
+      - `DetectionBatch`
+  - Updated exports in `apex_x/infer/__init__.py`:
+    - `DetectionCandidates`
+    - `DetectionBatch`
+    - `decode_anchor_free_candidates`
+    - `deterministic_nms`
+    - `batched_deterministic_nms`
+    - `decode_and_nms`
+  - Added tests in `tests/test_det_decode_nms.py`:
+    - end-to-end decode + NMS determinism and class-wise suppression behavior
+    - deterministic tie handling in NMS (equal scores -> lower index first)
+    - cross-class overlap handling (no cross-class suppression)
+  - Verification status:
+    - `python -m ruff check apex_x/infer/detection.py apex_x/infer/__init__.py tests/test_det_decode_nms.py` passed
+    - `python -m mypy --cache-dir=/dev/null apex_x/infer/detection.py apex_x/infer/__init__.py` passed
+    - `python -m pytest -q tests/test_det_decode_nms.py tests/test_import_smoke.py` passed
+    - `python -m pytest -q` passed
+- Prototype-based instance segmentation forward path and mask assembly implemented:
+  - Added `apex_x/model/inst_seg_head.py`:
+    - `PrototypeInstanceSegHead(nn.Module)`:
+      - prototype generator from feature maps (`prototypes: [B,M,Hp,Wp]`)
+      - per-instance coefficient prediction (`coefficients: [B,N,M]`) from:
+        - ROI mean-pooled feature regions derived from `boxes_xyxy`, or
+        - explicit `instance_embeddings`
+      - mask assembly by linear prototype combination:
+        - `mask_logits_lowres = einsum(coefficients, prototypes) -> [B,N,Hp,Wp]`
+      - output resizing to requested mask resolution
+      - optional box cropping with configurable fill value for stable masked logits
+      - per-instance `mask_scores` from masked probability averages
+    - helper functions:
+      - `assemble_mask_logits_from_prototypes(...)`
+      - `rasterize_box_masks(...)`
+    - output dataclass:
+      - `InstanceSegOutput`
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `PrototypeInstanceSegHead`
+    - `InstanceSegOutput`
+    - `assemble_mask_logits_from_prototypes`
+    - `rasterize_box_masks`
+  - Added tests in `tests/test_inst_seg_head.py`:
+    - prototype-mask assembly correctness vs expected weighted combinations
+    - forward-path shape/range checks and finite outputs
+    - deterministic repeatability for same weights/inputs
+    - gradient-flow checks (features + instance embeddings + parameters)
+    - crop-to-box fill behavior outside ROI regions
+  - Verification status:
+    - `python -m ruff check apex_x/model/inst_seg_head.py apex_x/model/__init__.py tests/test_inst_seg_head.py` passed
+    - `python -m mypy --cache-dir=/dev/null apex_x/model/inst_seg_head.py apex_x/model/__init__.py tests/test_inst_seg_head.py` passed
+    - `python -m pytest -q tests/test_inst_seg_head.py` passed
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q` passed
+- Segmentation losses implemented (BCE + Dice + boundary DT surrogate):
+  - Added `apex_x/losses/seg_loss.py`:
+    - `mask_bce_loss(...)`:
+      - BCEWithLogits per mask with optional per-instance weighting `[B,N]`
+    - `mask_dice_loss(...)`:
+      - soft Dice loss over `[B,N,H,W]` masks with optional per-instance weighting
+    - `soft_boundary_distance_transform(...)`:
+      - differentiable approximation of boundary distance transform using iterative
+        soft-min neighborhood propagation
+    - `boundary_distance_transform_surrogate_loss(...)`:
+      - boundary mismatch weighted by target soft distance transform
+    - `instance_segmentation_losses(...)`:
+      - combined BCE + Dice + boundary loss returning `SegLossOutput`
+  - Updated exports in `apex_x/losses/__init__.py`:
+    - `SegLossOutput`
+    - `mask_bce_loss`
+    - `mask_dice_loss`
+    - `soft_boundary_distance_transform`
+    - `boundary_distance_transform_surrogate_loss`
+    - `instance_segmentation_losses`
+  - Added tests in `tests/test_seg_loss.py`:
+    - BCE/Dice near-zero behavior for near-perfect logits
+    - soft boundary-DT monotonicity sanity check
+    - boundary surrogate sensitivity to shifted boundaries
+    - toy optimization loop showing combined loss decreases with finite gradients
+    - instance-weight support path
+  - Verification status:
+    - `python -m ruff check apex_x/losses/seg_loss.py apex_x/losses/__init__.py tests/test_seg_loss.py` passed
+    - `python -m mypy --cache-dir=/dev/null apex_x/losses/seg_loss.py apex_x/losses/__init__.py tests/test_seg_loss.py` passed
+    - `python -m pytest -q tests/test_seg_loss.py` passed
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- FF high-resolution tile-gated refinement hook implemented for instance masks:
+  - Updated `apex_x/model/inst_seg_head.py`:
+    - added `FFTileRefinementHook(nn.Module)`:
+      - inputs: `mask_logits [B,N,H,W]`, `ff_highres_features [B,C,H,W]`, `active_tile_indices [B,K]`
+      - packs only active tiles, applies FF-conditioned additive refinement on packed tiles, and unpacks back
+      - guarantees inactive tiles remain unchanged via tile-scatter semantics
+    - integrated optional hook into `PrototypeInstanceSegHead`:
+      - new init toggles:
+        - `enable_ff_refine`
+        - `ff_refine_tile_size`
+        - `ff_refine_order_mode`
+        - `ff_refine_overlap_mode`
+        - `ff_refine_blend_alpha`
+        - `ff_refine_strength_init`
+      - new forward args:
+        - `ff_highres_features`
+        - `active_tile_indices`
+      - refinement is applied only when enabled and both FF features + active indices are provided
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `FFTileRefinementHook`
+  - Added tests in `tests/test_inst_seg_refinement_hook.py`:
+    - hook updates only selected tiles and leaves non-selected tiles exactly unchanged
+    - empty active-tile indices produce no-op behavior
+    - head-level integration verifies refinement delta is confined to active tile regions
+  - Verification status:
+    - `python -m ruff check apex_x/model/inst_seg_head.py apex_x/model/__init__.py tests/test_inst_seg_refinement_hook.py` passed
+    - `python -m mypy --cache-dir=/dev/null apex_x/model/inst_seg_head.py apex_x/model/__init__.py tests/test_inst_seg_refinement_hook.py` passed
+    - `python -m pytest -q tests/test_inst_seg_refinement_hook.py tests/test_inst_seg_head.py` passed
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Panoptic output generation implemented (semantic + instance fusion):
+  - Added `apex_x/infer/panoptic.py`:
+    - `generate_panoptic_output(...)`:
+      - combines semantic logits with instance masks into deterministic panoptic maps
+      - deterministic overlap fusion:
+        - thing instances fused first, sorted by `(score desc, instance_index asc)`
+        - overlap resolution keeps higher-ranked instance pixels
+      - deterministic thing/stuff rules:
+        - only classes in `thing_class_ids` are accepted as thing instances
+        - remaining unassigned pixels are filled by semantic stuff classes in ascending class-id order
+        - segment id `0` reserved as void/unassigned
+      - supports:
+        - mask threshold, score threshold
+        - minimum thing/stuff area filters
+        - optional `masks_are_logits` for instance-mask logits input
+    - dataclasses:
+      - `PanopticSegmentInfo` (`id`, `category_id`, `isthing`, `area`, optional score/index)
+      - `PanopticOutput` (`panoptic_map`, `segments_info`, `semantic_labels`)
+  - Updated exports in `apex_x/infer/__init__.py`:
+    - `PanopticSegmentInfo`
+    - `PanopticOutput`
+    - `generate_panoptic_output`
+  - Added tests in `tests/test_panoptic_generation.py`:
+    - deterministic overlap resolution on synthetic overlapping thing instances
+    - thing/stuff rule verification (non-thing instances ignored, stuff preserved)
+    - output contract checks on synthetic batched scenes:
+      - map shape/type
+      - unique segment IDs
+      - per-segment area parity with panoptic map pixels
+  - Verification status:
+    - `python -m ruff check apex_x/infer/panoptic.py apex_x/infer/__init__.py tests/test_panoptic_generation.py` passed
+    - `python -m mypy --cache-dir=/dev/null apex_x/infer/panoptic.py apex_x/infer/__init__.py tests/test_panoptic_generation.py` passed
+    - `python -m pytest -q tests/test_panoptic_generation.py` passed
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Panoptic PQ evaluation wrapper implemented (official API + fallback):
+  - Added `apex_x/infer/pq_eval.py`:
+    - `evaluate_panoptic_quality(...)`:
+      - uses official `panopticapi` evaluator when available and paths are provided
+      - otherwise falls back to an in-memory deterministic minimal PQ implementation
+    - deterministic fallback behavior:
+      - per-category matching with IoU threshold
+      - one-to-one matches with deterministic tie handling
+      - computes per-class `(PQ, SQ, RQ)` and aggregate all/things/stuff metrics
+    - dataclasses:
+      - `PQClassMetrics`
+      - `PQMetrics`
+      - `OfficialPQPaths`
+  - Updated exports in `apex_x/infer/__init__.py`:
+    - `PQClassMetrics`
+    - `PQMetrics`
+    - `OfficialPQPaths`
+    - `evaluate_panoptic_quality`
+  - CLI integration hook added:
+    - updated `apex_x/cli.py` `eval` command with:
+      - `--panoptic-pq` flag
+      - runs panoptic PQ hook and prints `panoptic_pq=<value>` and source (`official`/`fallback`)
+  - Added fixtures:
+    - `tests/fixtures/pq_case_perfect.json`
+    - `tests/fixtures/pq_case_partial.json`
+  - Added tests:
+    - `tests/test_pq_eval.py`
+      - fixture-driven perfect and partial overlap PQ checks
+      - verifies official-path attempt cleanly falls back when official API is unavailable/invalid
+    - `tests/test_cli.py`
+      - new parse test for `eval --panoptic-pq`
+  - Verification status:
+    - `python -m ruff check apex_x/infer/pq_eval.py apex_x/infer/__init__.py apex_x/cli.py tests/test_pq_eval.py tests/test_cli.py` passed
+    - `python -m mypy --cache-dir=/dev/null apex_x/infer/pq_eval.py apex_x/infer/__init__.py apex_x/cli.py tests/test_pq_eval.py tests/test_cli.py` passed
+    - `python -m pytest -q tests/test_pq_eval.py tests/test_cli.py` passed
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Tracking embedding head and association interfaces implemented:
+  - Added `apex_x/model/track_head.py`:
+    - `TrackEmbeddingHead`:
+      - accepts feature tensor or feature dict
+      - projects features, ROI-pools detections, and emits L2-normalized embeddings
+    - `TrackEmbeddingOutput` dataclass with:
+      - `embeddings`
+      - `raw_embeddings`
+      - `pooled_features`
+  - Added `apex_x/infer/tracking.py`:
+    - `TrackState` dataclass (validated tracker state contract)
+    - `AssociationResult` dataclass
+    - `AssociationProtocol` interface
+    - deterministic `GreedyCosineAssociator` implementation
+    - compatibility aliases:
+      - `TrackAssociatorProtocol`
+      - `TrackAssociator`
+  - Updated exports:
+    - `apex_x/model/__init__.py` exports `TrackEmbeddingHead`, `TrackEmbeddingOutput`
+    - `apex_x/infer/__init__.py` exports tracking dataclasses/protocols/associator
+    - `apex_x/__init__.py` exports `TrackState` and `AssociationProtocol`
+  - Added tests:
+    - `tests/test_track_head.py`:
+      - output shape checks
+      - embedding unit-norm checks
+      - deterministic forward checks
+      - gradient flow checks
+    - `tests/test_tracking_interfaces.py`:
+      - `TrackState.empty(...)` contract
+      - protocol conformance checks
+      - deterministic greedy matching/new-track behavior
+      - aging/removal behavior with no detections
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/model/track_head.py apex_x/infer/tracking.py tests/test_track_head.py tests/test_tracking_interfaces.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/model/track_head.py apex_x/infer/tracking.py tests/test_track_head.py tests/test_tracking_interfaces.py`
+      - `python -m pytest -q tests/test_track_head.py tests/test_tracking_interfaces.py`
+    - project checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+    - note:
+      - `python -m black --check .` currently reports unrelated pre-existing formatting diffs in legacy files not touched in this change:
+        - `apex_x/routing/interfaces.py`
+        - `apex_x/train/__init__.py`
+        - `tests/test_pq_eval.py`
+        - `apex_x/config/schema.py`
+        - `apex_x/infer/pq_eval.py`
+        - `apex_x/losses/det_loss.py`
+        - `apex_x/model/inst_seg_head.py`
+- Hungarian association with lifecycle and memory-bank updates implemented:
+  - Updated `apex_x/infer/tracking.py`:
+    - added Hungarian solver utility:
+      - `hungarian_assignment(...)`
+    - added `HungarianAssociator` implementing:
+      - IoU + embedding-distance gating for candidate matches
+      - global cost minimization via Hungarian assignment
+      - track lifecycle (`init` / `update` / `terminate`) with `max_age`
+      - embedding memory-bank update per track with fixed bank size
+      - bank-size normalization for legacy states to keep runtime stable
+    - extended `TrackState` with optional lifecycle/memory fields:
+      - `hit_counts`
+      - `memory_bank`
+      - `memory_counts`
+    - extended `AssociationResult` with lifecycle debug outputs:
+      - `terminated_track_indices`
+      - `terminated_track_ids`
+      - `created_track_ids`
+    - kept backward compatibility:
+      - `GreedyCosineAssociator` now delegates to Hungarian with cosine-only cost
+      - protocol aliases preserved
+  - Updated `apex_x/infer/__init__.py` exports:
+    - `HungarianAssociator`
+    - `hungarian_assignment`
+  - Added tests in `tests/test_tracking_hungarian.py`:
+    - Hungarian global-optimum assignment on synthetic cost matrix
+    - IoU + embedding-distance gating behavior
+    - lifecycle termination after `max_age`
+    - memory-bank update/cap behavior
+    - multi-frame moving-object ID consistency across reordered detections
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/infer/tracking.py apex_x/infer/__init__.py tests/test_tracking_interfaces.py tests/test_tracking_hungarian.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/infer/tracking.py apex_x/infer/__init__.py tests/test_tracking_interfaces.py tests/test_tracking_hungarian.py`
+      - `python -m pytest -q tests/test_tracking_interfaces.py tests/test_tracking_hungarian.py tests/test_track_head.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- PCGrad++ shared-trunk conflict projection implemented:
+  - Added `apex_x/train/pcgrad.py`:
+    - canonical grouped loss ordering:
+      - `det_cls`, `det_box`, `seg_mask`, `seg_boundary`, then sorted extras
+    - `LossGroup` dataclass and `group_loss_terms(...)`
+    - `apply_pcgradpp(...)`:
+      - computes per-group gradients
+      - applies projection only to shared trunk parameter gradients when `cos < 0`
+      - leaves task-head parameter gradients as standard total-loss gradients
+    - `PCGradDiagnostics` + `diagnostics_to_dict(...)` for logging/debug
+  - Updated exports in `apex_x/train/__init__.py`:
+    - `DEFAULT_LOSS_GROUP_ORDER`
+    - `LossGroup`
+    - `PCGradDiagnostics`
+    - `group_loss_terms`
+    - `apply_pcgradpp`
+    - `diagnostics_to_dict`
+  - Added tests in `tests/test_pcgradpp.py`:
+    - deterministic grouped ordering for canonical loss groups + extra loss terms
+    - tiny-network synthetic conflicting gradients test:
+      - confirms projection resolves shared-trunk conflict
+      - confirms head gradients match standard total-loss gradients (no projection on heads)
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/train/pcgrad.py apex_x/train/__init__.py tests/test_pcgradpp.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/train/pcgrad.py apex_x/train/__init__.py`
+      - `python -m pytest -q tests/test_pcgradpp.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Distillation losses implemented (logits KL + feature L2 + boundary distill):
+  - Added `apex_x/losses/distill.py`:
+    - `logits_kl_distill(...)`:
+      - KL divergence distillation on logits with temperature scaling (`T^2` factor)
+    - `feature_l2_distill(...)`:
+      - layer-selective feature L2 distillation with optional per-layer weights
+      - supports optional feature normalization before L2
+    - `boundary_distill_loss(...)`:
+      - boundary-focused distillation using Sobel-based soft boundary maps
+      - teacher boundary distance-transform weighting
+    - `distillation_losses(...)`:
+      - combined wrapper returning `DistillationLossOutput`
+  - Updated exports in `apex_x/losses/__init__.py`:
+    - `DistillationLossOutput`
+    - `logits_kl_distill`
+    - `feature_l2_distill`
+    - `boundary_distill_loss`
+    - `distillation_losses`
+  - Added tests in `tests/test_distill_loss.py`:
+    - KL distill near-zero when student/teacher logits match
+    - feature L2 selected-layer behavior with layer weights
+    - boundary distill penalizes shifted boundaries more than aligned boundaries
+    - combined distillation loss decreases in toy optimization
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/losses/distill.py apex_x/losses/__init__.py tests/test_distill_loss.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/losses/distill.py apex_x/losses/__init__.py`
+      - `python -m pytest -q tests/test_distill_loss.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Oracle ΔLoss targets and router utility supervision implemented:
+  - Added `apex_x/routing/oracle_distill.py`:
+    - `compute_oracle_delta_targets(...)`:
+      - computes sampled-tile oracle targets:
+        - `Δ_i = L_distill(cheap, teacher) - L_distill(heavy, teacher)`
+      - supports sampled indices `[S]` or batched `[B,S]`
+      - returns detached (stop-grad) oracle targets
+      - optional clamping for outlier robustness
+    - `utility_regression_loss(...)`:
+      - regression loss (`l1` / `mse` / `smooth_l1`) between router utility logits and detached Δ targets
+    - `utility_ranking_loss(...)`:
+      - pairwise hinge ranking loss over sampled tiles to preserve oracle ordering
+    - `utility_oracle_loss(...)`:
+      - combined regression + ranking objective with diagnostics (`num_pairs`)
+    - dataclasses:
+      - `OracleDeltaTargets`
+      - `UtilityOracleLossOutput`
+  - Updated routing exports in `apex_x/routing/__init__.py`:
+    - `RegressionLossType`
+    - `OracleDeltaTargets`
+    - `UtilityOracleLossOutput`
+    - `compute_oracle_delta_targets`
+    - `utility_regression_loss`
+    - `utility_ranking_loss`
+    - `utility_oracle_loss`
+  - Added tests in `tests/test_oracle_distill.py`:
+    - sign sanity for Δ targets (positive when heavy distill loss is lower than cheap)
+    - stop-grad behavior (no gradients into cheap/heavy distill losses via utility supervision)
+    - ranking sign sanity (correct utility order yields lower ranking loss)
+    - sampled-index regression correctness (only sampled tiles influence loss)
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/routing/oracle_distill.py apex_x/routing/__init__.py tests/test_oracle_distill.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/routing/oracle_distill.py apex_x/routing/__init__.py`
+      - `python -m pytest -q tests/test_oracle_distill.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- TeacherModel implemented for full-compute distillation outputs with optional EMA:
+  - Added `apex_x/model/teacher.py`:
+    - `TeacherModel`:
+      - dense/full-compute teacher forward path (PV -> FPN -> DET) without sparse routing
+      - standardized distillation output bundle:
+        - flattened logits (`logits`)
+        - per-level logits (`logits_by_level`)
+        - selected feature layers (`features`)
+        - boundary proxy map aligned to input size (`boundaries`)
+      - optional EMA shadow modules:
+        - configurable `ema_decay`
+        - `update_ema(...)` for parameter/buffer updates
+        - runtime switch to use online or EMA weights in `forward(...)`
+    - `TeacherDistillOutput` dataclass
+    - `flatten_logits_for_distill(...)` helper with deterministic level order
+  - Updated exports in `apex_x/model/__init__.py`:
+    - `TeacherModel`
+    - `TeacherDistillOutput`
+    - `flatten_logits_for_distill`
+  - Added tests in `tests/test_teacher_model.py`:
+    - full-compute standardized output contract checks
+    - deterministic logits-flatten ordering checks
+    - EMA behavior checks:
+      - initial online/EMA parity
+      - EMA lag + update movement toward online model
+      - frozen EMA parameter requirements
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/model/teacher.py apex_x/model/__init__.py tests/test_teacher_model.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/model/teacher.py apex_x/model/__init__.py`
+      - `python -m pytest -q tests/test_teacher_model.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Staged trainer pipeline implemented and wired into CLI `train` flow:
+  - Added `apex_x/train/trainer.py`:
+    - `ApexXTrainer` with required stages:
+      - stage 0: baseline warmup
+      - stage 1: teacher training (full compute)
+      - stage 2: oracle bootstrapping
+      - stage 3: continuous budgeting with dual `mu`
+      - stage 4: deterministic inference emulation
+    - stage/result dataclasses:
+      - `StageResult`
+      - `StagedTrainResult`
+  - Updated exports in `apex_x/train/__init__.py`:
+    - `ApexXTrainer`
+    - `StageResult`
+    - `StagedTrainResult`
+  - Updated CLI `train` command in `apex_x/cli.py`:
+    - now runs staged trainer instead of placeholder-only loop
+    - new option: `--steps-per-stage`
+    - output includes `stage_count=5`
+  - Added staged-train CPU smoke script:
+    - `examples/train_stages_smoke.py`
+  - Added validation coverage:
+    - `tests/test_trainer_stages.py` (stage completeness + seed repeatability)
+    - `tests/test_train_stages_smoke.py` (subprocess smoke run)
+    - updated `tests/test_cli.py` to assert staged output includes `stage_count=5`
+  - Updated docs:
+    - `README.md` now includes staged trainer quickstart/dev commands
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/train/trainer.py apex_x/cli.py tests/test_trainer_stages.py tests/test_train_stages_smoke.py tests/test_cli.py examples/train_stages_smoke.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/train/trainer.py apex_x/cli.py`
+      - `python -m pytest -q tests/test_trainer_stages.py tests/test_train_stages_smoke.py tests/test_cli.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Exact COCO compatibility layer implemented with strict schema checks and mask parsing:
+  - Added `apex_x/data/coco.py` with a strict COCO loader:
+    - `load_coco_dataset(path, strict=True, use_cache=True)`
+    - strict top-level/record key validation (`images`, `annotations`, `categories`)
+    - type/range checks for ids, bbox, area, iscrowd, segmentation payloads
+    - referential integrity checks for `annotation.image_id` and `annotation.category_id`
+  - Added complete parsing contracts:
+    - bbox parsing into `CocoBBox`
+    - polygon segmentation parsing into `CocoSegmentation(kind=\"polygon\")`
+    - RLE parsing for uncompressed list counts and compressed string counts into
+      `CocoSegmentation(kind=\"rle\")`
+    - deterministic mask decode path via `segmentation_to_mask(...)`
+  - Added category mapping + caching:
+    - `CocoDataset.category_mapping()` caches contiguous category mapping:
+      - `original_to_contiguous`
+      - `contiguous_to_original`
+      - category name lookup maps
+    - loader cache for parsed datasets with mtime/size cache key
+    - `clear_coco_dataset_cache()` helper
+  - Updated exports in `apex_x/data/__init__.py` for COCO dataclasses/helpers.
+  - Added fixture-based tests:
+    - `tests/test_coco_compat.py`
+    - fixtures:
+      - `tests/fixtures/coco_valid_mixed.json`
+      - `tests/fixtures/coco_invalid_missing_top_keys.json`
+      - `tests/fixtures/coco_invalid_bad_rle.json`
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/data/coco.py apex_x/data/__init__.py tests/test_coco_compat.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/data/coco.py apex_x/data/__init__.py tests/test_coco_compat.py`
+      - `python -m pytest -q tests/test_coco_compat.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Data transforms pipeline and Mosaic-v2 heuristic implemented:
+  - Added `apex_x/data/transforms.py`:
+    - shared sample contract:
+      - `TransformSample` (image + `boxes_xyxy` + `class_ids` + optional masks)
+    - pipeline + base transforms:
+      - `TransformPipeline`
+      - `RandomHorizontalFlip`
+      - `ClipBoxesAndMasks`
+      - `sanitize_sample(...)` for clipping/filtering invalid boxes/masks
+    - Mosaic-v2:
+      - `MosaicV2(...)` 4-image composition with configurable split jitter
+      - heuristic crop-origin policy to protect important instances
+        (by area threshold fallback-to-largest instance)
+      - visibility-aware bbox filtering and mask-aware validity checks
+  - Updated exports in `apex_x/data/__init__.py`:
+    - `TransformSample`, `Transform`, `TransformPipeline`
+    - `RandomHorizontalFlip`, `ClipBoxesAndMasks`, `MosaicV2`, `sanitize_sample`
+  - Added tests in `tests/test_data_transforms.py`:
+    - transform-pipeline bbox/mask validity checks
+    - mosaic output validity for bbox/mask contracts
+    - heuristic regression test showing protected mosaic keeps significantly more
+      important-instance area than unprotected crop selection
+    - sanitize clipping behavior on out-of-bounds boxes
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/data/transforms.py apex_x/data/__init__.py tests/test_data_transforms.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/data/transforms.py apex_x/data/__init__.py tests/test_data_transforms.py`
+      - `python -m pytest -q tests/test_data_transforms.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Eval pipeline implemented for DET/INST-SEG/SEM-SEG/PANO with report emission:
+  - Added `apex_x/infer/eval_metrics.py`:
+    - metric computation for tiny-fixture evaluation:
+      - COCO-style mAP (DET) over IoU thresholds `0.50:0.05:0.95`
+      - COCO-style mask mAP (INST-SEG) over IoU thresholds `0.50:0.05:0.95`
+      - mIoU (SEM-SEG)
+      - PQ (PANO) via existing `evaluate_panoptic_quality(...)`
+    - fixture evaluators:
+      - `evaluate_fixture_payload(...)`
+      - `evaluate_fixture_file(...)`
+      - built-in fallback payload `tiny_eval_fixture_payload()`
+    - report writers:
+      - `write_eval_reports(...)` emitting JSON + Markdown
+      - structured summary dataclass `EvalSummary`
+  - Updated exports in `apex_x/infer/__init__.py`:
+    - `EvalSummary`, `evaluate_fixture_file`, `evaluate_fixture_payload`,
+      `tiny_eval_fixture_payload`, `write_eval_reports`
+  - Updated CLI eval command in `apex_x/cli.py`:
+    - supports:
+      - `--fixture` (optional fixture JSON; defaults to built-in tiny payload)
+      - `--report-json`
+      - `--report-md`
+    - always emits metrics in stdout:
+      - `det_map`, `mask_map`, `miou`, `panoptic_pq`
+    - writes JSON and markdown report files per invocation
+    - keeps `--panoptic-pq` flag as compatibility no-op
+  - Added tiny fixture + tests:
+    - fixture: `tests/fixtures/eval_tiny_fixture.json`
+    - `tests/test_eval_metrics.py`:
+      - metric values on perfect tiny fixture
+      - JSON/Markdown report emission
+      - built-in tiny payload validation
+    - `tests/test_cli.py`:
+      - eval command smoke with fixture + output report paths
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/infer/eval_metrics.py apex_x/infer/__init__.py apex_x/cli.py tests/test_eval_metrics.py tests/test_cli.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/infer/eval_metrics.py apex_x/infer/__init__.py apex_x/cli.py tests/test_eval_metrics.py tests/test_cli.py`
+      - `python -m pytest -q tests/test_eval_metrics.py tests/test_cli.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Ablation grid runner implemented in CLI with toggle sweeps and reports:
+  - Added `apex_x/train/ablation.py`:
+    - toggle grid definitions for:
+      - `router`, `budgeting`, `nesting`, `ssm`, `distill`,
+        `pcgrad`, `qat`, `panoptic`, `tracking`
+    - deterministic grid builder:
+      - `build_ablation_grid(...)` with per-toggle modes (`on/off/both`) and max-cap
+    - ablation execution:
+      - fixed-seed runs over grid combinations
+      - trainer invocation with `enable_budgeting` switch
+      - metrics aggregation (DET mAP, mask mAP, semantic mIoU, PQ, tracking consistency)
+      - routing stat aggregation (selected ratios, budget usage ratio, `mu_last`)
+    - report writers:
+      - CSV aggregate report
+      - markdown summary report
+  - Updated `ApexXTrainer.run(...)` in `apex_x/train/trainer.py`:
+    - added `enable_budgeting` flag for explicit budgeting on/off ablations
+  - Updated exports in `apex_x/train/__init__.py`:
+    - ablation dataclasses/functions (`AblationToggleSet`, grid runner, report writer)
+  - Updated CLI `ablate` command in `apex_x/cli.py`:
+    - added per-toggle mode flags (`--router/--budgeting/.../--tracking`)
+    - added fixed seed support via repeated `--seed`
+    - added `--steps-per-stage`, `--max-experiments`
+    - added report outputs:
+      - `--output-csv`
+      - `--output-md`
+    - command now runs grid + writes CSV/MD reports
+  - Added tests:
+    - `tests/test_ablation.py`:
+      - grid construction behavior
+      - smoke run + CSV/MD output assertions
+    - updated `tests/test_cli.py`:
+      - `ablate` command smoke with output artifact checks
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/train/ablation.py apex_x/train/__init__.py apex_x/train/trainer.py apex_x/cli.py tests/test_ablation.py tests/test_cli.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/train/ablation.py apex_x/train/__init__.py apex_x/train/trainer.py apex_x/cli.py tests/test_ablation.py tests/test_cli.py`
+      - `python -m pytest -q tests/test_ablation.py tests/test_cli.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- INT8 QAT + PTQ fallback path implemented with FP16 router/gating policy:
+  - Added `apex_x/train/qat.py`:
+    - activation observer + activation fake quant:
+      - `ActivationObserver`
+      - `ActivationFakeQuant`
+    - per-channel INT8 weight fake quant:
+      - `WeightPerChannelFakeQuant`
+    - wrapped train-time fake quant modules:
+      - `FakeQuantConv2d`
+      - `FakeQuantLinear`
+    - QAT/PTQ entrypoints:
+      - `prepare_int8_qat(...)`
+      - `prepare_int8_ptq(...)`
+      - `calibrate_ptq(...)`
+    - explicit wrapper traversal/state controls:
+      - `iter_qat_wrappers(...)`
+      - `set_qat_state(...)`
+  - Updated `apex_x/train/trainer.py`:
+    - quantization preparation step added before staged training:
+      - uses QAT when `train.qat_enable && train.qat_int8`
+      - uses PTQ calibration fallback when `runtime.precision_profile=edge` and QAT is off
+    - added deterministic calibration batch builder for PTQ fallback
+    - added quantization diagnostics to `train_summary["quantization"]`:
+      - `mode`, `wrapped_modules`, `calibration_batches`, `router_gating_fp16`
+    - stage-3 routing gate path now keeps FP16 utility gating math and uses FP32 expected-cost accumulation
+  - Updated `apex_x/train/__init__.py`:
+    - exported QAT module types/functions for public train API surface
+  - Added tests in `tests/test_qat.py`:
+    - QAT wrapper conversion with router/gating skip policy
+    - PTQ calibration state transitions (observer off + fake quant on after calibration)
+    - trainer-level QAT/PTQ toggle smoke with finite loss/output checks
+  - Added documentation:
+    - `docs/QAT.md` with INT8 policy, module behavior, trainer integration, and validation scope
+    - linked in `docs/index.md` and `mkdocs.yml`
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/train/qat.py apex_x/train/trainer.py apex_x/train/__init__.py tests/test_qat.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/train/qat.py apex_x/train/trainer.py apex_x/train/__init__.py`
+      - `python -m pytest -q tests/test_qat.py tests/test_trainer_stages.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- FP8-ready precision policy implemented with safe FP16 fallback:
+  - Added `apex_x/runtime/precision.py`:
+    - precision policy dataclass:
+      - `PrecisionPolicy`
+    - runtime detection + resolution:
+      - `resolve_precision_policy(...)`
+      - conservative CUDA FP8 support gate (`sm90+` + torch FP8 dtype presence)
+    - dtype helpers:
+      - `dtype_name(...)`
+    - execution context helper:
+      - `heavy_ops_autocast_context(...)`
+        - FP16 autocast path on CPU/CUDA
+        - FP8-ready no-op context pending specialized kernels/plugins
+  - Updated `apex_x/runtime/__init__.py` exports:
+    - `PrecisionPolicy`, `resolve_precision_policy`, `dtype_name`, `heavy_ops_autocast_context`
+  - Updated `apex_x/train/trainer.py`:
+    - resolves precision policy at trainer init
+    - applies heavy-op autocast context during stage-1 teacher forward
+    - adds stage metrics:
+      - `heavy_ops_dtype`, `fp8_enabled`
+    - adds precision diagnostics in `train_summary["precision"]`:
+      - `profile`, `device`, `heavy_ops_dtype`
+      - `fp8_requested`, `fp8_enabled`, `fallback_reason`
+      - `router_dtype`, `kan_dtype`
+  - Updated `apex_x/train/qat.py`:
+    - expanded INT8 wrapper skip policy to preserve FP16 for KAN-like modules:
+      - default skip tokens now include `"kan"` in addition to router/gating names
+  - Added tests in `tests/test_precision_policy.py`:
+    - CPU fallback smoke (`balanced` -> FP16 fallback with explicit reason)
+    - mocked supported CUDA path enabling FP8 for heavy ops
+    - trainer summary smoke verifying fallback diagnostics
+  - Added docs:
+    - `docs/FP8.md` documenting FP8 request rules, support detection, fallback contract, and smoke coverage
+    - linked from `docs/index.md` and `mkdocs.yml`
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/runtime/precision.py apex_x/runtime/__init__.py apex_x/train/trainer.py apex_x/train/qat.py tests/test_precision_policy.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/runtime/precision.py apex_x/runtime/__init__.py apex_x/train/trainer.py`
+      - `python -m pytest -q tests/test_precision_policy.py tests/test_trainer_stages.py tests/test_qat.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- Triton fused gather+gate+scatter path scaffolded with clean fallback to reference:
+  - Environment check result for this workspace:
+    - `torch.cuda.is_available() == False`
+    - Triton package not installed
+    - therefore Triton kernel implementation path is unavailable in this run
+  - Added `apex_x/runtime/triton_fused.py`:
+    - availability model:
+      - `TritonAvailability`
+      - `get_triton_availability()`
+    - fused-result contract:
+      - `FusedTileScatterResult`
+    - reference fused pipeline:
+      - `gather_gate_scatter_reference(...)`
+      - implements:
+        - gather selected heavy/base/proxy tiles
+        - per-pixel fusion gate application
+        - scatter with overlap priority semantics via `TileUnpackTorch`
+    - dispatch API:
+      - `gather_gate_scatter(...)`
+      - attempts Triton path when requested and available
+      - cleanly falls back to reference path when unavailable or stubbed
+    - explicit Triton kernel stub:
+      - `_triton_fused_kernel_stub(...)` raises `NotImplementedError` (by design in no-Triton env)
+  - Updated `apex_x/runtime/__init__.py` exports:
+    - `get_triton_availability`
+    - `gather_gate_scatter_reference`
+    - `gather_gate_scatter`
+    - availability/result/backend dataclasses/types
+  - Added microbenchmark script:
+    - `scripts/triton_fused_bench.py`
+    - compares reference path vs dispatched fused path
+    - reports backend, fallback reason, and speed ratio
+    - works on CPU fallback path
+  - Added tests:
+    - `tests/test_triton_fused.py`:
+      - reference fused path parity vs explicit reference composition
+      - dispatch fallback behavior in no-Triton/no-CUDA case
+      - forced Triton/no-fallback path raises stub error
+    - `tests/test_triton_bench.py`:
+      - CPU smoke for benchmark utility
+  - Added runtime docs:
+    - `docs/runtime/TRITON.md` describing dispatch contracts, fallback behavior, and benchmark usage
+    - linked in `docs/index.md` and `mkdocs.yml`
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/runtime/triton_fused.py apex_x/runtime/__init__.py tests/test_triton_fused.py tests/test_triton_bench.py scripts/triton_fused_bench.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/runtime/triton_fused.py apex_x/runtime/__init__.py`
+      - `python -m pytest -q tests/test_triton_fused.py tests/test_triton_bench.py tests/test_tile_pack_torch.py tests/test_tile_unpack_torch.py`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+- CPU performance regression suite implemented with baseline comparison gates:
+  - Added reusable perf suite module:
+    - `apex_x/bench/perf.py`
+    - fixed-size infer benchmark (`ApexXModel.forward` on `[1,3,128,128]`)
+    - microbenchmarks:
+      - `TilePackTorch`
+      - `TileUnpackTorch`
+      - `FusionGate`
+    - report + compare helpers:
+      - `run_cpu_perf_suite(...)`
+      - `compare_against_baseline(...)`
+      - JSON read/write helpers
+  - Updated `apex_x/bench/__init__.py` exports:
+    - perf suite and compare utilities exposed
+  - Replaced `scripts/perf_regression.py`:
+    - runs suite and writes current JSON report
+    - optional baseline-template emit
+    - compare mode with pass/fail exit status for CI gating
+    - artifacts:
+      - current report JSON
+      - comparison summary JSON
+  - Added committed CPU baseline:
+    - `scripts/perf_baseline_cpu.json`
+    - per-metric tolerances via:
+      - `max_regression_ratio`
+      - `max_regression_abs_ms`
+  - Added tests:
+    - `tests/test_perf_regression.py`
+      - suite smoke coverage
+      - baseline compare pass/fail behavior
+  - Added documentation:
+    - `docs/PERF.md`
+    - linked from `docs/index.md` and `mkdocs.yml`
+  - Updated CI workflow:
+    - `.github/workflows/ci.yml` now includes `perf-regression` job on `ubuntu-latest` (CPU-only)
+    - job executes `scripts/perf_regression.py --compare ...`
+    - job uploads perf artifacts (`perf_current_ci.json`, `perf_compare_ci.json`)
+  - Verification status:
+    - targeted checks passed:
+      - `python -m ruff check apex_x/bench/perf.py apex_x/bench/__init__.py scripts/perf_regression.py tests/test_perf_regression.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/bench/perf.py apex_x/bench/__init__.py scripts/perf_regression.py`
+      - `python -m pytest -q tests/test_perf_regression.py`
+      - `python scripts/perf_regression.py --compare --baseline scripts/perf_baseline_cpu.json --output artifacts/perf_current_test.json --summary artifacts/perf_compare_test.json --infer-iters 15 --micro-iters 25 --infer-warmup 3 --micro-warmup 3`
+    - full checks passed:
+      - `python -m ruff check .`
+      - `python -m mypy --cache-dir=/dev/null`
+      - `python -m pytest -q`
+
+- TensorRT + Go runtime scaffolding added (Task A/B):
+  - TensorRT C++ scaffold created under `runtime/tensorrt/`:
+    - `CMakeLists.txt` with optional feature probes:
+      - `APEXX_ENABLE_TENSORRT` only when `NvInfer.h` is found
+      - `APEXX_ENABLE_CUDA` only when CUDA compiler is available
+    - stub plugin interfaces/sources:
+      - `TilePack`
+      - `TileSSMScan`
+      - `TileUnpackFusion`
+      - optional `DecodeNMS`
+    - utility binary:
+      - `apexx_trt_plugin_info` (prints build summary and plugin flags)
+  - TensorRT docs added:
+    - `docs/runtime/TENSORRT.md`
+    - contract mapping from plugin spec to scaffold classes
+    - guarded build instructions:
+      - `cd runtime/tensorrt && cmake -S . -B build && cmake --build build -j`
+  - Go microservice scaffold created under `runtime/go/`:
+    - service entrypoint:
+      - `runtime/go/cmd/apexx-runtime/main.go`
+    - endpoints:
+      - `POST /predict`
+      - `GET /health`
+      - `GET /metrics`
+    - short-window batching queue with per-request budget profile support (`quality|balanced|edge`)
+    - adapters:
+      - ONNX Runtime CPU baseline scaffold (`ORTAdapter`)
+      - TensorRT CGO scaffold with build tags:
+        - `//go:build tensorrt && cgo`
+        - default fallback returns clear unavailable error
+    - containerization:
+      - `runtime/go/Dockerfile`
+      - `runtime/go/docker-compose.yml`
+    - tests:
+      - `runtime/go/internal/service/batcher_test.go`
+      - `runtime/go/internal/service/http_test.go`
+  - CI/docs integration updates:
+    - `.github/workflows/ci.yml` now includes `go-runtime` job (`go test ./...` in `runtime/go`)
+    - `mkdocs.yml` + `docs/index.md` now link `docs/runtime/TENSORRT.md`
+    - `runtime/README.md` and root `README.md` updated with runtime scaffold usage
+  - Build/run commands verified for scaffolds:
+    - Go tests:
+      - `cd runtime/go && go test ./...`
+    - Go service:
+      - `cd runtime/go && go run ./cmd/apexx-runtime -addr :8080 -adapter onnxruntime`
+    - TensorRT scaffold build commands documented (not executed in this environment due missing `cmake`):
+      - `cd runtime/tensorrt && cmake -S . -B build && cmake --build build -j`
+  - Remaining work from this milestone:
+    - implement real TensorRT plugin classes (`IPluginV2DynamicExt`) + serialization
+    - replace ORT stub adapter with true ONNX Runtime session execution
+    - implement TensorRT CGO adapter bridge to compiled plugin/runtime binaries
+    - add optional gRPC server for the Go service (HTTP baseline is complete)
+
+- Runtime capability detection module implemented:
+  - Added `apex_x/runtime/caps.py` with unified runtime probe object:
+    - `RuntimeCaps`
+      - `cuda: CudaCaps`
+      - `triton: TritonCaps`
+      - `tensorrt: TensorRTCaps`
+      - `fp8: FP8Caps`
+    - exported from `apex_x/runtime/__init__.py`
+  - Detection coverage:
+    - CUDA availability + device name + compute capability
+    - Triton availability + version
+    - TensorRT:
+      - Python package/module availability
+      - header availability (`NvInfer.h`/`NvInferRuntime.h`) via:
+        - explicit `header_search_paths`
+        - env hints (`TENSORRT_INCLUDE_DIR`, `TRT_INCLUDE_DIR`, `TENSORRT_ROOT`, `TRT_ROOT`, `CUDA_HOME`, `CUDA_PATH`)
+        - common include directories
+      - INT8 availability gate for TRT usage (`BuilderFlag.INT8` + CUDA)
+    - FP8 availability gate:
+      - torch FP8 dtype support
+      - CUDA presence
+      - compute capability `sm90+`
+  - Added tests (CPU-safe, mock-driven):
+    - `tests/test_caps_runtime.py`
+    - `tests/test_caps_tensorrt_fp8.py`
+  - Added docs:
+    - `docs/runtime/CAPS.md`
+    - linked in `docs/index.md` and `mkdocs.yml`
+  - Usage instructions:
+    - basic:
+      - `from apex_x.runtime import detect_runtime_caps`
+      - `caps = detect_runtime_caps()`
+      - `caps.to_dict()`
+    - explicit TRT header path:
+      - `detect_runtime_caps(header_search_paths=["/usr/local/TensorRT/include"])`
+  - Validation status:
+    - `python -m pytest -q tests/test_caps_runtime.py tests/test_caps_tensorrt_fp8.py`
+    - `python -m ruff check apex_x/runtime/caps.py tests/test_caps_runtime.py tests/test_caps_tensorrt_fp8.py`
+    - `python -m mypy --cache-dir=/dev/null apex_x/runtime/caps.py apex_x/runtime/__init__.py`
+
+- Runtime parity framework implemented:
+  - Added `apex_x/runtime/parity.py` with backend-agnostic parity APIs:
+    - `ParityCase`, `run_parity_case(...)`, `evaluate_parity_outputs(...)`
+    - tolerance controls:
+      - `NumericTolerance`
+      - `ToleranceConfig` (`default`, `fp16`, `bf16`, `int8`)
+    - reporting objects:
+      - `TensorParityStats`
+      - `ParityReport`
+      - `format_parity_report(...)`
+  - Determinism contract:
+    - `run_parity_case(...)` calls `seed_all(seed, deterministic=...)` before input generation
+  - Metrics emitted per compared tensor:
+    - `max_abs_err`, `mean_abs_err`
+    - `max_rel_err`, `mean_rel_err`
+    - `mismatch_count`, `total_count`, `mismatch_ratio`
+    - pass/fail against configured tolerance + mismatch-ratio limit
+  - Exported from `apex_x/runtime/__init__.py` for direct runtime use
+  - Added tests:
+    - `tests/test_parity_framework_core.py`
+    - `tests/test_parity_framework_tolerances.py`
+    - tests are CPU-safe and use small shapes for CI speed
+  - Added documentation:
+    - `docs/runtime/PARITY.md`
+    - linked in `docs/index.md` and `mkdocs.yml`
+  - Usage instructions:
+    - create a `ParityCase` with `input_factory`, `reference_fn`, and `candidate_fn`
+    - run `run_parity_case(case, seed=..., deterministic=True)`
+    - serialize/report with `report.to_dict()` or `format_parity_report(report)`
+  - Validation status:
+    - `python -m ruff check apex_x/runtime/parity.py apex_x/runtime/__init__.py tests/test_parity_framework_core.py tests/test_parity_framework_tolerances.py`
+    - `python -m mypy --cache-dir=/dev/null apex_x/runtime/parity.py apex_x/runtime/__init__.py`
+    - `python -m pytest -q tests/test_parity_framework_core.py tests/test_parity_framework_tolerances.py`
+    - `.venv/bin/mkdocs build --strict`
+
+- Triton TilePack gather kernel implemented with fallback dispatch:
+  - Added new kernel module:
+    - `apex_x/kernels/triton/tilepack.py`
+  - Added package exports:
+    - `apex_x/kernels/__init__.py`
+    - `apex_x/kernels/triton/__init__.py`
+  - Implemented Triton kernel contract:
+    - Input: `F[B,C,H,W]` contiguous `NCHW`
+    - Input indices: `idx[B,K]` integer (`int32` kernel path; `int64` accepted and cast)
+    - Output: `P[B,K,C,t,t]` contiguous
+  - Kernel path support:
+    - `fp16`, `bf16` on CUDA
+    - no Python tile loops in kernel gather path
+  - Added vectorized reference fallback:
+    - `tilepack_reference(...)` uses tensor gather (no per-tile Python loops)
+  - Added dispatch behavior:
+    - `tilepack_dispatch(...)`
+    - falls back when Triton/CUDA unavailable
+    - falls back when `requires_grad` and `inference_only=True`
+      - reason: Triton path is inference-oriented without custom backward registration
+  - Added parity tests:
+    - `tests/test_triton_tilepack_parity_dispatch.py`
+    - `tests/test_triton_tilepack_parity_gpu.py`
+      - GPU parity auto-skips when Triton/CUDA unavailable
+  - Added benchmark:
+    - `apex_x/bench/triton_tilepack_bench.py`
+  - Added docs:
+    - `docs/runtime/TRITON_TILEPACK.md`
+    - `docs/runtime/TRITON.md` updated with TilePack status
+    - docs navigation updated in `docs/index.md` and `mkdocs.yml`
+  - Run commands:
+    - tests:
+      - `python -m pytest -q tests/test_triton_tilepack_parity_dispatch.py tests/test_triton_tilepack_parity_gpu.py`
+    - bench (module):
+      - `python -m apex_x.bench.triton_tilepack_bench --iters 50 --warmup 10 --batch 1 --channels 128 --height 128 --width 128 --tile-size 8 --kmax 32 --dtype fp16`
+    - lint/type:
+      - `python -m ruff check apex_x/kernels/triton/tilepack.py apex_x/bench/triton_tilepack_bench.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/tilepack.py apex_x/bench/triton_tilepack_bench.py`
+  - Validation status:
+    - `python -m ruff check ...` passed
+    - `python -m mypy --cache-dir=/dev/null ...` passed
+    - `python -m pytest -q tests/test_triton_tilepack_parity_dispatch.py tests/test_triton_tilepack_parity_gpu.py` passed (GPU tests skipped on CPU-only env)
+    - `.venv/bin/mkdocs build --strict` passed
+
+- Triton TileUnpack scatter kernel extended to overlap + priority semantics:
+  - Added kernel module:
+    - `apex_x/kernels/triton/tileunpack.py`
+  - Added Triton kernel dispatch/availability API:
+    - `get_triton_tileunpack_availability()`
+    - `tileunpack_reference(...)`
+    - `tileunpack_triton(...)`
+    - `tileunpack_dispatch(...)`
+  - Added exports:
+    - `apex_x/kernels/triton/__init__.py`
+  - Implemented semantics:
+    - Inputs: `F_base[B,C,H,W]`, `P_out[B,K,C,t,t]`, and `idx/meta`
+    - Output: `F_merged[B,C,H,W]`
+    - deterministic overlap overwrite with priorities:
+      - per-tile `levels[B,K]` (higher level wins)
+      - or pre-sorted K-order (`assume_priority_sorted=True`) as implicit priority
+    - default mode: `overlap_mode=\"override\"` (priority overwrite)
+    - optional mode: `overlap_mode=\"blend\"` (currently reference fallback)
+  - Updated tests:
+    - `tests/test_triton_tileunpack_parity_dispatch.py`
+    - `tests/test_triton_tileunpack_parity_gpu.py`
+    - `tests/test_triton_tileunpack_overlap_dispatch.py`
+    - `tests/test_triton_tileunpack_overlap_gpu.py`
+    - includes synthetic overlap fixtures and parity against reference behavior
+  - Updated microbenchmark:
+    - `apex_x/bench/triton_tileunpack_bench.py`
+    - supports overlap stress via `--overlap-shift`
+    - supports level-aware runs via default levels (`--no-levels` to disable)
+  - Added docs:
+    - `docs/runtime/TRITON_TILEUNPACK.md`
+    - updated `docs/runtime/TRITON.md`
+    - updated docs nav (`docs/index.md`, `mkdocs.yml`)
+  - Run commands:
+    - parity tests:
+      - `python -m pytest -q tests/test_triton_tileunpack_parity_dispatch.py tests/test_triton_tileunpack_parity_gpu.py tests/test_triton_tileunpack_overlap_dispatch.py tests/test_triton_tileunpack_overlap_gpu.py`
+    - microbench:
+      - `python -m apex_x.bench.triton_tileunpack_bench --batch 1 --channels 128 --height 128 --width 128 --tile-size 8 --kmax 32 --overlap-shift 4 --warmup 10 --iters 50 --dtype fp16`
+    - lint/type:
+      - `python -m ruff check apex_x/kernels/triton/tileunpack.py apex_x/bench/triton_tileunpack_bench.py tests/test_triton_tileunpack_parity_dispatch.py tests/test_triton_tileunpack_parity_gpu.py tests/test_triton_tileunpack_overlap_dispatch.py tests/test_triton_tileunpack_overlap_gpu.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/tileunpack.py apex_x/bench/triton_tileunpack_bench.py`
+  - Validation status:
+    - `python -m ruff check ...` passed
+    - `python -m mypy --cache-dir=/dev/null ...` passed
+    - `python -m pytest -q tests/test_triton_tileunpack_parity_dispatch.py tests/test_triton_tileunpack_parity_gpu.py tests/test_triton_tileunpack_overlap_dispatch.py tests/test_triton_tileunpack_overlap_gpu.py` passed (GPU tests skipped on CPU-only env)
+    - `python -m apex_x.bench.triton_tileunpack_bench --iters 3 --warmup 1 --batch 1 --channels 8 --height 32 --width 32 --tile-size 4 --kmax 4 --overlap-shift 2 --dtype fp16` executed successfully (reference backend on CPU)
+    - `.venv/bin/mkdocs build --strict` passed
+
+- Triton FusionGate alpha/fusion kernels implemented with fallback dispatch:
+  - Added kernel module:
+    - `apex_x/kernels/triton/fusiongate.py`
+  - Added exports:
+    - `apex_x/kernels/triton/__init__.py`
+  - Implemented kernels and dispatch:
+    - alpha kernel:
+      - inputs: boundary/uncertainty proxies (`[B,1,H,W]` or `[B,H,W]`)
+      - output: `alpha[B,1,H,W]`
+      - formula: `alpha = sigmoid(softplus(w_b) * boundary + softplus(w_u) * uncertainty + bias)`
+    - optional fusion kernel:
+      - `fused = base + alpha * (detail - base)`
+      - supports optional in-place output in dispatch API
+    - fallback semantics:
+      - falls back to reference when Triton/CUDA unavailable
+      - falls back when autograd is requested and `inference_only=True`
+  - Added tests:
+    - `tests/test_triton_fusiongate_parity_dispatch.py`
+    - `tests/test_triton_fusiongate_parity_gpu.py`
+    - coverage:
+      - parity vs `apex_x.model.FusionGate.compute_alpha` (simplified alpha path)
+      - alpha range checks (`[0,1]`)
+      - optional fusion parity
+      - GPU parity auto-skip without CUDA+Triton
+  - Added microbenchmark:
+    - `apex_x/bench/triton_fusiongate_bench.py`
+    - measures:
+      - alpha reference vs dispatch
+      - alpha+fusion reference vs dispatch
+  - Added docs:
+    - `docs/runtime/TRITON_FUSION.md`
+    - updated:
+      - `docs/runtime/TRITON.md`
+      - `docs/index.md`
+      - `mkdocs.yml`
+  - Run commands:
+    - tests:
+      - `python -m pytest -q tests/test_triton_fusiongate_parity_dispatch.py tests/test_triton_fusiongate_parity_gpu.py`
+    - benchmark:
+      - `python -m apex_x.bench.triton_fusiongate_bench --batch 1 --channels 128 --height 128 --width 128 --warmup 10 --iters 50 --dtype fp16`
+    - lint/type:
+      - `python -m ruff check apex_x/kernels/triton/fusiongate.py apex_x/bench/triton_fusiongate_bench.py tests/test_triton_fusiongate_parity_dispatch.py tests/test_triton_fusiongate_parity_gpu.py`
+      - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/fusiongate.py apex_x/bench/triton_fusiongate_bench.py`
+  - Validation status:
+    - `python -m ruff check ...` passed
+    - `python -m mypy --cache-dir=/dev/null ...` passed
+    - `python -m pytest -q tests/test_triton_fusiongate_parity_dispatch.py tests/test_triton_fusiongate_parity_gpu.py` passed (GPU tests skipped on CPU-only env)
+    - `python -m apex_x.bench.triton_fusiongate_bench --iters 3 --warmup 1 --batch 1 --channels 8 --height 32 --width 32 --dtype fp16` executed successfully (reference backend on CPU)
+    - `.venv/bin/mkdocs build --strict` passed
+
+## Invariants to Preserve
+- Deterministic inference tile selection under fixed config
+- Fixed `Kmax`-buffer shape contract for runtime compatibility
+- No Python-side dynamic control flow in future export graph path
+- CPU baseline must remain runnable at all times
+
+## Open Risks
+- Tile-SSM is currently a placeholder scan, not final kernel-equivalent behavior
+- Detection/segmentation heads are minimal baseline stubs
+- Runtime plugins are currently specification-only, not implemented
+
+## Immediate Next Steps
+1. Expand baseline heads to full DET + INST-SEG proto path per spec.
+2. Add explicit continuous-budget training loop example with dual `mu` update.
+3. Add deterministic quadtree `L1/L2` split implementation and tests.
+4. Add export smoke tests (ONNX contract checks with fixed `Kmax`).
+5. Add perf threshold config file and CI perf guard for CPU baseline.
+6. Add CLI entrypoints (Typer + Rich) for `run`, `test`, and `perf` commands.
+7. Add initial concrete `losses/`, `train/`, `infer/`, and `export/` implementations beyond placeholders.
+8. Add a typed Typer command for `config validate --config path.yaml --set key=value` using new loader/override utilities.
+9. Add logging configuration knobs into `RuntimeConfig` (log level/format) and route through `configure_logging()`.
+10. Add `apex-x config validate` and `apex-x config dump` subcommands for explicit config workflows.
+11. Add docs deployment workflow (e.g., GitHub Pages) after docs structure stabilizes.
+12. Add real TRT/ORT `RuntimeAdapterProtocol` implementations behind feature flags.
+13. Add smoke example invocation to README and optionally CI as a dedicated quick check.
+14. Add ADR template/checklist for future decisions to keep decision records uniform.
+15. Integrate L0 mapping helpers directly inside pack/unpack metadata paths (store tile `(ty,tx)` alongside pixel origins) for easier runtime plugin parity checks.
+16. Add non-square grid Hilbert fixture coverage (e.g., `3x5`, `5x3`) to lock padded-power-of-two traversal behavior.
+17. Add explicit fixture snapshots for scan modes (`l2r/r2l/u2d/d2u`) on representative non-square grids and enforce them in CI.
+18. Connect split-budget selection (`B2/B3`) in inference path to quadtree depth-2 mappings/metadata and add end-to-end selection tests.
+19. Integrate `TileSelection`/`TileSelectionTrace` emission into model inference outputs and add CLI flag to dump selection traces for ablations.
+20. Add optional CLI command to generate overlay images from stored `TileSelectionTrace` JSON for quick qualitative routing inspection.
+21. Wire `StaticCostModel` into routing/inference selection path so budgeting uses per-level `C_c/C_h` + pack/unpack/split overhead directly instead of scalar placeholders.
+22. Integrate `sample_oracle_set(...)` into training loops so oracle subset `S` is produced from random + uncertainty-biased policies directly from PV `u_hat`.
+23. Add budget-selection debug artifact that logs per-tile score/rank and final stable tie-break order for exact replay in ablation runs.
+24. Integrate PV aggregation output `x_i` into router training/inference path so utility heads consume pooled `mean/max/var` vectors instead of placeholder signals.
+25. Wire `RouterTinyMLP` into model/routing execution path as the default trainable router backend (with config-selectable fallback to `IdentityRouter`).
+26. Add config switch for router backend (`identity` / `tiny_mlp` / `kan_like`) and wire `RouterKANLike` into inference/training stubs.
+27. Integrate `ste_gate_from_utilities(...)` into training stubs so router utilities produce `p_i`/`g_i` directly in continuous-budget examples.
+28. Wire `BudgetDualController` into training stubs so `mu`, `E[C]`, and budget term are tracked/updated per step with debug logs.
+29. Use `GreedySelectionResult.kmax_buffer` + `valid_count` directly in model inference outputs to mirror runtime plugin shape contracts.
+30. Integrate `deterministic_two_stage_selection(...)` into model inference path so `B1/B2` and `L1` routing are exercised end-to-end in CPU baseline outputs.
+31. Use `hysteresis_rollout(...)` in temporal/video inference stubs and log `count_mask_toggles(...)` as an anti-flicker metric.
+32. Extend routing diagnostics to include L1/L2 selection once two-stage routing is wired into the model forward path.
+33. Add optional artifact export for diagnostics snapshots (JSON + histogram plots) from CLI train/predict commands for ablation workflows.
+34. Wire toggle states into YAML examples/README config snippets so users can reproduce dense/no-SSM/no-nesting baselines quickly.
+35. Integrate torch tile pack/unpack path into runtime adapter abstractions and add a CPU fallback selection path for adapter-level smoke tests.
+36. Integrate `FusionGate` into the model forward path (or runtime adapter path) to replace direct heavy overwrite with proxy-conditioned fusion in CPU baseline experiments.
+37. Integrate `CheapBlock` into PV/FF cheap path stubs and add micro-benchmarks for block latency under CPU profiles.
+38. Integrate `TileRefineBlock` after Tile-SSM in the model forward path so packed-tile local refinement is exercised end-to-end in baseline outputs.
+39. Wire `PVBackbone` into model execution path as the canonical PV stream source (`P3/P4/P5`) and align routing signals to these outputs.
+40. Integrate `PVModule` into `ApexXModel.forward` so routing and diagnostics consume PV coarse proxies instead of handcrafted tile-signal placeholders.
+41. Replace/augment NumPy `tile_ssm_scan` usage in `ApexXModel.forward` with `StableStateSpaceScan` in torch execution paths and add parity checks for inference outputs.
+42. Add `ApexXModel` config switch for scan direction mode (`forward` vs `bidirectional`) and wire merge-gated bidirectional scan into packed-tile path.
+43. Wire `decode_and_nms(...)` into model/inference outputs so DET head predictions use the new deterministic decode/NMS path in end-to-end CPU runs.
+44. Wire `PrototypeInstanceSegHead` into end-to-end model/infer path (using DET-selected instances) and expose assembled masks in CLI `predict` outputs.
+45. Integrate `instance_segmentation_losses(...)` into training stubs with mask/box matching targets and log BCE/Dice/boundary components in trainer diagnostics.
+46. Wire `FFTileRefinementHook` active-tile indices from routing outputs in model/infer path so refinement uses real FF-selected tiles end-to-end.
+47. Wire `generate_panoptic_output(...)` into inference/CLI outputs so panoptic maps and `segments_info` are emitted from DET + INST-SEG + SEM-SEG predictions end-to-end.
+48. Wire `evaluate_panoptic_quality(...)` into dataset evaluation loops so `apex-x eval` can consume real predicted/GT panoptic artifacts and report dataset-level PQ metrics.
+49. Integrate `TrackEmbeddingHead` into model/infer outputs and add config-controlled tracking head enable/disable behavior.
+50. Add a basic association loop wrapper in `apex_x/infer` that keeps `TrackState` across frames and emits stable track IDs in CLI `predict`.
+51. Add optional motion gating term into Hungarian cost/gate path (for video mode) and verify flicker reduction with temporal fixtures.
+52. Integrate `apply_pcgradpp(...)` into concrete training step codepath so DET/SEG grouped losses are projected on shared trunk params during optimization and surfaced in trainer diagnostics.
+53. Integrate `distillation_losses(...)` into the concrete training path with config-driven weights/temperature/feature-layer selection and expose per-component values in trainer diagnostics.
+54. Integrate `compute_oracle_delta_targets(...)` + `utility_oracle_loss(...)` into router training loops so sampled set `S` drives utility regression/ranking with detached oracle targets.
+55. Wire `TeacherModel` into train/eval loops so EMA updates, distill outputs, and student-teacher loss plumbing are exercised end-to-end with config toggles.
+56. Expand `ApexXTrainer` stage loop from smoke-level synthetic batches to dataset-backed dataloaders with checkpointing/resume support.
+57. Add stage-aware CLI logging/artifacts (`stage_metrics.json`, `mu_history.json`) for ablation reproducibility.
+58. Add CI smoke command for staged training CLI (`apex-x train --steps-per-stage 1`) to guard regressions in train wiring.
+59. Wire `TransformPipeline` and `MosaicV2` into an actual dataset/dataloader path controlled by `DataConfig` knobs (`flip_prob`, `mosaic_prob`, scale range).
+60. Add serialization/debug helpers to visualize transformed boxes/masks and mosaic split/crop decisions for reproducible augmentation ablations.
+61. Add dataset-wide evaluation loops that consume real model predictions and emit the new eval report (JSON/MD) directly from inference artifacts, beyond tiny fixture mode.
+62. Extend ablation runner to ingest real dataset eval outputs (instead of tiny fixture metrics) and add per-toggle significance summaries across seeds.
+63. Expand QAT coverage beyond Conv/Linear wrappers to selected normalization-sensitive blocks with explicit parity gates versus FP16 baseline.
+64. Add runtime-backed FP8 kernel probe path (beyond capability check) and enforce parity/perf gates before enabling FP8-by-default on compatible GPUs.
+65. Implement real Triton fused gather+gate+scatter kernel and wire it under `gather_gate_scatter(...)` dispatch when CUDA+Triton are available; add parity + perf thresholds against reference path.
+66. Add dataset/profile-specific perf baselines (e.g., quality/balanced/edge configs) and split tolerances by CPU model class for stricter regression gates.
+
+## Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline
+- Added a new practical fused Triton fast path module:
+  - `apex_x/kernels/triton/fused_pack_op_unpack.py`
+  - Implements `gather -> pointwise affine + ReGLU-like gate -> scatter` in one Triton kernel launch sequence.
+  - Added dispatch + fallback API:
+    - `get_triton_fused_stage1_availability()`
+    - `fused_pack_op_unpack_reference(...)`
+    - `fused_pack_op_unpack_triton(...)`
+    - `fused_pack_op_unpack_dispatch(...)`
+  - Determinism rule for Stage-1 path:
+    - requires unique tile indices per batch row to avoid overlap write races.
+- Added exports:
+  - `apex_x/kernels/triton/__init__.py` now exports fused Stage-1 APIs.
+- Added parity tests:
+  - `tests/test_triton_fused_stage1_dispatch.py`
+  - `tests/test_triton_fused_stage1_gpu.py`
+- Added microbenchmark:
+  - `apex_x/bench/triton_fused_stage1_bench.py`
+  - compares:
+    - explicit reference composition (`pack -> op -> unpack`)
+    - separate dispatch composition (`TilePack dispatch -> op -> TileUnpack dispatch`)
+    - fused Stage-1 dispatch
+- Added docs:
+  - `docs/runtime/TRITON_FUSED_STAGE1.md`
+  - updated:
+    - `docs/runtime/TRITON.md`
+    - `docs/index.md`
+    - `mkdocs.yml`
+
+### Run Commands
+- Tests:
+  - `python -m pytest -q tests/test_triton_fused_stage1_dispatch.py tests/test_triton_fused_stage1_gpu.py`
+- Microbenchmark:
+  - `python -m apex_x.bench.triton_fused_stage1_bench --batch 1 --channels 128 --height 128 --width 128 --tile-size 8 --kmax 32 --warmup 10 --iters 50 --dtype fp16`
+- Lint/type quick checks:
+  - `python -m ruff check apex_x/kernels/triton/fused_pack_op_unpack.py tests/test_triton_fused_stage1_dispatch.py tests/test_triton_fused_stage1_gpu.py apex_x/bench/triton_fused_stage1_bench.py`
+  - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/fused_pack_op_unpack.py apex_x/bench/triton_fused_stage1_bench.py`
+
+### Remaining Work
+- Wire Stage-1 fused kernel into legacy runtime entrypoint:
+  - `apex_x/runtime/triton_fused.py::gather_gate_scatter(...)`
+- Extend fused kernel beyond Stage-1 local transform:
+  - add overlap-priority semantics in-kernel where needed
+  - integrate Tile-SSM-related fused blocks (next stages)
+- Add GPU CI perf threshold gates for `speedup_separate_over_fused`.
+
+## Latest Update (2026-02-08): Triton TileSSM Scan Baseline
+- Added Triton TileSSM scan module:
+  - `apex_x/kernels/triton/tilessm_scan.py`
+  - Forward-only recurrence scan over tokens `tokens[B,K,C]` with stable sanitization/clamping.
+  - Outputs:
+    - `y[B,K,C]`
+    - `final_state[B,C]`
+  - Added availability + dispatch API:
+    - `get_triton_tilessm_availability()`
+    - `tilessm_scan_reference(...)`
+    - `tilessm_scan_triton(...)`
+    - `tilessm_scan_dispatch(...)`
+  - Dispatch keeps training-safe behavior:
+    - `inference_only=True` falls back to reference when autograd is active.
+- Exported TileSSM API:
+  - `apex_x/kernels/triton/__init__.py`
+- Integrated inference path into model heavy FF scan:
+  - updated `apex_x/model/ff_heavy_path.py`
+    - new `use_triton_inference_scan` toggle
+    - eval mode uses `tilessm_scan_dispatch(...)`
+    - train mode keeps torch scan path (`StableStateSpaceScan` / `StableBidirectionalStateSpaceScan`)
+  - updated `apex_x/model/ff_module.py`
+    - routes `RuntimeConfig.enable_runtime_plugins` to `FFHeavyPath(..., use_triton_inference_scan=...)`
+- Added tests:
+  - `tests/test_triton_tilessm_parity_dispatch.py`
+  - `tests/test_triton_tilessm_parity_gpu.py`
+  - `tests/test_ff_heavy_path_tilessm_dispatch.py`
+- Added throughput benchmark:
+  - `apex_x/bench/triton_tilessm_bench.py`
+- Added docs:
+  - `docs/runtime/TRITON_SSM.md`
+  - updated:
+    - `docs/runtime/TRITON.md`
+    - `docs/index.md`
+    - `mkdocs.yml`
+
+### Run Commands
+- Tests:
+  - `python -m pytest -q tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py tests/test_ff_heavy_path_tilessm_dispatch.py tests/test_ff_heavy_path.py`
+- Benchmark:
+  - `python -m apex_x.bench.triton_tilessm_bench --batch 2 --steps 256 --channels 128 --warmup 10 --iters 50 --dtype fp16`
+- Lint/type checks:
+  - `python -m ruff check apex_x/kernels/triton/tilessm_scan.py apex_x/model/ff_heavy_path.py apex_x/model/ff_module.py apex_x/bench/triton_tilessm_bench.py tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py tests/test_ff_heavy_path_tilessm_dispatch.py`
+  - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/tilessm_scan.py apex_x/model/ff_heavy_path.py apex_x/model/ff_module.py apex_x/bench/triton_tilessm_bench.py tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py tests/test_ff_heavy_path_tilessm_dispatch.py`
+- Docs:
+  - `.venv/bin/mkdocs build --strict`
+
+### Validation Status
+- `ruff`: passed on changed TileSSM files.
+- `mypy`: passed on changed TileSSM files.
+- `pytest`: passed for new parity/integration tests (GPU tests auto-skipped on CPU-only environment).
+- benchmark smoke run: completed on CPU fallback path.
+- docs build: passed with strict mode.
+
+### Remaining Work
+- Add multi-direction scan execution mode in Triton TileSSM path (current kernel is forward-only baseline).
+- Add a fused TileSSM + tile-local refine path after this baseline.
+- Add GPU CI lane for TileSSM parity/perf thresholds when CUDA runners are available.
+
+## Latest Update (2026-02-08): Triton TileSSM Multi-Direction
+- Extended `apex_x/kernels/triton/tilessm_scan.py` to support directional scanning:
+  - `direction`: `forward`, `backward`, `bidirectional`
+  - `merge_mode` for bidirectional: `sum`, `avg`, `gated`
+  - optional torch-computed `merge_gate` for gated merge (`[C]` or `[B,1,C]`)
+- Added clean directional API:
+  - `scan(tokens, direction=...) -> y`
+  - routes through dispatch with fallback behavior
+- Kept training/inference separation:
+  - training/backward still uses torch scan path
+  - inference dispatch can use Triton path (`inference_only=True`)
+- Updated FF inference integration:
+  - `apex_x/model/ff_heavy_path.py`
+  - Triton inference path now uses directional dispatch (`forward` and `backward`) and applies learned torch gate for merge in bidirectional mode.
+- Updated exports:
+  - `apex_x/kernels/triton/__init__.py` now exports:
+    - `ScanDirection`
+    - `BidirectionalMergeMode`
+    - `scan`
+- Updated benchmark for multi-direction overhead:
+  - `apex_x/bench/triton_tilessm_bench.py`
+  - now reports forward/backward/bidirectional timings and overhead ratios vs forward.
+- Updated tests:
+  - `tests/test_triton_tilessm_parity_dispatch.py`
+    - added backward parity vs torch manual recurrence
+    - added bidirectional parity for `sum/avg/gated`
+    - added clean API `scan(...)` test
+  - `tests/test_triton_tilessm_parity_gpu.py`
+    - added bidirectional avg parity test (GPU)
+- Updated docs:
+  - `docs/runtime/TRITON_SSM.md`
+  - `docs/runtime/TRITON.md`
+
+### Run Commands
+- Tests:
+  - `python -m pytest -q tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py tests/test_ff_heavy_path_tilessm_dispatch.py tests/test_ff_heavy_path.py`
+- Benchmark:
+  - `python -m apex_x.bench.triton_tilessm_bench --batch 2 --steps 256 --channels 128 --warmup 10 --iters 50 --dtype fp16`
+- Lint/type:
+  - `python -m ruff check apex_x/kernels/triton/tilessm_scan.py apex_x/kernels/triton/__init__.py apex_x/model/ff_heavy_path.py apex_x/bench/triton_tilessm_bench.py tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py`
+  - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/tilessm_scan.py apex_x/kernels/triton/__init__.py apex_x/model/ff_heavy_path.py apex_x/bench/triton_tilessm_bench.py tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py`
+- Docs:
+  - `.venv/bin/mkdocs build --strict`
+
+### Validation Status
+- `ruff`: passed
+- `mypy`: passed
+- `pytest`: passed (GPU tests skipped on CPU-only environment)
+- benchmark smoke run: passed (reference fallback on CPU)
+- docs build (`mkdocs --strict`): passed
+
+## Latest Update (2026-02-08): TensorRT Build Hardening + Harness
+- Read runtime specs from:
+  - `docs/runtime/PLUGIN_SPEC.md` (canonical)
+  - `docs/runtime/TENSORRT.md`
+  - Added alias page: `docs/runtime/PLUGIN_SPECS.md` -> points to canonical spec
+- Hardened TensorRT CMake in `runtime/tensorrt/CMakeLists.txt`:
+  - shared plugin library support:
+    - `apexx_trt_plugins` (SHARED)
+  - added always-build static core:
+    - `apexx_trt_plugin_core` (STATIC, PIC)
+  - compile-guard behavior:
+    - shared plugin library builds only when TensorRT headers and CUDA compiler are found
+    - if TRT/CUDA unavailable, shared build is skipped cleanly and repo remains buildable
+  - plugin info target kept available:
+    - `apexx_trt_plugin_info`
+  - harness target added conditionally (only with shared build):
+    - `apexx_trt_plugin_harness`
+- Added minimal plugin enqueue-like path for stubs:
+  - `runtime/tensorrt/include/apexx_trt/plugin_stub.hpp`
+    - `DummyTensor`, `PluginEnqueueInputs`, `PluginEnqueueOutputs`, `PluginStub::enqueue(...)`
+  - implemented enqueue methods in:
+    - `runtime/tensorrt/src/tile_pack_plugin.cpp`
+    - `runtime/tensorrt/src/tile_ssm_scan_plugin.cpp`
+    - `runtime/tensorrt/src/tile_unpack_fusion_plugin.cpp`
+    - `runtime/tensorrt/src/decode_nms_plugin.cpp`
+- Added shared-library C ABI entrypoints in:
+  - `runtime/tensorrt/include/apexx_trt/common.hpp`
+  - `runtime/tensorrt/src/common.cpp`
+  - symbols:
+    - `apexx_trt_abi_version()`
+    - `apexx_trt_build_summary_cstr()`
+    - `apexx_trt_invoke_minimal(...)`
+- Added minimal runtime harness executable source:
+  - `runtime/tensorrt/tests/plugin_harness_main.cpp`
+  - harness behavior:
+    - loads plugin shared library via `dlopen`/`LoadLibrary`
+    - resolves C ABI symbols
+    - creates dummy tensors
+    - invokes minimal plugin call path for TilePack/TileSSMScan/TileUnpackFusion/DecodeNMS
+- Added build doc:
+  - `docs/runtime/TENSORRT_BUILD.md`
+- Updated docs navigation and runtime note cross-links:
+  - `mkdocs.yml`
+  - `docs/index.md`
+  - `docs/runtime/TENSORRT.md`
+
+### Exact Build Commands
+- Auto-detect build:
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build`
+  - `cmake --build build -j`
+  - `./build/apexx_trt_plugin_info`
+- Explicit TRT/CUDA paths:
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build -DTENSORRT_INCLUDE_DIR=\"${TENSORRT_ROOT}/include\" -DCMAKE_CUDA_COMPILER=\"${CUDA_HOME}/bin/nvcc\"`
+  - `cmake --build build -j`
+- Force skip shared plugin build (portable/CI machines):
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build -DAPEXX_ENABLE_TENSORRT=OFF -DAPEXX_ENABLE_CUDA=OFF -DAPEXX_BUILD_PLUGIN_TEST_HARNESS=OFF`
+  - `cmake --build build -j`
+- Harness run (when shared plugin target is built):
+  - `./build/apexx_trt_plugin_harness ./build/libapexx_trt_plugins.so`
+  - or:
+  - `export APEXX_TRT_PLUGIN_LIB=./build/libapexx_trt_plugins.so`
+  - `./build/apexx_trt_plugin_harness`
+
+### Environment Variables
+- `TENSORRT_ROOT`: TensorRT install root (optional)
+- `CUDA_HOME`: CUDA root (optional)
+- `CMAKE_PREFIX_PATH`: dependency discovery override (optional)
+- `APEXX_TRT_PLUGIN_LIB`: path to shared plugin library for harness runtime loading
+
+### Validation Status
+- `mkdocs build --strict`: passed
+- `pytest tests/test_import_smoke.py`: passed
+- Local CMake configure/build execution could not be run in this environment because `cmake` binary is not installed (`command not found`).
+
+## Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)
+- Read and aligned implementation to:
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/runtime/PLUGIN_SPECS.md` (alias page)
+  - `docs/runtime/TENSORRT.md`
+- Implemented real TensorRT TilePack plugin under:
+  - `runtime/tensorrt/plugins/tilepack.h`
+  - `runtime/tensorrt/plugins/tilepack.cpp`
+  - `runtime/tensorrt/plugins/tilepack.cu`
+- Implemented plugin contract and behavior:
+  - plugin type/version/namespace:
+    - `TilePack` / `1` / `apexx`
+  - tensor contract:
+    - input0: `F[B,C,H,W]` FP16
+    - input1: `idx[B,K]` INT32
+    - output0: `P[B,K,C,t,t]` FP16
+  - `getOutputDimensions(...)` shape inference for dynamic dims.
+  - `supportsFormatCombination(...)` with linear format + required dtypes.
+  - serialization/deserialization of `tile_size`.
+  - `enqueue(...)` calls CUDA helper `launch_tilepack_fp16(...)`.
+- Implemented CUDA gather kernel:
+  - launches over total elements in `P`
+  - maps each output element to source `F` via tile index and local `(dy, dx)`
+  - zero-fills invalid tile indices / out-of-bounds accesses
+  - contiguous output layout `[B,K,C,t,t]`.
+- Added C++ integration/parity test harness:
+  - `runtime/tensorrt/tests/tilepack_plugin_test.cpp`
+  - test covers:
+    - creator-based plugin construction
+    - plugin serialization/deserialization
+    - `enqueue(...)` execution on CUDA buffers
+    - parity vs host reference implementation.
+- Added Python parity test for engine-level integration:
+  - `tests/test_tensorrt_tilepack_parity.py`
+  - builds TRT engine with TilePack plugin (when TRT Python + CUDA available)
+  - compares output to PyTorch reference (`tilepack_reference`).
+- Hardened CMake wiring for real plugin path in `runtime/tensorrt/CMakeLists.txt`:
+  - fixed runtime library detection guard so `nvinfer/cudart` discovery actually runs.
+  - gated shared plugin target creation on runtime library availability to avoid configure/link failures on partial installs.
+  - real plugin build remains optional and guarded.
+  - `apexx_trt_tilepack_test` only builds when real plugin path is enabled.
+- Updated docs:
+  - `docs/runtime/TENSORRT_BUILD.md`
+  - `docs/runtime/TENSORRT.md`
+
+### Run Commands
+- Python-level checks:
+  - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py`
+- TensorRT C++ build/test (when `cmake`, TensorRT, CUDA available):
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build -DAPEXX_ENABLE_REAL_TILEPACK_PLUGIN=ON`
+  - `cmake --build build -j`
+  - `./build/apexx_trt_tilepack_test`
+- Python TRT parity (optional):
+  - `export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so`
+  - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py`
+
+### Validation Status
+- `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py`:
+  - passed
+  - TRT parity test skipped on CPU-only environment (expected).
+- Local CMake build/test for TensorRT plugin could not be executed in this environment because `cmake` is unavailable.
+
+### Remaining Work
+- Add INT8 support path for TilePack plugin (currently FP16-only).
+- Add stronger shape/stride guard coverage for dynamic-shape edge cases in C++ tests.
+- Add CI GPU lane for TensorRT plugin parity/perf once CUDA runners are available.
+
+## Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/runtime/PLUGIN_SPECS.md`
+- Implemented real TensorRT `TileUnpackFusion` plugin:
+  - `runtime/tensorrt/plugins/tileunpackfusion.h`
+  - `runtime/tensorrt/plugins/tileunpackfusion.cpp`
+  - `runtime/tensorrt/plugins/tileunpackfusion.cu`
+- Plugin contract implemented (TensorRT dynamic ext):
+  - inputs:
+    - `F_base[B,C,H,W]` FP16
+    - `P_out[B,K,C,t,t]` FP16
+    - `idx[B,K]` INT32
+    - `levels[B,K]` INT32 (priority source for deterministic nesting semantics)
+    - optional `alpha[B,1,H,W]` FP16
+  - output:
+    - `F_merged[B,C,H,W]` FP16
+- Runtime semantics implemented:
+  - deterministic overwrite priority per pixel:
+    - higher `levels` wins (e.g. `L2 > L1 > L0`)
+    - tie-break inside same level by tile order `k` (later `k` wins)
+  - two-pass CUDA path:
+    - pass 1: atomic winner-key map over `[B,H,W]`
+    - pass 2: scatter only winner tile pixels
+  - fusion behavior:
+    - without alpha: overwrite winner pixel value
+    - with alpha: `F = F_base + alpha * (F_winner - F_base)` (per pixel/channel)
+  - output map starts from dense base copy, so non-selected pixels stay unchanged
+- CMake/runtime wiring:
+  - updated `runtime/tensorrt/CMakeLists.txt`
+  - added build option:
+    - `APEXX_ENABLE_REAL_TILEUNPACKFUSION_PLUGIN` (default `ON`)
+  - real plugin sources are linked into shared plugin library when TRT/CUDA libs are available
+  - added C++ test target:
+    - `apexx_trt_tileunpackfusion_test`
+- Added C++ priority correctness harness:
+  - `runtime/tensorrt/tests/tileunpackfusion_plugin_test.cpp`
+  - crafted overlap case validates `L2` overwrite over `L1/L0` on same region
+- Added Python TensorRT parity test vs PyTorch reference path:
+  - `tests/test_tensorrt_tileunpackfusion_parity.py`
+  - compares TRT plugin output to `TileUnpackTorch + FusionGate` composed reference
+- Updated docs:
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/runtime/TENSORRT.md`
+  - `docs/runtime/TENSORRT_BUILD.md`
+
+### Run Commands
+- Python checks (CPU env will skip CUDA-dependent TRT tests):
+  - `python -m ruff check tests/test_tensorrt_tileunpackfusion_parity.py`
+  - `python -m pytest -q tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py`
+- C++ build/test (when `cmake` + TensorRT + CUDA available):
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build -DAPEXX_ENABLE_REAL_TILEUNPACKFUSION_PLUGIN=ON`
+  - `cmake --build build -j`
+  - `./build/apexx_trt_tileunpackfusion_test`
+- Optional Python parity run with plugin library:
+  - `export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so`
+  - `python -m pytest -q tests/test_tensorrt_tileunpackfusion_parity.py`
+
+### Validation Status
+- `ruff` on new parity test: passed.
+- `pytest` targeted run:
+  - passed for non-TRT tests
+  - TRT parity tests skipped in this CPU-only environment (expected).
+- Local TensorRT C++ compile/run for the new plugin was not executed here because `cmake` is unavailable in this environment.
+
+### Remaining Work
+- Add native blend-mode merge path inside TensorRT plugin (currently overwrite + optional alpha fusion path).
+- Add stricter input-range safeguards for very large/negative `levels` to prevent key-overflow edge cases.
+- Add GPU CI lane that builds `apexx_trt_tileunpackfusion_test` and runs Python TRT parity.
+
+## Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/runtime/PLUGIN_SPECS.md`
+- Implemented real TensorRT `TileSSMScan` plugin:
+  - `runtime/tensorrt/plugins/tilessm_scan.h`
+  - `runtime/tensorrt/plugins/tilessm_scan.cpp`
+  - `runtime/tensorrt/plugins/tilessm_scan.cu`
+- Plugin contract implemented (TensorRT dynamic ext):
+  - inputs:
+    - `tokens[B,K,C]` FP16
+    - `decay[C]`, `input_gain[C]`, `output_gain[C]`, `state_bias[C]` FP16
+    - optional `init_state[B,C]` FP16
+  - outputs:
+    - `y[B,K,C]` FP16
+    - `final_state[B,C]` FP16
+  - plugin fields:
+    - `direction` (`0=forward`, `1=backward`)
+    - `clamp_value` (default `1e4`)
+- Runtime recurrence semantics implemented to match torch placeholder:
+  - per-channel recurrence across `K`:
+    - `state = decay * state + (1 - decay) * (input_gain * token + state_bias)`
+    - `y = output_gain * state`
+  - stability constraints:
+    - `decay` clamped to `(1e-6, 1-1e-6)`
+    - `token` NaN sanitization + clamp to `[-clamp_value, clamp_value]`
+  - backward direction scans from `K-1` to `0` while writing outputs in original index positions.
+- CMake/runtime wiring:
+  - updated `runtime/tensorrt/CMakeLists.txt`
+  - added build option:
+    - `APEXX_ENABLE_REAL_TILESSM_PLUGIN` (default `ON`)
+  - real plugin sources are linked into shared plugin library when TRT/CUDA libs are available
+  - added C++ test/benchmark target:
+    - `apexx_trt_tilessm_test`
+- Added C++ plugin test + microbenchmark harness:
+  - `runtime/tensorrt/tests/tilessm_scan_plugin_test.cpp`
+  - validates plugin output vs host reference for:
+    - forward direction
+    - backward direction
+  - prints lightweight performance metrics from CUDA-event timing:
+    - average latency (ms)
+    - token throughput (tok/s)
+- Added Python TensorRT parity tests:
+  - `tests/test_tensorrt_tilessm_parity.py`
+  - compares TensorRT engine outputs to `tilessm_scan_reference(...)` for forward/backward on small shapes.
+- Updated docs:
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/runtime/TENSORRT.md`
+  - `docs/runtime/TENSORRT_BUILD.md`
+
+### Run Commands
+- Python checks (CPU env will skip CUDA-dependent TRT tests):
+  - `python -m ruff check tests/test_tensorrt_tilessm_parity.py`
+  - `python -m pytest -q tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_import_smoke.py`
+- C++ build/test/bench (when `cmake` + TensorRT + CUDA available):
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build -DAPEXX_ENABLE_REAL_TILESSM_PLUGIN=ON`
+  - `cmake --build build -j`
+  - `./build/apexx_trt_tilessm_test`
+- Optional Python parity run with plugin library:
+  - `export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so`
+  - `python -m pytest -q tests/test_tensorrt_tilessm_parity.py`
+
+### Validation Status
+- `ruff` on new TRT TileSSM parity test: passed.
+- `pytest` targeted run:
+  - passed for non-TRT tests
+  - TRT parity tests skipped in this CPU-only environment (expected).
+- Local TensorRT C++ compile/run for new TileSSM plugin was not executed here because `cmake` is unavailable in this environment.
+
+### Remaining Work
+- Add TensorRT-side multi-direction merge modes (`sum/avg/gated`) beyond single-direction plugin field.
+- Add broader dtype support (`fp32`/`bf16`) if needed for debugging and parity triage.
+- Add GPU CI lane that builds and runs `apexx_trt_tilessm_test` and Python TRT parity tests.
+
+## Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/ENGINEERING_SPEC.md` (DET decode/NMS behavior)
+- Implemented real TensorRT Decode+NMS plugin:
+  - `runtime/tensorrt/plugins/nms_decode.h`
+  - `runtime/tensorrt/plugins/nms_decode.cpp`
+  - `runtime/tensorrt/plugins/nms_decode.cu`
+- Plugin contract implemented (TensorRT dynamic ext):
+  - inputs:
+    - `cls_logits[B,N,C]` FP16
+    - `box_reg[B,N,4]` FP16 (`l,t,r,b` logits)
+    - `quality[B,N]` FP16
+    - `centers[N,2]` FP16
+    - `strides[N]` FP16
+  - outputs:
+    - `boxes[B,max_det,4]` FP16
+    - `scores[B,max_det]` FP16
+    - `class_ids[B,max_det]` INT32
+    - `valid_counts[B]` INT32
+  - plugin fields:
+    - `max_detections`
+    - `pre_nms_topk`
+    - `score_threshold`
+    - `iou_threshold`
+- Runtime semantics implemented to match project PyTorch path:
+  - decode:
+    - `dist = softplus(clamp(box_reg,-20,20)) * stride`
+    - `xyxy` from `(cx,cy)` and decoded distances
+  - score:
+    - `sigmoid(clamp(cls,-60,60)) * sigmoid(clamp(quality,-60,60))`
+  - candidate selection:
+    - threshold by `score_threshold`
+    - top-k by `pre_nms_topk` with deterministic tie-break (`pair_id = anchor*C + class`)
+  - class-wise deterministic NMS:
+    - IoU suppression per class
+    - final ordering by score descending, tie-break by pair-id ascending
+  - padding semantics:
+    - invalid rows use `class_ids=-1`, `scores=0`, `boxes=0`
+- CMake/runtime wiring:
+  - updated `runtime/tensorrt/CMakeLists.txt`
+  - added build option:
+    - `APEXX_ENABLE_REAL_NMS_DECODE_PLUGIN` (default `ON`)
+  - added C++ test target:
+    - `apexx_trt_nms_decode_test`
+- Added C++ plugin parity/benchmark harness:
+  - `runtime/tensorrt/tests/nms_decode_plugin_test.cpp`
+  - compares plugin outputs to host reference
+  - includes corner case checks:
+    - no boxes (high threshold)
+    - many candidates
+  - includes lightweight latency metric printout
+- Added Python parity tests vs PyTorch decode+nms reference:
+  - `tests/test_tensorrt_nms_decode_parity.py`
+  - covers:
+    - fixed-seed parity
+    - no boxes corner case
+    - many boxes corner case
+- Updated docs:
+  - new:
+    - `docs/runtime/TENSORRT_POST.md`
+  - updated:
+    - `docs/runtime/PLUGIN_SPEC.md`
+    - `docs/runtime/TENSORRT.md`
+    - `docs/runtime/TENSORRT_BUILD.md`
+    - `docs/index.md`
+    - `mkdocs.yml`
+
+### Run Commands
+- Python checks (CPU env will skip CUDA/TRT tests):
+  - `python -m ruff check tests/test_tensorrt_nms_decode_parity.py tests/test_tensorrt_tilepack_parity.py`
+  - `python -m pytest -q tests/test_tensorrt_nms_decode_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_det_decode_nms.py tests/test_import_smoke.py`
+- C++ build/test (when `cmake` + TensorRT + CUDA available):
+  - `cd runtime/tensorrt`
+  - `cmake -S . -B build -DAPEXX_ENABLE_REAL_NMS_DECODE_PLUGIN=ON`
+  - `cmake --build build -j`
+  - `./build/apexx_trt_nms_decode_test`
+- Optional Python TRT parity:
+  - `export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so`
+  - `python -m pytest -q tests/test_tensorrt_nms_decode_parity.py`
+
+### Validation Status
+- `ruff` on changed TensorRT parity tests: passed.
+- `pytest` targeted suite:
+  - passed for CPU-safe tests
+  - TRT tests skipped on CPU-only environment (expected).
+- `mkdocs build --strict` could not run in this environment because `mkdocs` is not installed.
+- Local TensorRT C++ compile/run for new Decode+NMS plugin was not executed here because `cmake` is unavailable in this environment.
+
+### Remaining Work
+- Optional backend integration path to TensorRT EfficientNMS (when exact deterministic parity requirements are satisfied).
+- Performance optimization of CUDA kernel (current implementation prioritizes correctness/determinism over throughput).
+- GPU CI lane to compile/run `apexx_trt_nms_decode_test` and Python TRT decode+NMS parity tests.
+
+## Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/ENGINEERING_SPEC.md`
+  - `docs/runtime/PLUGIN_SPEC.md`
+  - `docs/runtime/TENSORRT.md`
+  - `docs/runtime/TENSORRT_BUILD.md`
+  - `docs/runtime/TENSORRT_POST.md`
+- Added Python TensorRT builder package:
+  - `apex_x/runtime/tensorrt/__init__.py`
+  - `apex_x/runtime/tensorrt/builder.py`
+  - `apex_x/runtime/tensorrt/calibrator.py`
+- Added API exports:
+  - updated `apex_x/runtime/__init__.py`
+  - runtime now exposes:
+    - `TensorRTEngineBuilder`
+    - `TensorRTEngineBuildConfig`
+    - `EngineBuildResult`
+    - `TensorRTEntropyCalibrator`
+    - calibration typing/config objects
+- Builder capabilities implemented:
+  - build from ONNX:
+    - `TensorRTEngineBuilder.build_from_onnx(...)`
+  - build from direct TRT network factory:
+    - `TensorRTEngineBuilder.build_from_network(...)`
+  - optional plugin-library loading via `ctypes` with global symbol visibility
+  - custom plugin registry checks for:
+    - required: `TilePack`, `TileSSMScan`, `TileUnpackFusion`
+    - optional: `DecodeNMS`
+  - FP16 build support
+  - INT8 build support with calibrator attachment and cache path
+  - router/KAN FP16 constraints during INT8 builds via layer-name keywords
+- Calibrator capabilities implemented:
+  - `TensorRTEntropyCalibrator` (IInt8EntropyCalibrator2-backed when TRT is available)
+  - streams calibration batches from iterable loader
+  - supports batch format:
+    - single-input `np.ndarray`
+    - multi-input `dict[str, np.ndarray]`
+  - stable cache I/O:
+    - `read_calibration_cache()`
+    - `write_calibration_cache(...)`
+  - keeps device tensors alive across `get_batch(...)` calls
+- Added docs:
+  - new:
+    - `docs/runtime/TENSORRT_INT8.md`
+  - updated:
+    - `docs/runtime/TENSORRT.md`
+    - `docs/index.md`
+    - `mkdocs.yml`
+- Added tests:
+  - `tests/test_tensorrt_builder_smoke.py`
+  - coverage:
+    - no-TRT failure path (deterministic error)
+    - FP16 tiny-network smoke build (skip with capability guards)
+    - INT8 tiny-network + calibration smoke build (skip with capability guards)
+
+### Engine Build Commands
+- FP16 direct-network smoke:
+  - `python -m pytest -q tests/test_tensorrt_builder_smoke.py -k fp16`
+- INT8 direct-network smoke:
+  - `python -m pytest -q tests/test_tensorrt_builder_smoke.py -k int8`
+- Python build usage (programmatic):
+  - use `TensorRTEngineBuilder.build_from_network(...)` or `build_from_onnx(...)`
+  - recommended artifact paths:
+    - engines: `artifacts/trt/*.engine`
+    - calibration caches: `artifacts/trt/*.cache`
+
+### Artifact Locations
+- Engine outputs:
+  - path passed to `engine_path` (recommended: `artifacts/trt/`)
+- INT8 calibration cache:
+  - path passed via `TensorRTEngineBuildConfig.calibration_cache_path`
+  - recommended: `artifacts/trt/int8.cache`
+
+### Validation Status
+- `ruff` on changed runtime TRT builder/calibrator files: passed.
+- `mypy` on changed runtime TRT builder/calibrator files: passed.
+- `pytest` targeted run:
+  - passed for CPU-safe tests
+  - CUDA/TRT-dependent tests skipped in this environment (expected).
+- `mkdocs build --strict` could not run in this environment because `mkdocs` is not installed.
+
+### Remaining Work
+- Add CLI wrapper command for Python TRT builder workflow (currently programmatic API only).
+- Add ONNX custom-op placeholder integration example with concrete node/plugin mapping.
+- Add GPU CI lane executing TRT builder smoke tests with plugin library loading.
+
+## Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/PRD.md`
+  - `docs/ENGINEERING_SPEC.md`
+  - `docs/PERF.md`
+  - `docs/runtime/TRITON.md`
+- Added unified CUDA benchmark runner:
+  - `apex_x/bench/gpu_bench.py`
+- Runner coverage implemented:
+  - Tile ops microbench:
+    - `TilePack` (torch reference vs Triton dispatch)
+    - `TileUnpack` (torch reference vs Triton dispatch)
+    - `FusionGate` (torch reference vs Triton dispatch)
+  - TileSSM microbench:
+    - torch reference vs Triton dispatch
+    - TensorRT plugin path benchmark for `TileSSMScan` (when TensorRT Python + plugin library are available)
+  - End-to-end FF inference benchmark:
+    - torch eager path
+    - torch+Triton fast-path (Triton requested for inference scan with fallback guard)
+    - optional TensorRT engine benchmark (`--trt-engine-path`)
+- Report outputs implemented:
+  - JSON: `artifacts/perf_gpu.json` (default)
+  - Markdown: `artifacts/perf_gpu.md` (default)
+  - Metrics include `p50/p95`, throughput (`tiles/tokens/elements/frames per second`), and CUDA peak memory (`max_memory_allocated`).
+- Added GPU perf documentation:
+  - `docs/PERF_GPU.md`
+- Updated docs navigation:
+  - `docs/index.md`
+  - `mkdocs.yml`
+
+### Run Commands
+- Default fixed-profile GPU benchmark:
+  - `python -m apex_x.bench.gpu_bench --output-json artifacts/perf_gpu.json --output-md artifacts/perf_gpu.md`
+- Faster smoke-like run:
+  - `python -m apex_x.bench.gpu_bench --warmup 3 --iters 10 --output-json artifacts/perf_gpu_smoke.json --output-md artifacts/perf_gpu_smoke.md`
+- Enable TensorRT plugin TileSSM bench:
+  - `export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so`
+  - `python -m apex_x.bench.gpu_bench`
+- Optional TensorRT engine benchmark:
+  - `python -m apex_x.bench.gpu_bench --trt-engine-path artifacts/trt/apex_x.engine --trt-input-shape input=1x3x128x128`
+
+### Artifact Locations
+- JSON report:
+  - `artifacts/perf_gpu.json` (or `--output-json`)
+- Markdown summary:
+  - `artifacts/perf_gpu.md` (or `--output-md`)
+
+### Validation Status
+- Local run in this environment:
+  - suite executes with capability guards
+  - when CUDA is unavailable, output is `status=skipped` with explicit reason.
+- Static checks and mypy/test status are tracked per current session commands.
+
+### Remaining Work
+- Add GPU CI lane to run `apex_x/bench/gpu_bench.py` on fixed CUDA runners and compare against a committed GPU baseline.
+- Add optional CSV/time-series exporter for long-run perf trend tracking.
+- Add explicit TRT engine profile presets for common deployed input signatures.
+
+## Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/PRD.md`
+  - `docs/ENGINEERING_SPEC.md`
+- Added GPU perf regression workflow:
+  - `.github/workflows/perf_gpu.yml`
+- Workflow behavior:
+  - skipped by default on manual dispatch (`run_mode=skip`)
+  - executes only when:
+    - manual dispatch sets `run_mode=self-hosted-gpu`, or
+    - nightly schedule runs with repository variable `APEXX_ENABLE_GPU_NIGHTLY=true`
+  - runs on `runs-on: [self-hosted, linux, x64, gpu]`
+  - keeps CPU perf regression intact in `.github/workflows/ci.yml` (`perf-regression` job unchanged)
+- Added GPU regression compare script:
+  - `scripts/perf_regression_gpu.py`
+  - runs `apex_x/bench/gpu_bench.py` via Python module API and compares against stored baseline thresholds
+- Added stored GPU baseline JSON:
+  - `scripts/perf_baseline_gpu.json`
+- Added documentation:
+  - `docs/CI_GPU.md` (self-hosted setup, nightly switch, baseline maintenance, security notes)
+  - updated docs nav in `docs/index.md` and `mkdocs.yml`
+
+### Run Commands
+- Local GPU regression compare:
+  - `python scripts/perf_regression_gpu.py --compare --baseline scripts/perf_baseline_gpu.json --output artifacts/perf_gpu_current_local.json --summary artifacts/perf_gpu_compare_local.json`
+- Regenerate baseline template on target GPU runner:
+  - `python scripts/perf_regression_gpu.py --emit-baseline-template --baseline scripts/perf_baseline_gpu.json`
+- Manual workflow run:
+  - dispatch `GPU Perf Regression` with `run_mode=self-hosted-gpu`
+
+### Artifact Locations
+- GPU current run report:
+  - `artifacts/perf_gpu_current_ci.json`
+- GPU compare summary:
+  - `artifacts/perf_gpu_compare_ci.json`
+- Uploaded artifact name in workflow:
+  - `perf-gpu-regression-artifacts`
+
+### Validation Status
+- Local validation in this environment:
+  - `python scripts/perf_regression_gpu.py --help`: passed
+  - `python scripts/perf_regression_gpu.py --compare ...`: executed and failed as expected (`status=skipped` on CPU-only host)
+  - `ruff check scripts/perf_regression_gpu.py`: passed
+  - `python -m py_compile scripts/perf_regression_gpu.py`: passed
+  - `ruff check .github/workflows/perf_gpu.yml`: not applicable (YAML)
+
+### Remaining Work
+- Calibrate `scripts/perf_baseline_gpu.json` on the real self-hosted GPU runner and tighten tolerances.
+- Add optional GPU matrix (per GPU class) with separate baselines when heterogeneous runners are used.
+- Add GPU docs build validation on the same self-hosted environment if needed.
+
+## Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)
+- Read and aligned implementation to:
+  - `docs/CONTEXT.md`
+  - `docs/PRD.md`
+  - `docs/ENGINEERING_SPEC.md`
+  - `runtime/go/README.md`
+- Hardened engine loader paths in `runtime/go/internal/service/`:
+  - ONNX CPU baseline loader:
+    - `adapter_ort.go`
+    - `NewORTAdapter(...)` now validates and loads model path from flag or `APEXX_ORT_MODEL_PATH`
+    - rejects missing/empty model files
+  - TensorRT loader via CGO:
+    - `adapter_tensorrt_cgo.go`
+    - implements C-side engine file loader/free wrapper
+    - validates engine file path from flag or `APEXX_TRT_ENGINE_PATH`
+    - retains inference execution as baseline/mock response path while loader is real
+- Implemented dynamic batching observability:
+  - `batcher.go`
+    - tracks enqueue timestamps per request
+    - computes per-batch average queue wait and inference time
+    - records batch errors and structured batch logs
+  - `metrics.go`
+    - added metrics:
+      - batch size avg/max
+      - queue latency avg/max
+      - inference latency avg/max
+      - batch errors
+- Added structured logging + optional telemetry hooks:
+  - `http.go`, `batcher.go`, `cmd/apexx-runtime/main.go`
+  - configurable structured logger (`json|text`, level)
+  - optional hook interface:
+    - `telemetry.go` (`TelemetryHooks`, `NopTelemetryHooks`)
+  - request and batch lifecycle now expose hook call points for OTel integration
+- Added integration and loader tests:
+  - `runtime/go/internal/service/integration_test.go`
+    - starts HTTP server
+    - validates `/health`
+    - validates structured `/predict` response
+    - load simulation verifies batching groups requests under pressure
+    - validates expanded `/metrics` keys
+  - `runtime/go/internal/service/adapter_ort_test.go`
+    - ONNX loader success/failure/env override coverage
+- Updated runtime docs:
+  - new: `docs/runtime/GO_SERVICE.md`
+  - updated: `runtime/go/README.md`
+  - docs nav updates:
+    - `docs/index.md`
+    - `mkdocs.yml`
+
+### Run Commands
+- Go unit + integration tests:
+  - `cd runtime/go && go test ./...`
+- Go tests with TensorRT build tags and CGO:
+  - `cd runtime/go && CGO_ENABLED=1 go test -tags tensorrt ./...`
+- Run CPU service mode:
+  - `cd runtime/go`
+  - `mkdir -p models`
+  - place a non-empty ONNX model at `models/apex-x.onnx`
+  - `go run ./cmd/apexx-runtime -adapter onnxruntime -model-path models/apex-x.onnx`
+- Run TensorRT service mode (loader path):
+  - `cd runtime/go`
+  - `CGO_ENABLED=1 go run -tags tensorrt ./cmd/apexx-runtime -adapter tensorrt -engine-path models/apex-x.plan`
+
+### Validation Status
+- `go test ./...`: passed
+- `CGO_ENABLED=1 go test -tags tensorrt ./...`: passed
+- YAML parse check for docs nav (`mkdocs.yml`): passed
+
+### Remaining Work
+- Replace TensorRT adapter mock inference path with actual engine execution and tensor bindings.
+- Add optional native OpenTelemetry implementation module (tracer/meter exporters) wired to current telemetry hooks.
+- Add TLS/auth/rate-limit hardening around external-facing runtime service deployments.
+
+## Update Protocol (Every Significant Change)
+- Update this file with:
+  - what changed
+  - why it changed
+  - what to do next
+- If architecture changed, also update `docs/DECISIONS.md`
+- If requirements changed, update PRD/spec first, then code

@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apex-x"
+version = "0.1.0"
+description = "Apex-X v4: Universal Vision Dynamic Compute Graph baseline"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [
+  {name = "Apex-X Contributors"}
+]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent"
+]
+dependencies = [
+  "numpy>=1.24",
+  "torch>=2.2",
+  "typer>=0.12",
+  "rich>=13.7",
+  "pydantic>=2.7",
+  "PyYAML>=6.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+  "black>=24.8",
+  "mypy>=1.10",
+  "pre-commit>=3.7",
+  "types-PyYAML>=6.0.12"
+]
+docs = [
+  "mkdocs>=1.6"
+]
+
+[project.scripts]
+apex-x = "apex_x.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["apex_x*"]
+
+[tool.pytest.ini_options]
+addopts = "-q -ra"
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["apex_x", "scripts/perf_regression.py", "examples/run_cpu_baseline.py"]
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict_equality = true
+pretty = true
+show_error_codes = true

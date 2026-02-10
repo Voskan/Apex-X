@@ -1,0 +1,32 @@
+{
+  "baseline_notes": "CPU baseline with tolerant thresholds for CI variance.",
+  "metrics": {
+    "fusion_gate_p50_ms": {
+      "max_regression_abs_ms": 2.0,
+      "max_regression_ratio": 0.75,
+      "value_ms": 1.1143329902552068
+    },
+    "infer_p50_ms": {
+      "max_regression_abs_ms": 2.0,
+      "max_regression_ratio": 0.75,
+      "value_ms": 0.24995801504701376
+    },
+    "infer_p95_ms": {
+      "max_regression_abs_ms": 5.0,
+      "max_regression_ratio": 1.0,
+      "value_ms": 0.736208981834352
+    },
+    "tile_pack_p50_ms": {
+      "max_regression_abs_ms": 2.0,
+      "max_regression_ratio": 0.75,
+      "value_ms": 0.22074999287724495
+    },
+    "tile_unpack_p50_ms": {
+      "max_regression_abs_ms": 2.0,
+      "max_regression_ratio": 0.75,
+      "value_ms": 0.9070829837583005
+    }
+  },
+  "schema_version": 1,
+  "suite": "apex_x_cpu_perf_regression"
+}

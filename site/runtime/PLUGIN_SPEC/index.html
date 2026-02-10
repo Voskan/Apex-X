@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.com/apex-x/runtime/PLUGIN_SPEC/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Runtime Plugin Spec - Apex-X Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Apex-X Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../PRD/" class="nav-link">PRD</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../ENGINEERING_SPEC/" class="nav-link">Engineering Spec</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../QAT/" class="nav-link">QAT Policy</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../FP8/" class="nav-link">FP8 Policy</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../PERF/" class="nav-link">Performance Regression</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Runtime Plugin Spec</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../PLUGIN_SPECS/" class="nav-link">Runtime Plugin Specs Alias</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../CAPS/" class="nav-link">Runtime Capability Detection</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../PARITY/" class="nav-link">Runtime Parity Framework</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TENSORRT/" class="nav-link">TensorRT Runtime Notes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TENSORRT_BUILD/" class="nav-link">TensorRT Build Guide</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON/" class="nav-link">Triton Runtime Notes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_TILEPACK/" class="nav-link">Triton TilePack</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_TILEUNPACK/" class="nav-link">Triton TileUnpack</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_FUSION/" class="nav-link">Triton FusionGate</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_SSM/" class="nav-link">Triton TileSSM Scan</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../TRITON_FUSED_STAGE1/" class="nav-link">Triton Fused Stage-1</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../CONTEXT/" class="nav-link">Context</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../DECISIONS/" class="nav-link">Decisions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../TODO/" class="nav-link">TODO</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../../PERF/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../PLUGIN_SPECS/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://example.com/apex-x" class="nav-link">apex-x</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#runtime-plugin-specification-tensorrt-ort" class="nav-link">Runtime Plugin Specification (TensorRT / ORT)</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-purpose" class="nav-link">1. Purpose</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-tilepack" class="nav-link">2. TilePack</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-tilessmscan" class="nav-link">3. TileSSMScan</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-tileunpackfusion" class="nav-link">4. TileUnpackFusion</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-decode-nms" class="nav-link">5. Decode + NMS</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-precision-profiles" class="nav-link">6. Precision Profiles</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#7-validation" class="nav-link">7. Validation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="runtime-plugin-specification-tensorrt-ort">Runtime Plugin Specification (TensorRT / ORT)</h1>
+<h2 id="1-purpose">1. Purpose</h2>
+<p>Defines runtime plugin contracts for Apex-X v4 sparse tile execution.</p>
+<h2 id="2-tilepack">2. TilePack</h2>
+<p>Inputs:
+- feature tensor <code>F[B,C,Hf,Wf]</code>
+- indices <code>idx[B,K]</code></p>
+<p>Outputs:
+- packed tensor <code>P[B,K,C,t,t]</code>
+- metadata <code>meta</code></p>
+<p>Requirements:
+- deterministic index ordering support
+- FP16/FP8 tensors
+- no hidden reordering outside declared <code>order_idx</code> mode</p>
+<h2 id="3-tilessmscan">3. TileSSMScan</h2>
+<p>Inputs:
+- token sequence or packed tiles
+- optional recurrent state</p>
+<p>Outputs:
+- mixed output
+- next recurrent state</p>
+<p>Requirements:
+- streaming scan semantics
+- multi-direction execution mode
+- bounded temporary memory</p>
+<h2 id="4-tileunpackfusion">4. TileUnpackFusion</h2>
+<p>Inputs:
+- base map
+- packed outputs
+- metadata
+- optional gate map</p>
+<p>Outputs:
+- merged feature map</p>
+<p>Requirements:
+- supports residual and gating merge
+- deterministic overlap priority (<code>L2 &gt; L1 &gt; L0</code> by default)</p>
+<h2 id="5-decode-nms">5. Decode + NMS</h2>
+<p>Provide fused decode and batched NMS path for DET head.</p>
+<h2 id="6-precision-profiles">6. Precision Profiles</h2>
+<ul>
+<li>Quality: FP16-heavy</li>
+<li>Balanced: FP16/FP8</li>
+<li>Edge: INT8 (router and sensitive norms remain FP16)</li>
+</ul>
+<h2 id="7-validation">7. Validation</h2>
+<p>Each plugin release must pass:
+- shape and determinism tests
+- numerical parity checks vs reference CPU implementation
+- latency/memory regression gates</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

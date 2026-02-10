@@ -1,0 +1,31 @@
+{
+  "generated_at_utc": "2026-02-08T07:58:38.348385+00:00",
+  "summary": {
+    "det": {
+      "ap50": 1.0,
+      "ap75": 1.0,
+      "map": 1.0,
+      "num_gt": 2,
+      "num_pred": 2
+    },
+    "inst_seg": {
+      "ap50": 1.0,
+      "ap75": 1.0,
+      "map": 1.0,
+      "num_gt": 2,
+      "num_pred": 2
+    },
+    "panoptic": {
+      "pq": 1.0,
+      "source": "fallback"
+    },
+    "semantic": {
+      "miou": 1.0,
+      "per_class_iou": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 1.0
+      }
+    }
+  }
+}

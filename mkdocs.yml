@@ -1,0 +1,36 @@
+site_name: Apex-X Docs
+site_description: Apex-X v4 engineering and runtime documentation
+site_url: https://example.com/apex-x
+repo_name: apex-x
+repo_url: https://example.com/apex-x
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - PRD: PRD.md
+  - Engineering Spec: ENGINEERING_SPEC.md
+  - QAT Policy: QAT.md
+  - FP8 Policy: FP8.md
+  - Performance Regression: PERF.md
+  - GPU Performance Benchmark: PERF_GPU.md
+  - GPU CI Setup: CI_GPU.md
+  - Runtime Plugin Spec: runtime/PLUGIN_SPEC.md
+  - Runtime Plugin Specs Alias: runtime/PLUGIN_SPECS.md
+  - Runtime Capability Detection: runtime/CAPS.md
+  - Runtime Parity Framework: runtime/PARITY.md
+  - TensorRT Runtime Notes: runtime/TENSORRT.md
+  - TensorRT Build Guide: runtime/TENSORRT_BUILD.md
+  - TensorRT INT8 Builder: runtime/TENSORRT_INT8.md
+  - TensorRT Postprocessing: runtime/TENSORRT_POST.md
+  - Go Runtime Service: runtime/GO_SERVICE.md
+  - Triton Runtime Notes: runtime/TRITON.md
+  - Triton TilePack: runtime/TRITON_TILEPACK.md
+  - Triton TileUnpack: runtime/TRITON_TILEUNPACK.md
+  - Triton FusionGate: runtime/TRITON_FUSION.md
+  - Triton TileSSM Scan: runtime/TRITON_SSM.md
+  - Triton Fused Stage-1: runtime/TRITON_FUSED_STAGE1.md
+  - Context: CONTEXT.md
+  - Decisions: DECISIONS.md
+  - TODO: TODO.md

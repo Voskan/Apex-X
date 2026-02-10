@@ -1,0 +1,30 @@
+{
+  "thing_class_ids": [1],
+  "pred_map": [
+    [20, 10, 10, 20],
+    [20, 10, 10, 20],
+    [20, 20, 20, 20],
+    [20, 20, 20, 20]
+  ],
+  "gt_map": [
+    [1, 1, 2, 2],
+    [1, 1, 2, 2],
+    [2, 2, 2, 2],
+    [2, 2, 2, 2]
+  ],
+  "pred_segments": [
+    {"id": 10, "category_id": 1, "isthing": true},
+    {"id": 20, "category_id": 2, "isthing": false}
+  ],
+  "gt_segments": [
+    {"id": 1, "category_id": 1, "isthing": true},
+    {"id": 2, "category_id": 2, "isthing": false}
+  ],
+  "expected": {
+    "all_pq": 0.3571428571,
+    "all_sq": 0.3571428571,
+    "all_rq": 0.5,
+    "things_pq": 0.0,
+    "stuff_pq": 0.7142857143
+  }
+}

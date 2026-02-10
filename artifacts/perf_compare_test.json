@@ -1,0 +1,46 @@
+{
+  "checks": [
+    {
+      "allowed_max_ms": 3.950082732946612,
+      "baseline_ms": 1.1143329902552068,
+      "current_ms": 3.039749979507178,
+      "metric": "fusion_gate_p50_ms",
+      "regression_ratio": 1.7278650152958392,
+      "status": "pass"
+    },
+    {
+      "allowed_max_ms": 2.437426526332274,
+      "baseline_ms": 0.24995801504701376,
+      "current_ms": 0.2668329980224371,
+      "metric": "infer_p50_ms",
+      "regression_ratio": 0.06751126973163624,
+      "status": "pass"
+    },
+    {
+      "allowed_max_ms": 6.472417963668704,
+      "baseline_ms": 0.736208981834352,
+      "current_ms": 0.782499962951988,
+      "metric": "infer_p95_ms",
+      "regression_ratio": 0.06287750117133384,
+      "status": "pass"
+    },
+    {
+      "allowed_max_ms": 2.3863124875351787,
+      "baseline_ms": 0.22074999287724495,
+      "current_ms": 0.4575839848257601,
+      "metric": "tile_pack_p50_ms",
+      "regression_ratio": 1.072860700295534,
+      "status": "pass"
+    },
+    {
+      "allowed_max_ms": 3.587395221577026,
+      "baseline_ms": 0.9070829837583005,
+      "current_ms": 1.9026250229217112,
+      "metric": "tile_unpack_p50_ms",
+      "regression_ratio": 1.097520355897979,
+      "status": "pass"
+    }
+  ],
+  "status": "pass",
+  "suite": "apex_x_cpu_perf_regression"
+}

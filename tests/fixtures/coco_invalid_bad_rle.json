@@ -1,0 +1,30 @@
+{
+  "images": [
+    {
+      "id": 1,
+      "file_name": "img_0001.jpg",
+      "width": 5,
+      "height": 4
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "thing"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 1,
+      "bbox": [0.0, 0.0, 2.0, 2.0],
+      "area": 4.0,
+      "iscrowd": 1,
+      "segmentation": {
+        "size": [4, 5],
+        "counts": [1, 2, 3]
+      }
+    }
+  ]
+}

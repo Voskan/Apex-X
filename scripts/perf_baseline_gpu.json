@@ -1,0 +1,68 @@
+{
+  "baseline_notes": "Initial GPU perf baseline template for self-hosted CUDA runner. Regenerate on target runner with scripts/perf_regression_gpu.py --emit-baseline-template.",
+  "metrics": {
+    "benchmarks.end_to_end_infer.torch_eager.p50_ms": {
+      "max_regression_abs_ms": 1.0,
+      "max_regression_ratio": 0.5,
+      "value_ms": 3.0
+    },
+    "benchmarks.end_to_end_infer.torch_eager.p95_ms": {
+      "max_regression_abs_ms": 2.0,
+      "max_regression_ratio": 0.8,
+      "value_ms": 6.0
+    },
+    "benchmarks.end_to_end_infer.torch_triton_fastpath.p50_ms": {
+      "max_regression_abs_ms": 1.0,
+      "max_regression_ratio": 0.5,
+      "value_ms": 2.5
+    },
+    "benchmarks.end_to_end_infer.torch_triton_fastpath.p95_ms": {
+      "max_regression_abs_ms": 2.0,
+      "max_regression_ratio": 0.8,
+      "value_ms": 5.0
+    },
+    "benchmarks.tile_ops.fusion_gate.dispatch.p50_ms": {
+      "max_regression_abs_ms": 0.25,
+      "max_regression_ratio": 0.6,
+      "value_ms": 0.35
+    },
+    "benchmarks.tile_ops.fusion_gate.dispatch.p95_ms": {
+      "max_regression_abs_ms": 0.5,
+      "max_regression_ratio": 0.8,
+      "value_ms": 0.65
+    },
+    "benchmarks.tile_ops.tilepack.dispatch.p50_ms": {
+      "max_regression_abs_ms": 0.25,
+      "max_regression_ratio": 0.6,
+      "value_ms": 0.3
+    },
+    "benchmarks.tile_ops.tilepack.dispatch.p95_ms": {
+      "max_regression_abs_ms": 0.5,
+      "max_regression_ratio": 0.8,
+      "value_ms": 0.6
+    },
+    "benchmarks.tile_ops.tileunpack.dispatch.p50_ms": {
+      "max_regression_abs_ms": 0.25,
+      "max_regression_ratio": 0.6,
+      "value_ms": 0.4
+    },
+    "benchmarks.tile_ops.tileunpack.dispatch.p95_ms": {
+      "max_regression_abs_ms": 0.5,
+      "max_regression_ratio": 0.8,
+      "value_ms": 0.8
+    },
+    "benchmarks.tilessm.triton_dispatch.p50_ms": {
+      "max_regression_abs_ms": 0.25,
+      "max_regression_ratio": 0.6,
+      "value_ms": 0.5
+    },
+    "benchmarks.tilessm.triton_dispatch.p95_ms": {
+      "max_regression_abs_ms": 0.5,
+      "max_regression_ratio": 0.8,
+      "value_ms": 1.0
+    }
+  },
+  "required_status": "ok",
+  "schema_version": 1,
+  "suite": "apex_x_gpu_benchmark"
+}

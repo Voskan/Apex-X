@@ -1,0 +1,93 @@
+{
+  "det": {
+    "pred": [
+      {
+        "image_id": 1,
+        "category_id": 1,
+        "score": 0.95,
+        "bbox_xywh": [1, 1, 2, 2]
+      },
+      {
+        "image_id": 1,
+        "category_id": 2,
+        "score": 0.90,
+        "bbox_xywh": [0, 0, 2, 2]
+      }
+    ],
+    "gt": [
+      {
+        "image_id": 1,
+        "category_id": 1,
+        "bbox_xywh": [1, 1, 2, 2]
+      },
+      {
+        "image_id": 1,
+        "category_id": 2,
+        "bbox_xywh": [0, 0, 2, 2]
+      }
+    ]
+  },
+  "inst_seg": {
+    "pred": [
+      {
+        "image_id": 1,
+        "category_id": 1,
+        "score": 0.93,
+        "mask": [[0, 0, 0], [0, 1, 1], [0, 1, 1]]
+      },
+      {
+        "image_id": 1,
+        "category_id": 2,
+        "score": 0.91,
+        "mask": [[1, 1, 0], [1, 0, 0], [0, 0, 0]]
+      }
+    ],
+    "gt": [
+      {
+        "image_id": 1,
+        "category_id": 1,
+        "mask": [[0, 0, 0], [0, 1, 1], [0, 1, 1]]
+      },
+      {
+        "image_id": 1,
+        "category_id": 2,
+        "mask": [[1, 1, 0], [1, 0, 0], [0, 0, 0]]
+      }
+    ]
+  },
+  "semantic": {
+    "pred": [[0, 1, 1], [0, 1, 2], [2, 2, 2]],
+    "gt": [[0, 1, 1], [0, 1, 2], [2, 2, 2]],
+    "num_classes": 3,
+    "ignore_index": null
+  },
+  "panoptic": {
+    "pred_map": [[0, 1, 1], [0, 1, 2], [2, 2, 2]],
+    "gt_map": [[0, 1, 1], [0, 1, 2], [2, 2, 2]],
+    "pred_segments": [
+      {
+        "id": 1,
+        "category_id": 1,
+        "isthing": true
+      },
+      {
+        "id": 2,
+        "category_id": 2,
+        "isthing": false
+      }
+    ],
+    "gt_segments": [
+      {
+        "id": 1,
+        "category_id": 1,
+        "isthing": true
+      },
+      {
+        "id": 2,
+        "category_id": 2,
+        "isthing": false
+      }
+    ],
+    "thing_class_ids": [1]
+  }
+}

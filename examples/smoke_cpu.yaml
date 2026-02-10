@@ -1,0 +1,14 @@
+model:
+  profile: small
+  input_height: 128
+  input_width: 128
+  nesting_depth: 1
+
+routing:
+  budget_total: 32
+  budget_b1: 16
+  budget_b2: 8
+  budget_b3: 0
+
+runtime:
+  deterministic: true

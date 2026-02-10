@@ -1,0 +1,66 @@
+{
+  "benchmarks": {},
+  "config": {
+    "batch": 1,
+    "budget_b1": 16.0,
+    "budget_b2": 8.0,
+    "budget_total": 32.0,
+    "channels": 128,
+    "height": 128,
+    "iters": 1,
+    "kmax": 32,
+    "seed": 123,
+    "steps": 256,
+    "tile_size": 8,
+    "trt_engine_path": "",
+    "trt_input_shapes": [],
+    "trt_plugin_lib": "",
+    "warmup": 1,
+    "width": 128
+  },
+  "environment": {
+    "device": "cpu",
+    "dtype": "float32",
+    "platform": "macOS-26.3-arm64-arm-64bit-Mach-O",
+    "python": "3.13.9",
+    "runtime_caps": {
+      "any_gpu_runtime": false,
+      "cuda": {
+        "available": false,
+        "compute_capability": null,
+        "device_count": 0,
+        "device_name": null,
+        "reason": "cuda_unavailable"
+      },
+      "fp8": {
+        "available": false,
+        "dtype_available": true,
+        "reason": "fp8_requires_cuda",
+        "supported_dtypes": [
+          "float8_e4m3fn",
+          "float8_e5m2"
+        ]
+      },
+      "tensorrt": {
+        "header_path": null,
+        "headers_available": false,
+        "int8_available": false,
+        "int8_reason": "tensorrt_python_unavailable",
+        "python_available": false,
+        "python_reason": "tensorrt_python_not_installed",
+        "python_version": null
+      },
+      "triton": {
+        "available": false,
+        "reason": "triton_not_installed",
+        "version": null
+      }
+    },
+    "torch": "2.9.1"
+  },
+  "reason": "cuda_unavailable",
+  "schema_version": 1,
+  "status": "skipped",
+  "suite": "apex_x_gpu_benchmark",
+  "timestamp_utc": "2026-02-08T17:39:02.547213+00:00"
+}
