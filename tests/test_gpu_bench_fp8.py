@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import torch
+import pytest
+
 from apex_x.bench.gpu_bench import GPUBenchConfig, render_markdown_summary, run_gpu_bench
 from apex_x.runtime import runtime_reason_catalog
 
 
 def test_gpu_bench_reports_fp8_request_telemetry_on_cpu_host() -> None:
+    if torch.cuda.is_available():
+        pytest.skip("CPU-only host assertion; skip when CUDA is available")
     report = run_gpu_bench(GPUBenchConfig(dtype="fp8", warmup=0, iters=1))
 
     assert report["status"] == "skipped"

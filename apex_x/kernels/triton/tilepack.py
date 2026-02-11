@@ -178,18 +178,18 @@ if triton is not None:
     )
     @triton.jit
     def _tilepack_kernel(
-        f_ptr: Any,  # [B,C,H,W] contiguous
-        idx_ptr: Any,  # [B,K] int32
-        out_ptr: Any,  # [B,K,C,t,t] contiguous
-        batch: Any,
-        channels: Any,
-        height: Any,
-        width: Any,
-        kmax: Any,
-        tile_size: Any,
-        grid_w: Any,
-        tile_pixels: Any,
-        BLOCK_PIX: Any,
+        f_ptr,  # [B,C,H,W] contiguous
+        idx_ptr,  # [B,K] int32
+        out_ptr,  # [B,K,C,t,t] contiguous
+        batch,
+        channels,
+        height,
+        width,
+        kmax,
+        tile_size,
+        grid_w,
+        tile_pixels,
+        BLOCK_PIX: tl.constexpr,
     ) -> None:
         pid_bk = tl.program_id(0)
         pid_c = tl.program_id(1)

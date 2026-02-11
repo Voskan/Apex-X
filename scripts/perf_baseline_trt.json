@@ -1,0 +1,7 @@
+{
+  "baseline_notes": "TensorRT shape-sweep baseline template; regenerate on the target deployment GPU runner with a production engine and shape-case set.",
+  "metrics": {},
+  "required_status": "ok",
+  "schema_version": 1,
+  "suite": "apex_x_trt_engine_shape_sweep"
+}

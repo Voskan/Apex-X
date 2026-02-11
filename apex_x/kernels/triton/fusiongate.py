@@ -173,21 +173,21 @@ if triton is not None:
     )
     @triton.jit
     def _fusiongate_alpha_kernel(
-        boundary_ptr: Any,
-        uncertainty_ptr: Any,
-        alpha_ptr: Any,
-        n_elements: Any,
-        boundary_w: Any,
-        uncertainty_w: Any,
-        bias: Any,
-        BLOCK_SIZE: Any,
+        boundary_ptr,
+        uncertainty_ptr,
+        alpha_ptr,
+        n_elements,
+        boundary_w,
+        uncertainty_w,
+        bias,
+        BLOCK_SIZE: tl.constexpr,
     ) -> None:
         pid = tl.program_id(0)
         offs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
         mask = offs < n_elements
 
-        boundary = tl.load(boundary_ptr + offs, mask=mask, other=0).to(tl.float32)
-        uncertainty = tl.load(uncertainty_ptr + offs, mask=mask, other=0).to(tl.float32)
+        boundary = tl.load(boundary_ptr + offs, mask=mask, other=0)
+        uncertainty = tl.load(uncertainty_ptr + offs, mask=mask, other=0)
 
         logits = boundary_w * boundary + uncertainty_w * uncertainty + bias
         alpha = tl.sigmoid(logits)
@@ -203,27 +203,27 @@ if triton is not None:
     )
     @triton.jit
     def _fusiongate_fuse_kernel(
-        base_ptr: Any,
-        detail_ptr: Any,
-        alpha_ptr: Any,
-        out_ptr: Any,
-        n_elements: Any,
-        channels: Any,
-        hw: Any,
-        BLOCK_SIZE: Any,
+        base_ptr,
+        detail_ptr,
+        alpha_ptr,
+        out_ptr,
+        n_elements,
+        channels,
+        hw,
+        BLOCK_SIZE: tl.constexpr,
     ) -> None:
         pid = tl.program_id(0)
         offs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
         mask = offs < n_elements
 
-        base = tl.load(base_ptr + offs, mask=mask, other=0).to(tl.float32)
-        detail = tl.load(detail_ptr + offs, mask=mask, other=0).to(tl.float32)
+        base = tl.load(base_ptr + offs, mask=mask, other=0)
+        detail = tl.load(detail_ptr + offs, mask=mask, other=0)
 
         bc = offs // hw
         b = bc // channels
         spatial = offs - bc * hw
         alpha_offs = b * hw + spatial
-        alpha = tl.load(alpha_ptr + alpha_offs, mask=mask, other=0).to(tl.float32)
+        alpha = tl.load(alpha_ptr + alpha_offs, mask=mask, other=0)
 
         out = base + alpha * (detail - base)
         tl.store(out_ptr + offs, out, mask=mask)

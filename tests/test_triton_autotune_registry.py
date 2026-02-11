@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import torch
 
 from apex_x.bench.gpu_bench import GPUBenchConfig, render_markdown_summary, run_gpu_bench
 from apex_x.kernels.triton.autotune_registry import (
@@ -84,6 +85,8 @@ def test_registry_records_miss_then_hit_and_promotes_best_config() -> None:
 
 
 def test_gpu_bench_reports_autotune_summary_on_cpu_host() -> None:
+    if torch.cuda.is_available():
+        pytest.skip("CPU-only host assertion; skip when CUDA is available")
     report = run_gpu_bench(GPUBenchConfig(warmup=0, iters=1))
     assert "triton_autotune" in report
     summary = report["triton_autotune"]["summary"]

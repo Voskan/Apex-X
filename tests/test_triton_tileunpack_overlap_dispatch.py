@@ -138,7 +138,7 @@ def test_overlap_blend_mode_dispatch_parity() -> None:
     )
     assert torch.allclose(out.merged, expected)
     availability = get_triton_tileunpack_availability()
-    if availability.available:
+    if availability.available and base.device.type == "cuda":
         assert out.backend == "triton"
         assert out.fallback_reason is None
     else:

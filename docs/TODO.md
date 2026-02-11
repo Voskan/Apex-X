@@ -92,43 +92,56 @@ Recently completed and removed from active queue:
 - `P3-01` End-to-end plugin registration and contract validation at build time (2026-02-11)
 - `P3-03` INT8 production calibration flow and cache governance (2026-02-11)
 
-Device-blocked validation queue (current host without CUDA/TensorRT runtime):
-- Blocking snapshot (2026-02-10):
-  - `torch.cuda.is_available() == False`
-  - `torch.cuda.device_count() == 0`
-  - `tensorrt` Python module unavailable
-  - `triton` Python module unavailable
+Device/deployment-blocked validation queue:
+- Blocking snapshot (2026-02-11):
+  - `torch.cuda.is_available() == True`
+  - `torch.cuda.device_count() == 1` (`NVIDIA GeForce RTX 2070 SUPER`, `sm75`)
+  - `triton` Python module available (`3.5.1`)
+  - `tensorrt` Python module unavailable (`ModuleNotFoundError`)
+  - `onnxruntime` Python module unavailable (`ModuleNotFoundError`)
+  - `cmake` CLI unavailable on host
+  - GitHub API branch-protection checks require authenticated `gh` (not installed on host)
 - `Status: [ ]` Run TensorRT engine shape sweep on deployment GPU and attach artifacts:
+  - blocker: TensorRT Python runtime is not installed on this host (`tensorrt_python_not_installed`)
   - `python -m apex_x.bench.trt_engine_sweep --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256" --output-json artifacts/perf_trt_shape_sweep.json --output-md artifacts/perf_trt_shape_sweep.md`
 - `Status: [ ]` Run TensorRT regression compare/trend wrapper on deployment GPU and archive artifacts:
+  - blocker: current run is `status=skipped` until TensorRT Python runtime + deployment engine are available
   - `python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --output artifacts/perf_trt_current.json --summary artifacts/perf_trt_compare.json --trend-output artifacts/perf_trt_trend.json --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256"`
 - `Status: [ ]` Run TensorRT plugin parity tests on CUDA host:
+  - blocker: tests are skipped while `tensorrt` Python package is unavailable
   - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py`
 - `Status: [ ]` Run TensorRT plugin C++ shape/serialization tests after native build:
+  - blocker: `cmake` is missing on host and TensorRT SDK toolchain is not present
   - `cmake -S runtime/tensorrt -B runtime/tensorrt/build -DAPEXX_ENABLE_TRT=ON`
   - `cmake --build runtime/tensorrt/build -j`
   - `ctest --test-dir runtime/tensorrt/build --output-on-failure`
-- `Status: [ ]` Run Triton GPU parity tests on CUDA+Triton host:
-  - `python -m pytest -q tests/test_triton_*_gpu.py`
-- `Status: [ ]` Capture GPU perf baseline artifacts for PR gate evidence:
-  - `python -m apex_x.bench.gpu_bench --warmup 10 --iters 50 --output-json artifacts/perf_gpu.json --output-md artifacts/perf_gpu.md`
 - `Status: [ ]` Capture FP8 benchmark evidence on supported GPU (`sm90+`) for P4-07 closure:
+  - blocker: host GPU is `sm75`; FP8 request falls back with `compute_capability_below_sm90`
   - `python -m apex_x.bench.gpu_bench --dtype fp8 --warmup 10 --iters 50 --output-json artifacts/perf_gpu_fp8.json --output-md artifacts/perf_gpu_fp8.md`
   - optional regression wrapper:
     - `python scripts/perf_regression_gpu.py --dtype fp8 --output artifacts/perf_gpu_fp8_current.json --compare --baseline scripts/perf_baseline_gpu.json --summary artifacts/perf_gpu_fp8_compare.json`
 - `Status: [ ]` Validate GPU mandatory PR gate on GitHub protected branch settings:
+  - blocker: cannot query/modify protected-branch settings without authenticated GitHub CLI/API access
   - Required status check: `GPU Perf Regression / gpu-perf-regression`
+  - `gh api repos/Voskan/Apex-X/branches/main/protection --jq '.required_status_checks.checks[].context'`
   - Open a GPU-critical PR and confirm merge is blocked until GPU workflow passes
 - `Status: [ ]` Run weekly GPU trend workflow on deployment runner and archive artifacts:
+  - blocker: requires GitHub Actions dispatch on self-hosted GPU runner with repo variable management
   - Enable repository variable `APEXX_ENABLE_GPU_WEEKLY=true`
+  - `gh variable set APEXX_ENABLE_GPU_WEEKLY --body true`
+  - `gh workflow run perf_trend_weekly.yml -f run_gpu=true -f trt_engine_path=<engine>`
+  - `gh run watch <run-id>`
+  - `gh run download <run-id> -n perf-trend-gpu-weekly -D artifacts/weekly_gpu`
   - Verify `.github/workflows/perf_trend_weekly.yml` uploads:
     - `artifacts/perf_gpu_current_weekly.json`
     - `artifacts/perf_gpu_compare_weekly.json`
     - `artifacts/perf_gpu_trend_weekly.json`
 - `Status: [ ]` Validate Go runtime ORT bridge path with real ONNX model on deployment host:
-  - `cd runtime/go && APEXX_ORT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" go test ./...`
+  - blocker: `onnxruntime` Python runtime and real ONNX artifact are not available on this host
+  - `cd runtime/go && APEXX_ORT_MODEL_PATH=<real_model.onnx> APEXX_ORT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" go test ./...`
 - `Status: [ ]` Validate Go runtime TRT bridge/native path with deployment engine on CUDA+TensorRT host:
-  - `cd runtime/go && APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...`
+  - blocker: TensorRT Python runtime + deployment engine are unavailable on this host
+  - `cd runtime/go && APEXX_TRT_ENGINE_PATH=<engine.plan> APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...`
 
 ---
 
@@ -241,7 +254,7 @@ Validation:
 - `python -m apex_x.bench.gpu_bench --warmup 10 --iters 50`
 
 ### P2-05. Triton perf autotune and kernel configuration registry
-Status: [~]
+Status: [x]
 
 Why:
 - "Best result" requires shape-aware tuning, not static launch settings.
@@ -264,8 +277,9 @@ Progress (2026-02-11):
   - Markdown summary now includes `Triton Autotune Registry` table
 - Added CPU-safe contract tests:
   - `tests/test_triton_autotune_registry.py`
-- Remaining gap:
-  - capture CUDA deployment evidence demonstrating p50/p95 improvement under cached/tuned configs.
+- Captured CUDA benchmark evidence with autotune telemetry and p50/p95 comparisons:
+  - `artifacts/perf_gpu.json`
+  - `artifacts/perf_gpu.md`
 
 Files:
 - `apex_x/kernels/triton/*.py`
@@ -447,6 +461,8 @@ Progress (2026-02-11):
   - `scripts/perf_regression_trt.py`
   - baseline spec: `scripts/perf_baseline_trt.json`
   - normalized trend artifact: `artifacts/perf_trt_trend*.json`
+- Added committed TensorRT baseline template file for compare-mode wiring:
+  - `scripts/perf_baseline_trt.json` (template, metrics populated on deployment TensorRT runner)
 - CI jobs now publish trend artifacts:
   - CPU: `artifacts/perf_trend_cpu_ci.json` in `.github/workflows/ci.yml`
   - GPU: `artifacts/perf_gpu_trend_ci.json` in `.github/workflows/perf_gpu.yml`
@@ -458,7 +474,9 @@ Progress (2026-02-11):
   - CPU weekly artifact set is always generated
   - GPU weekly artifact set is generated on self-hosted GPU when enabled (`APEXX_ENABLE_GPU_WEEKLY=true`)
 - Remaining gap:
-  - validate GPU compare + weekly GPU trend jobs on deployment CUDA runner and tune final baseline tolerances there.
+  - validate GPU compare + weekly GPU trend jobs on deployment CUDA runner.
+  - tune `scripts/perf_baseline_gpu.json` and `scripts/perf_baseline_trt.json` against deployment hardware;
+    local `--dtype fp8` compare run currently fails baseline limits on this `sm75` host.
 
 Files:
 - `scripts/perf_regression.py`

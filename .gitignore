@@ -59,3 +59,4 @@ artifacts/*
 *.engine
 *.json
 *.log
+!scripts/perf_baseline_trt.json

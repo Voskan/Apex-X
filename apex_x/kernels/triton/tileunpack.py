@@ -312,16 +312,16 @@ if triton is not None:
     )
     @triton.jit
     def _tileunpack_priority_kernel(
-        keys_ptr: Any,  # [B,K] int32
-        origins_ptr: Any,  # [B,K,2] int32
-        winner_ptr: Any,  # [B,H,W] int32
-        batch: Any,
-        height: Any,
-        width: Any,
-        kmax: Any,
-        tile_size: Any,
-        tile_pixels: Any,
-        BLOCK_PIX: Any,
+        keys_ptr,  # [B,K] int32
+        origins_ptr,  # [B,K,2] int32
+        winner_ptr,  # [B,H,W] int32
+        batch,
+        height,
+        width,
+        kmax,
+        tile_size,
+        tile_pixels,
+        BLOCK_PIX: tl.constexpr,
     ) -> None:
         pid_bk = tl.program_id(0)
         pid_blk = tl.program_id(1)
@@ -357,19 +357,19 @@ if triton is not None:
     )
     @triton.jit
     def _tileunpack_scatter_kernel(
-        packed_ptr: Any,  # [B,K,C,t,t] contiguous
-        keys_ptr: Any,  # [B,K] int32
-        origins_ptr: Any,  # [B,K,2] int32
-        winner_ptr: Any,  # [B,H,W] int32
-        out_ptr: Any,  # [B,C,H,W] contiguous
-        batch: Any,
-        channels: Any,
-        height: Any,
-        width: Any,
-        kmax: Any,
-        tile_size: Any,
-        tile_pixels: Any,
-        BLOCK_PIX: Any,
+        packed_ptr,  # [B,K,C,t,t] contiguous
+        keys_ptr,  # [B,K] int32
+        origins_ptr,  # [B,K,2] int32
+        winner_ptr,  # [B,H,W] int32
+        out_ptr,  # [B,C,H,W] contiguous
+        batch,
+        channels,
+        height,
+        width,
+        kmax,
+        tile_size,
+        tile_pixels,
+        BLOCK_PIX: tl.constexpr,
     ) -> None:
         pid_bk = tl.program_id(0)
         pid_c = tl.program_id(1)
@@ -429,7 +429,7 @@ def tileunpack_triton(
         raise ValueError("tileunpack_triton supports fp16/bf16 inputs only")
     if packed_out.dtype != base_map.dtype:
         raise ValueError("base_map and packed_out must use same dtype")
-    if overlap_mode != "override":
+    if overlap_mode not in {"override", "blend"}:
         raise ValueError("overlap_mode must be 'override' or 'blend'")
     if not (0.0 <= blend_alpha <= 1.0):
         raise ValueError("blend_alpha must be within [0, 1]")

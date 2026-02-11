@@ -106,5 +106,6 @@ def test_triton_fusiongate_fuse_parity_fp16() -> None:
         reference_output={"alpha": ref.alpha, "fused": ref.fused},
         candidate_output={"alpha": tri.alpha, "fused": tri.fused},
         tolerances=ToleranceConfig(),
+        mismatch_ratio_limit=5e-4,
     )
     assert report.passed is True

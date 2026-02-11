@@ -236,17 +236,17 @@ if triton is not None:
 
     @triton.jit
     def _tilessm_scan_kernel(
-        tokens_ptr: Any,  # [B,K,C] contiguous
-        init_state_ptr: Any,  # [B,C] contiguous
-        decay_ptr: Any,  # [C]
-        input_gain_ptr: Any,  # [C]
-        output_gain_ptr: Any,  # [C]
-        state_bias_ptr: Any,  # [C]
-        out_ptr: Any,  # [B,K,C] contiguous
-        final_state_ptr: Any,  # [B,C]
-        batch: Any,
-        channels: Any,
-        CLAMP_VALUE: Any,
+        tokens_ptr,  # [B,K,C] contiguous
+        init_state_ptr,  # [B,C] contiguous
+        decay_ptr,  # [C]
+        input_gain_ptr,  # [C]
+        output_gain_ptr,  # [C]
+        state_bias_ptr,  # [C]
+        out_ptr,  # [B,K,C] contiguous
+        final_state_ptr,  # [B,C]
+        batch,
+        channels,
+        CLAMP_VALUE,
         STEPS: tl.constexpr,
     ) -> None:
         pid = tl.program_id(0)

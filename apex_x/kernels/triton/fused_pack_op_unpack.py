@@ -220,22 +220,22 @@ if triton is not None:
     )
     @triton.jit
     def _fused_pack_op_unpack_kernel(
-        in_ptr: Any,  # [B,C,H,W] contiguous
-        idx_ptr: Any,  # [B,K] int32
-        out_ptr: Any,  # [B,C,H,W] contiguous
-        value_scale: Any,
-        value_bias: Any,
-        gate_scale: Any,
-        gate_bias: Any,
-        batch: Any,
-        channels: Any,
-        height: Any,
-        width: Any,
-        kmax: Any,
-        tile_size: Any,
-        grid_w: Any,
-        tile_pixels: Any,
-        BLOCK_PIX: Any,
+        in_ptr,  # [B,C,H,W] contiguous
+        idx_ptr,  # [B,K] int32
+        out_ptr,  # [B,C,H,W] contiguous
+        value_scale,
+        value_bias,
+        gate_scale,
+        gate_bias,
+        batch,
+        channels,
+        height,
+        width,
+        kmax,
+        tile_size,
+        grid_w,
+        tile_pixels,
+        BLOCK_PIX: tl.constexpr,
     ) -> None:
         pid_bk = tl.program_id(0)
         pid_c = tl.program_id(1)

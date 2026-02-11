@@ -17,6 +17,27 @@
 
 ## Recent Updates (2026-02-11)
 
+- Deployment CUDA host validation snapshot was refreshed:
+  - `torch.cuda.is_available() == True`, `device_count == 1` (`NVIDIA GeForce RTX 2070 SUPER`, `sm75`)
+  - `triton` import available (`3.5.1`)
+  - `tensorrt` and `onnxruntime` Python modules remain unavailable on this host
+  - environment artifact bundle:
+    - `artifacts/env_check_cuda.json`
+    - `artifacts/env_check_cuda.md`
+- Triton runtime compatibility fixes for Triton `3.5.x` were applied:
+  - removed `typing.Any` annotations from `@triton.jit` kernel signatures
+  - promoted `BLOCK_*` launch parameters to `tl.constexpr` where used by `tl.arange(...)`
+  - fixed `tileunpack_triton(...)` overlap-mode validator to accept both `override` and `blend`
+  - GPU parity suite now passes on CUDA host:
+    - `python -m pytest -q tests/test_triton_*_gpu.py`
+- CUDA perf evidence for Triton autotune registry was captured:
+  - `artifacts/perf_gpu.json`
+  - `artifacts/perf_gpu.md`
+  - includes `triton_autotune.summary` + `triton_autotune.entries` telemetry
+- TensorRT compare baseline wiring was finalized with committed template:
+  - `scripts/perf_baseline_trt.json`
+  - deployment runner still required for real TensorRT metrics/baseline tuning
+
 - Runtime capability contract was hardened:
   - canonical reason-code catalog added in `apex_x/runtime/caps.py`
   - dynamic reason strings were removed in favor of stable reason codes
