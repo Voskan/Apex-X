@@ -429,7 +429,7 @@ def tileunpack_triton(
         raise ValueError("tileunpack_triton supports fp16/bf16 inputs only")
     if packed_out.dtype != base_map.dtype:
         raise ValueError("base_map and packed_out must use same dtype")
-    if overlap_mode != "override":
+    if overlap_mode not in {"override", "blend"}:
         raise ValueError("overlap_mode must be 'override' or 'blend'")
     if not (0.0 <= blend_alpha <= 1.0):
         raise ValueError("blend_alpha must be within [0, 1]")
