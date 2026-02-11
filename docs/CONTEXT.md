@@ -31,6 +31,35 @@
   - fixed `tileunpack_triton(...)` overlap-mode validator to accept both `override` and `blend`
   - GPU parity suite now passes on CUDA host:
     - `python -m pytest -q tests/test_triton_*_gpu.py`
+- Triton TileUnpack blend fast-path was optimized with a dedicated CUDA kernel:
+  - `tileunpack_triton(...)` now uses `_tileunpack_blend_update_kernel` for
+    `overlap_mode="blend"` instead of Python ordered patch loop.
+  - added GPU coverage for blend kernel telemetry:
+    - `tests/test_triton_tileunpack_overlap_gpu.py`
+  - new blend microbench artifacts:
+    - `artifacts/perf_triton_tileunpack_blend.json`
+    - `artifacts/perf_triton_tileunpack_blend.md`
+- Triton TileSSM long-sequence (`K > 4096`) closure evidence was captured on CUDA host:
+  - added GPU parity test for chunked scan dispatch path:
+    - `tests/test_triton_tilessm_parity_gpu.py::test_tilessm_triton_long_sequence_chunked_parity_fp16`
+  - long-`K` parity artifacts:
+    - `artifacts/parity_tilessm_long_k.json`
+    - `artifacts/parity_tilessm_long_k.md`
+    - `artifacts/test_tilessm_long_k.log`
+  - long-`K` perf artifacts:
+    - `artifacts/perf_triton_tilessm_long_k.json`
+    - `artifacts/perf_triton_tilessm_long_k.md`
+- Triton fused Stage-1 closure evidence was captured on CUDA host:
+  - parity suite artifacts:
+    - `artifacts/parity_triton_fused_stage1.json`
+    - `artifacts/parity_triton_fused_stage1.md`
+    - `artifacts/test_triton_fused_stage1.log`
+  - perf artifacts:
+    - `artifacts/perf_triton_fused_stage1.json`
+    - `artifacts/perf_triton_fused_stage1.md`
+  - key metric snapshot:
+    - `speedup_separate_over_fused = 2.5973x` at
+      `B=1, C=128, H=W=128, t=8, K=32, dtype=float16`
 - CUDA perf evidence for Triton autotune registry was captured:
   - `artifacts/perf_gpu.json`
   - `artifacts/perf_gpu.md`
@@ -58,11 +87,44 @@
   - parity log: `artifacts/trt_plugin_parity_pytest.log`
   - summary bundle: `artifacts/trt_plugin_validation_summary.{json,md}`
   - result: all plugin parity suites pass (`7 passed`, `0 skipped`).
+- TensorRT plugin shape/serialization closure evidence was refreshed:
+  - CMake now registers native plugin tests for `ctest` in
+    `runtime/tensorrt/CMakeLists.txt`
+  - `ctest` now executes native plugin tests in `runtime/tensorrt/build_cuda_10_15`:
+    - `trt_tilepack_plugin_native`
+    - `trt_tileunpackfusion_plugin_native`
+    - `trt_tilessm_plugin_native`
+    - `trt_nms_decode_plugin_native`
+  - plugin parity suite shape coverage expanded with multiple shape cases:
+    - `tests/test_tensorrt_tilepack_parity.py`
+    - `tests/test_tensorrt_tilessm_parity.py`
+    - `tests/test_tensorrt_tileunpackfusion_parity.py`
+  - validation artifacts:
+    - `artifacts/trt_plugins_ctest_cuda_10_15.log`
+    - `artifacts/trt_plugins_native_exec.log`
+    - `artifacts/trt_plugins_pytest.log`
+    - `artifacts/trt_plugin_shape_serialization_validation.json`
+    - `artifacts/trt_plugin_shape_serialization_validation.md`
+- TensorRT parity matrix coverage on CUDA host was expanded:
+  - TilePack parity now enforces backend matrix checks:
+    - reference vs triton
+    - reference vs tensorrt
+    - triton vs tensorrt
+  - TileSSM parity now enforces backend matrix checks:
+    - reference vs triton
+    - reference vs tensorrt
+    - triton vs tensorrt
+  - updated tests:
+    - `tests/test_tensorrt_tilepack_parity.py`
+    - `tests/test_tensorrt_tilessm_parity.py`
 - Local TensorRT shape-sweep and compare/trend artifacts were captured using a real CUDA engine:
   - engine artifact: `artifacts/models/trt_bench_dynamic.engine`
   - shape sweep: `artifacts/perf_trt_shape_sweep.json`, `artifacts/perf_trt_shape_sweep.md`
   - compare/trend: `artifacts/perf_trt_current.json`, `artifacts/perf_trt_compare.json`, `artifacts/perf_trt_trend.json`
   - local rerun refreshed on-host evidence at `2026-02-11T13:51:37Z` / `13:51:52Z` (still synthetic engine)
+  - deployment-engine blocker logs were refreshed:
+    - `artifacts/trt_shape_sweep_deployment_blocker.log`
+    - `artifacts/trt_regression_deployment_blocker.log`
 - Service bridge TensorRT input-shape handling was hardened for dynamic engines:
   - `apex_x/runtime/service_bridge.py` now resolves engine input shapes and infers dynamic dimensions from flat input payloads
   - coverage expanded in `tests/test_runtime_service_bridge.py`
@@ -78,6 +140,8 @@
     - probe: `artifacts/service_bridge_trt_real_engine.json`
     - shape-profile diagnostic: `artifacts/service_bridge_trt_real_engine.raw.log`
   - local rerun refreshed artifacts with valid and invalid-shape probes (`2026-02-11T13:56Z`)
+  - deployment-engine blocker log refreshed:
+    - `artifacts/go_trt_bridge_deployment_blocker.log`
 - GitHub CLI status on host:
   - `gh` installed (`2.86.0`)
   - auth missing (`gh auth status` fails; requires `GH_TOKEN` or `gh auth login`)
@@ -92,6 +156,8 @@
   - compare artifacts:
     - `artifacts/perf_gpu_fp8_current.json`
     - `artifacts/perf_gpu_fp8_compare.json`
+  - blocker log:
+    - `artifacts/fp8_sm90_blocker.log`
   - effective precision remains FP16 with reason `compute_capability_below_sm90` on `sm75`.
 
 - Runtime capability contract was hardened:

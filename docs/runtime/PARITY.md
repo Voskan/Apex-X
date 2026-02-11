@@ -123,6 +123,14 @@ Use this for:
 - precision sweeps
 - combined shape+precision regression packs
 
+CUDA backend matrix examples in this repository:
+- `tests/test_tensorrt_tilepack_parity.py`
+  - validates reference vs triton vs tensorrt parity on CUDA (including triton-vs-tensorrt)
+  - includes multi-shape parametrization.
+- `tests/test_tensorrt_tilessm_parity.py`
+  - validates reference vs triton vs tensorrt parity on CUDA for forward/backward scan.
+  - includes multi-shape parametrization.
+
 Minimal sweep example:
 ```python
 import torch

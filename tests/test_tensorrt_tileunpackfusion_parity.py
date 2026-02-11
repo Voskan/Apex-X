@@ -175,12 +175,25 @@ def _meta_from_indices(
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
-def test_tensorrt_tileunpackfusion_parity_with_torch_reference() -> None:
+@pytest.mark.parametrize(
+    ("channels", "height", "width", "tile_size", "kmax"),
+    (
+        (4, 16, 16, 4, 4),
+        (8, 32, 32, 8, 4),
+    ),
+)
+def test_tensorrt_tileunpackfusion_parity_with_torch_reference(
+    channels: int,
+    height: int,
+    width: int,
+    tile_size: int,
+    kmax: int,
+) -> None:
     trt = _maybe_import_tensorrt()
     _load_plugin_library()
     creator = _get_creator(trt, name="TileUnpackFusion")
 
-    batch, channels, height, width, tile_size, kmax = 1, 4, 16, 16, 4, 4
+    batch = 1
     torch.manual_seed(17)
 
     base = torch.randn((batch, channels, height, width), device="cuda", dtype=torch.float16)
@@ -190,7 +203,8 @@ def test_tensorrt_tileunpackfusion_parity_with_torch_reference() -> None:
         dtype=torch.float16,
     )
     # Crafted overlaps to exercise level-based priority semantics.
-    idx = torch.tensor([[0, 0, 0, 15]], device="cuda", dtype=torch.int32)
+    last_tile = (height // tile_size) * (width // tile_size) - 1
+    idx = torch.tensor([[0, 0, 0, last_tile]], device="cuda", dtype=torch.int32)
     levels = torch.tensor([[0, 1, 2, 2]], device="cuda", dtype=torch.int32)
 
     gate = FusionGate().to(device="cuda")

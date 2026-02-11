@@ -91,6 +91,10 @@ Recently completed and removed from active queue:
 - `P3-04` FP16/INT8 mixed precision policy enforcement for sensitive layers (2026-02-11)
 - `P3-01` End-to-end plugin registration and contract validation at build time (2026-02-11)
 - `P3-03` INT8 production calibration flow and cache governance (2026-02-11)
+- `P2-01` Close feature gaps in Triton tile unpack path (2026-02-11)
+- `P2-02` Stabilize TileSSM Triton limits and long-sequence behavior (2026-02-11)
+- `P2-03` Promote fused stage-1 path to default accelerated route (2026-02-11)
+- `P3-02` Shape inference, serialization, and dynamic-shape coverage for TRT plugins (2026-02-11)
 - Device validation: Triton GPU parity suite on CUDA host (2026-02-11)
 - Device validation: GPU perf baseline artifacts on CUDA host (2026-02-11)
 - Device validation: Go ORT bridge with real ONNX model on host (2026-02-11)
@@ -117,6 +121,7 @@ Device/deployment-blocked validation queue:
     - `artifacts/perf_trt_shape_sweep.json`
     - `artifacts/perf_trt_shape_sweep.md`
   - blocker: final deployment rerun is still required with production deployment engine.
+  - latest blocker log: `artifacts/trt_shape_sweep_deployment_blocker.log`
   - `python -m apex_x.bench.trt_engine_sweep --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256" --output-json artifacts/perf_trt_shape_sweep.json --output-md artifacts/perf_trt_shape_sweep.md`
 - `Status: [ ]` Run TensorRT regression compare/trend wrapper on deployment GPU and archive artifacts:
   - local run completed and compare currently passes on synthetic engine (refreshed 2026-02-11):
@@ -124,6 +129,7 @@ Device/deployment-blocked validation queue:
     - `artifacts/perf_trt_compare.json`
     - `artifacts/perf_trt_trend.json`
   - blocker: baseline tuning with final deployment engine is still required.
+  - latest blocker log: `artifacts/trt_regression_deployment_blocker.log`
   - `python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --output artifacts/perf_trt_current.json --summary artifacts/perf_trt_compare.json --trend-output artifacts/perf_trt_trend.json --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256"`
 - `Status: [ ]` Capture FP8 benchmark evidence on supported GPU (`sm90+`) for P4-07 closure:
   - local FP8 request evidence captured on this host:
@@ -131,6 +137,7 @@ Device/deployment-blocked validation queue:
     - `artifacts/perf_gpu_fp8.md`
     - `artifacts/perf_gpu_fp8_current.json`
     - `artifacts/perf_gpu_fp8_compare.json`
+  - latest blocker log: `artifacts/fp8_sm90_blocker.log`
   - blocker: host GPU is `sm75`; FP8 request falls back with `compute_capability_below_sm90`
   - `python -m apex_x.bench.gpu_bench --dtype fp8 --warmup 10 --iters 50 --output-json artifacts/perf_gpu_fp8.json --output-md artifacts/perf_gpu_fp8.md`
   - optional regression wrapper:
@@ -163,6 +170,7 @@ Device/deployment-blocked validation queue:
     - bridge shape-mismatch diagnostic: `artifacts/service_bridge_trt_real_engine.raw.log`
   - local rerun refreshed these artifacts on 2026-02-11.
   - blocker: final deployment rerun is still required with production deployment engine.
+  - latest blocker log: `artifacts/go_trt_bridge_deployment_blocker.log`
   - `cd runtime/go && APEXX_TRT_ENGINE_PATH=<engine.plan> APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...`
 
 ---
@@ -172,108 +180,6 @@ Device/deployment-blocked validation queue:
 ---
 
 ## Phase P2 - Triton Completion (Correctness + Speed)
-
-### P2-01. Close feature gaps in Triton tile unpack path
-Status: [~]
-
-Why:
-- Fallback-only branches break expectations for full GPU mode.
-
-Implementation:
-- Implement missing behavior branches in Triton path where currently forced to reference fallback
-  (for example blend-related branch if configured).
-- Keep deterministic overlap semantics identical to reference.
-
-Progress (2026-02-11):
-- Removed forced reference-only dispatch branch for `overlap_mode=\"blend\"`.
-- Added ordered blend composition path in `tileunpack_triton(...)` with parity-equivalent
-  overlap semantics.
-- Extended overlap tests:
-  - CPU dispatch contract no longer expects hardcoded blend fallback reason.
-  - GPU overlap suite now includes blend parity case.
-- Remaining gap:
-  - optimize blend path with dedicated Triton kernels and attach CUDA perf evidence.
-
-Files:
-- `apex_x/kernels/triton/tileunpack.py`
-- `tests/test_triton_tileunpack*.py`
-- `docs/runtime/TRITON_TILEUNPACK.md`
-
-Acceptance:
-- Triton path covers all configured operation modes in spec.
-- No silent fallback for supported modes.
-
-Validation:
-- `python -m pytest -q tests/test_triton_tileunpack*`
-
-### P2-02. Stabilize TileSSM Triton limits and long-sequence behavior
-Status: [~]
-
-Why:
-- Sequence-length limitations and edge cases can invalidate large-scene workloads.
-
-Implementation:
-- Review and improve compile/runtime limits.
-- Add chunked/streamed path when sequence length exceeds kernel-friendly bound.
-
-Progress (2026-02-11):
-- Added long-sequence chunked forward execution in Triton TileSSM path:
-  - `K > 4096` now executes as streamed chunk launches with state carry-over.
-  - preserves forward/backward/bidirectional composition semantics while avoiding
-    oversized single-launch kernels.
-- Added CPU-safe unit tests for chunking contract:
-  - `tests/test_triton_tilessm_parity_dispatch.py`
-  - validates multi-chunk and single-launch paths for `_scan_triton_forward(...)`.
-- Remaining gap:
-  - run CUDA Triton parity/perf tests for large-`K` scenarios and capture deployment artifacts.
-
-Files:
-- `apex_x/kernels/triton/tilessm_scan.py`
-- `tests/test_triton_tilessm_*`
-- `docs/runtime/TRITON_SSM.md`
-
-Acceptance:
-- Large `K` scenarios pass correctness tests with documented fallback/streaming policy.
-
-Validation:
-- `python -m pytest -q tests/test_triton_tilessm_*`
-
-### P2-03. Promote fused stage-1 path to default accelerated route
-Status: [~]
-
-Why:
-- Stage-1 fused kernel exists and should be first-class for real speedups.
-
-Implementation:
-- Integrate `fused_pack_op_unpack` path into runtime selector where compatible.
-- Ensure deterministic output parity against decomposed path.
-
-Progress (2026-02-11):
-- Added compatibility-gated Stage-1 fused selector in `FFHeavyPath` inference path:
-  - uses `fused_pack_op_unpack_dispatch(...)` when strict compatibility predicates pass
-  - falls back deterministically to decomposed `pack -> FiLM -> unpack` otherwise.
-- Integrated runtime plugin wiring:
-  - `FFModule` now forwards runtime plugin enablement into `FFHeavyPath` fused-stage selector.
-- Added unit coverage:
-  - `tests/test_ff_heavy_path_fused_stage1.py`
-  - validates selector activation, decomposed parity, and fallback on non-constant FiLM params.
-- Remaining gap:
-  - capture CUDA benchmark evidence showing measurable speedup against decomposed route
-    under compatible selector scenarios.
-
-Files:
-- `apex_x/kernels/triton/fused_pack_op_unpack.py`
-- `apex_x/model/ff_heavy_path.py`
-- `tests/test_triton_fused_stage1_*`
-- `docs/runtime/TRITON_FUSED_STAGE1.md`
-
-Acceptance:
-- Measurable speedup over decomposed path on target GPUs.
-- Parity checks pass under profile tolerances.
-
-Validation:
-- `python -m pytest -q tests/test_triton_fused_stage1_*`
-- `python -m apex_x.bench.gpu_bench --warmup 10 --iters 50`
 
 ### P2-05. Triton perf autotune and kernel configuration registry
 Status: [x]
@@ -319,29 +225,6 @@ Validation:
 
 ## Phase P3 - TensorRT Production Completion
 
-### P3-02. Shape inference, serialization, and dynamic-shape coverage for TRT plugins
-Status: [~]
-
-Why:
-- Dynamic shape failures are a common production outage source.
-
-Implementation:
-- Complete shape function coverage for all required plugins.
-- Add serialization/deserialization roundtrip tests.
-
-Files:
-- `runtime/tensorrt/src/*.cpp`
-- `runtime/tensorrt/plugins/*`
-- `tests/test_tensorrt_plugins*.py`
-- `docs/runtime/PLUGIN_SPEC.md`
-
-Acceptance:
-- Plugins pass shape + serialization tests across defined profile ranges.
-
-Validation:
-- `ctest --test-dir runtime/tensorrt/build`
-- `python -m pytest -q tests/test_tensorrt_plugins*`
-
 ### P3-05. TensorRT end-to-end parity harness against reference and Triton
 Status: [~]
 
@@ -364,13 +247,32 @@ Progress (2026-02-11):
 - Added CPU-safe sweep tests for TRT parity harness contract:
   - `tests/test_trt_parity_harness.py`
   - validates pair matrix, shape sweep, and precision sweep execution.
+- Added real CUDA matrix parity coverage in TensorRT plugin parity suites:
+  - TilePack and TileSSM tests now assert:
+    - reference vs triton
+    - reference vs tensorrt
+    - triton vs tensorrt
+  - shape-sweep coverage was expanded via multi-shape parametrization for:
+    - `tests/test_tensorrt_tilepack_parity.py`
+    - `tests/test_tensorrt_tilessm_parity.py`
+    - `tests/test_tensorrt_tileunpackfusion_parity.py`
+  - deployment-host validation artifacts:
+    - `artifacts/trt_plugins_pytest.log`
+    - `artifacts/trt_plugins_ctest_cuda_10_15.log`
+    - `artifacts/trt_plugins_native_exec.log`
+    - `artifacts/trt_plugin_shape_serialization_validation.json`
+    - `artifacts/trt_plugin_shape_serialization_validation.md`
 - Remaining gap:
-  - execute real CUDA-backed parity suites for Triton and TensorRT engines and attach artifacts
-    from deployment environment.
+  - run end-to-end backend parity sweep (`reference/triton/tensorrt`) against production
+    deployment TensorRT engine profiles and archive shape+precision sweep artifacts.
 
 Files:
 - `apex_x/runtime/parity.py`
 - `tests/test_trt_parity*.py`
+- `tests/test_tensorrt_tilepack_parity.py`
+- `tests/test_tensorrt_tilessm_parity.py`
+- `tests/test_tensorrt_tileunpackfusion_parity.py`
+- `runtime/tensorrt/CMakeLists.txt`
 - `docs/runtime/PARITY.md`
 
 Acceptance:
@@ -378,6 +280,8 @@ Acceptance:
 
 Validation:
 - `python -m pytest -q tests/test_trt_parity*`
+- `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_plugin_contracts.py`
+- `ctest --test-dir runtime/tensorrt/build_cuda_10_15 --output-on-failure`
 
 ---
 

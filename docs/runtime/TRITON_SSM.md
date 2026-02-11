@@ -77,6 +77,7 @@ Coverage:
 - deterministic CPU fallback behavior
 - autograd-safe fallback in inference-only mode
 - long-sequence chunking contract for Triton forward helper
+- CUDA parity for long-sequence chunked path (`K > 4096`)
 - integration check: eval uses dispatch; train uses torch path
 
 ## Benchmark
@@ -101,3 +102,23 @@ Reported:
   - bidirectional (avg, gated)
 - multi-direction overhead ratios vs forward
 - forward throughput and speedup
+
+Long-sequence evidence (`K > 4096`):
+```bash
+python -m pytest -q tests/test_triton_tilessm_parity_gpu.py -k long_sequence --maxfail=1
+python -m apex_x.bench.triton_tilessm_bench \
+  --batch 1 \
+  --steps 8192 \
+  --channels 64 \
+  --warmup 3 \
+  --iters 12 \
+  --dtype fp16 \
+  --output artifacts/perf_triton_tilessm_long_k.json
+```
+
+Artifacts:
+- `artifacts/parity_tilessm_long_k.json`
+- `artifacts/parity_tilessm_long_k.md`
+- `artifacts/test_tilessm_long_k.log`
+- `artifacts/perf_triton_tilessm_long_k.json`
+- `artifacts/perf_triton_tilessm_long_k.md`

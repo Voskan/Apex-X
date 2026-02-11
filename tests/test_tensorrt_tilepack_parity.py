@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from apex_x.kernels.triton.tilepack import tilepack_reference
+from apex_x.kernels.triton.tilepack import tilepack_dispatch, tilepack_reference
 
 _PLUGIN_LIB_HANDLE: ctypes.CDLL | None = None
 
@@ -135,15 +135,35 @@ def _execute_engine(engine, *, x: torch.Tensor, idx: torch.Tensor, out: torch.Te
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
-def test_tensorrt_tilepack_parity_with_pytorch_reference() -> None:
+@pytest.mark.parametrize(
+    ("channels", "height", "width", "kmax", "tile_size"),
+    (
+        (8, 16, 16, 6, 4),
+        (16, 32, 32, 8, 8),
+    ),
+)
+def test_tensorrt_tilepack_parity_with_pytorch_reference(
+    channels: int,
+    height: int,
+    width: int,
+    kmax: int,
+    tile_size: int,
+) -> None:
     trt = _maybe_import_tensorrt()
     _load_plugin_library()
     creator = _get_tilepack_creator(trt)
 
-    batch, channels, height, width, kmax, tile_size = 1, 8, 16, 16, 6, 4
+    batch = 1
     torch.manual_seed(123)
     x = torch.randn((batch, channels, height, width), device="cuda", dtype=torch.float16)
-    idx = torch.tensor([[0, 3, 5, 7, 10, 15]], device="cuda", dtype=torch.int32)
+    max_tile_index = (height // tile_size) * (width // tile_size) - 1
+    idx = torch.linspace(
+        0,
+        max_tile_index,
+        steps=kmax,
+        device="cuda",
+        dtype=torch.float32,
+    ).round().to(dtype=torch.int32).view(1, kmax)
 
     engine = _build_engine(
         trt,
@@ -166,4 +186,24 @@ def test_tensorrt_tilepack_parity_with_pytorch_reference() -> None:
     _execute_engine(engine, x=x, idx=idx, out=out)
 
     ref, _ = tilepack_reference(x, idx, tile_size)
+    triton_dispatch = tilepack_dispatch(
+        feature_map=x,
+        indices=idx,
+        tile_size=tile_size,
+        prefer_triton=True,
+        allow_fallback=False,
+    )
+    assert triton_dispatch.backend == "triton"
     assert torch.allclose(out.to(dtype=ref.dtype), ref, atol=1e-3, rtol=1e-3)
+    assert torch.allclose(
+        triton_dispatch.packed.to(dtype=ref.dtype),
+        ref,
+        atol=1e-3,
+        rtol=1e-3,
+    )
+    assert torch.allclose(
+        out.to(dtype=triton_dispatch.packed.dtype),
+        triton_dispatch.packed,
+        atol=1e-3,
+        rtol=1e-3,
+    )

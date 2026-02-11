@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from apex_x.kernels.triton.tilessm_scan import tilessm_scan_reference
+from apex_x.kernels.triton.tilessm_scan import tilessm_scan_dispatch, tilessm_scan_reference
 
 _PLUGIN_LIB_HANDLE: ctypes.CDLL | None = None
 
@@ -170,15 +170,24 @@ def _torch_dtype_for_output(engine, trt, name: str) -> torch.dtype:
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 @pytest.mark.parametrize(("direction", "dir_name"), [(0, "forward"), (1, "backward")])
+@pytest.mark.parametrize(
+    ("batch", "steps", "channels"),
+    (
+        (2, 16, 12),
+        (1, 32, 8),
+    ),
+)
 def test_tensorrt_tilessm_parity_with_torch_reference(
     direction: int,
     dir_name: str,
+    batch: int,
+    steps: int,
+    channels: int,
 ) -> None:
     trt = _maybe_import_tensorrt()
     _load_plugin_library()
     creator = _get_creator(trt, name="TileSSMScan")
 
-    batch, steps, channels = 2, 16, 12
     torch.manual_seed(42)
     tokens = torch.randn((batch, steps, channels), device="cuda", dtype=torch.float16)
     decay = torch.full((channels,), 0.85, device="cuda", dtype=torch.float16)
@@ -233,6 +242,33 @@ def test_tensorrt_tilessm_parity_with_torch_reference(
     assert torch.allclose(
         final_state_out.to(dtype=ref_final.dtype),
         ref_final,
+        atol=3e-2,
+        rtol=3e-2,
+    )
+
+    triton_dispatch = tilessm_scan_dispatch(
+        tokens=tokens,
+        decay=decay,
+        input_gain=input_gain,
+        output_gain=output_gain,
+        state_bias=state_bias,
+        init_state=init_state,
+        direction=dir_name,  # type: ignore[arg-type]
+        prefer_triton=True,
+        allow_fallback=False,
+    )
+    assert triton_dispatch.backend == "triton"
+    assert torch.allclose(triton_dispatch.y.to(dtype=ref_y.dtype), ref_y, atol=3e-2, rtol=3e-2)
+    assert torch.allclose(
+        triton_dispatch.final_state.to(dtype=ref_final.dtype),
+        ref_final,
+        atol=3e-2,
+        rtol=3e-2,
+    )
+    assert torch.allclose(y_out.to(dtype=triton_dispatch.y.dtype), triton_dispatch.y, atol=3e-2, rtol=3e-2)
+    assert torch.allclose(
+        final_state_out.to(dtype=triton_dispatch.final_state.dtype),
+        triton_dispatch.final_state,
         atol=3e-2,
         rtol=3e-2,
     )

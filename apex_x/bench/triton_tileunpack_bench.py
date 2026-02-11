@@ -34,6 +34,8 @@ class BenchConfig:
     dtype: str = "fp16"
     overlap_shift: int = 0
     use_levels: bool = True
+    overlap_mode: str = "override"
+    blend_alpha: float = 0.5
 
 
 def _dtype_from_name(name: str) -> torch.dtype:
@@ -124,6 +126,12 @@ def _meta_from_indices(
 
 
 def run_triton_tileunpack_bench(config: BenchConfig) -> dict[str, Any]:
+    overlap_mode = str(config.overlap_mode).strip().lower()
+    if overlap_mode not in {"override", "blend"}:
+        raise ValueError("overlap_mode must be override or blend")
+    if not (0.0 <= float(config.blend_alpha) <= 1.0):
+        raise ValueError("blend_alpha must be within [0, 1]")
+
     dtype = _dtype_from_name(config.dtype)
     availability = get_triton_tileunpack_availability()
     use_cuda = availability.available
@@ -163,7 +171,14 @@ def run_triton_tileunpack_bench(config: BenchConfig) -> dict[str, Any]:
         )
 
     ref_timings = _measure_ms(
-        lambda: tileunpack_reference(base, packed, meta=meta, levels=levels),
+        lambda: tileunpack_reference(
+            base,
+            packed,
+            meta=meta,
+            levels=levels,
+            overlap_mode=overlap_mode,  # type: ignore[arg-type]
+            blend_alpha=float(config.blend_alpha),
+        ),
         warmup=config.warmup,
         iters=config.iters,
         sync_cuda=device.type == "cuda",
@@ -174,6 +189,8 @@ def run_triton_tileunpack_bench(config: BenchConfig) -> dict[str, Any]:
         packed_out=packed,
         meta=meta,
         levels=levels,
+        overlap_mode=overlap_mode,  # type: ignore[arg-type]
+        blend_alpha=float(config.blend_alpha),
         prefer_triton=True,
         allow_fallback=True,
     )
@@ -186,6 +203,8 @@ def run_triton_tileunpack_bench(config: BenchConfig) -> dict[str, Any]:
             packed_out=packed,
             meta=meta,
             levels=levels,
+            overlap_mode=overlap_mode,  # type: ignore[arg-type]
+            blend_alpha=float(config.blend_alpha),
             prefer_triton=True,
             allow_fallback=True,
         ),
@@ -223,6 +242,8 @@ def run_triton_tileunpack_bench(config: BenchConfig) -> dict[str, Any]:
             "device": str(device),
             "overlap_shift": config.overlap_shift,
             "use_levels": config.use_levels,
+            "overlap_mode": overlap_mode,
+            "blend_alpha": float(config.blend_alpha),
         },
         "metrics_ms": {
             "reference_p50": ref_p50,
@@ -247,6 +268,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--dtype", type=str, default="fp16", choices=["fp16", "bf16", "fp32"])
     parser.add_argument("--overlap-shift", type=int, default=0)
+    parser.add_argument("--overlap-mode", type=str, default="override", choices=["override", "blend"])
+    parser.add_argument("--blend-alpha", type=float, default=0.5)
     parser.add_argument("--no-levels", action="store_true")
     parser.add_argument("--output", type=str, default="")
     return parser
@@ -269,6 +292,8 @@ def main() -> int:
             dtype=args.dtype,
             overlap_shift=args.overlap_shift,
             use_levels=not args.no_levels,
+            overlap_mode=args.overlap_mode,
+            blend_alpha=args.blend_alpha,
         )
     )
     text = json.dumps(report, indent=2, sort_keys=True)

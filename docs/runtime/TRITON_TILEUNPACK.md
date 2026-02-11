@@ -8,6 +8,7 @@ Current scope:
 - L0 tile scatter with overlap handling
 - deterministic priority overwrite semantics
 - optional blend mode with ordered composition semantics
+- dedicated Triton blend-update kernel path (`_tileunpack_blend_update_kernel`)
 
 ## Tensor Contract
 - Input base map: `F_base [B, C, H, W]`, contiguous `NCHW`
@@ -40,6 +41,8 @@ Behavior:
 - defaults to `overlap_mode="override"` (priority overwrite)
 - `overlap_mode="blend"` is supported in dispatch without forced reference-only branch
   when Triton path is selected
+- `overlap_mode="blend"` in Triton path executes sorted-rank kernel updates on CUDA
+  (no Python patch loop in the fast path)
 
 ## API
 - `get_triton_tileunpack_availability()`
@@ -73,6 +76,8 @@ python -m apex_x.bench.triton_tileunpack_bench \
   --tile-size 8 \
   --kmax 32 \
   --overlap-shift 4 \
+  --overlap-mode blend \
+  --blend-alpha 0.25 \
   --warmup 10 \
   --iters 50 \
   --dtype fp16

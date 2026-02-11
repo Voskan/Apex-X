@@ -3,6 +3,10 @@ from __future__ import annotations
 import pytest
 import torch
 
+from apex_x.kernels.triton.autotune_registry import (
+    clear_triton_autotune_registry,
+    snapshot_triton_autotune_registry,
+)
 from apex_x.kernels.triton.tileunpack import get_triton_tileunpack_availability, tileunpack_dispatch
 from apex_x.runtime import ToleranceConfig, evaluate_parity_outputs
 from apex_x.utils.repro import seed_all
@@ -176,3 +180,47 @@ def test_triton_tileunpack_overlap_blend_parity_fp16() -> None:
         tolerances=ToleranceConfig(),
     )
     assert report.passed is True
+
+
+def test_triton_tileunpack_overlap_blend_records_autotune_entry() -> None:
+    availability = get_triton_tileunpack_availability()
+    if not availability.available:
+        pytest.skip(f"Triton tileunpack unavailable: {availability.reason}")
+
+    seed_all(239, deterministic=True)
+    shape = (1, 8, 32, 32)
+    batch, channels, height, width = shape
+    tile_size = 8
+    kmax = 8
+    blend_alpha = 0.3
+
+    base = torch.randn(shape, dtype=torch.float16, device="cuda").contiguous()
+    packed = torch.randn(
+        (batch, kmax, channels, tile_size, tile_size),
+        dtype=torch.float16,
+        device="cuda",
+    )
+    meta, levels = _build_overlap_meta(
+        batch=batch,
+        kmax=kmax,
+        height=height,
+        width=width,
+        tile_size=tile_size,
+        device=base.device,
+    )
+    clear_triton_autotune_registry()
+    tri = tileunpack_dispatch(
+        base_map=base,
+        packed_out=packed,
+        meta=meta,
+        levels=levels,
+        overlap_mode="blend",
+        blend_alpha=blend_alpha,
+        prefer_triton=True,
+        allow_fallback=False,
+    )
+    assert tri.backend == "triton"
+    snapshot = snapshot_triton_autotune_registry()
+    blend_entries = [e for e in snapshot["entries"] if e["op_name"] == "tileunpack_blend_update"]
+    assert blend_entries
+    assert int(blend_entries[0]["launches"]) >= 1

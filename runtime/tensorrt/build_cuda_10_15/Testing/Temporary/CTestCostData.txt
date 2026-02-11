@@ -1,0 +1,5 @@
+trt_tilepack_plugin_native 2 0.154989
+trt_tileunpackfusion_plugin_native 2 0.128115
+trt_tilessm_plugin_native 2 0.129273
+trt_nms_decode_plugin_native 2 0.147707
+---

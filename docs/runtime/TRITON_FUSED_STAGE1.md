@@ -94,6 +94,33 @@ Reported metrics:
 - `fused_dispatch_p50/p95`: fused Stage-1 dispatch path
 - `speedup_separate_over_fused`: primary speedup metric for Stage-1
 
+CUDA evidence snapshot (2026-02-11):
+- benchmark command:
+```bash
+python -m apex_x.bench.triton_fused_stage1_bench \
+  --batch 1 \
+  --channels 128 \
+  --height 128 \
+  --width 128 \
+  --tile-size 8 \
+  --kmax 32 \
+  --warmup 5 \
+  --iters 20 \
+  --dtype fp16 \
+  --output artifacts/perf_triton_fused_stage1.json
+```
+- key results:
+  - `fused_dispatch_p50`: `0.4001 ms`
+  - `separate_dispatch_p50`: `1.0392 ms`
+  - `speedup_separate_over_fused`: `2.5973x`
+
+Artifacts:
+- `artifacts/perf_triton_fused_stage1.json`
+- `artifacts/perf_triton_fused_stage1.md`
+- `artifacts/parity_triton_fused_stage1.json`
+- `artifacts/parity_triton_fused_stage1.md`
+- `artifacts/test_triton_fused_stage1.log`
+
 ## Limitations (Stage-1)
 - transform is intentionally lightweight and local only
 - no Tile-SSM fusion yet
