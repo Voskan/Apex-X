@@ -60,3 +60,6 @@ artifacts/*
 *.json
 *.log
 !scripts/perf_baseline_trt.json
+
+# Local build outputs
+runtime/tensorrt/build_cuda_10_15/
