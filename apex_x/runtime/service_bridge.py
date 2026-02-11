@@ -9,7 +9,8 @@ from typing import Any, cast
 import numpy as np
 
 try:
-    import onnxruntime as ort  # type: ignoreexcept Exception:  # pragma: no cover - optional dependency
+    import onnxruntime as ort  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
     ort = None
 
 TensorRTEngineExecutor: Any
