@@ -7,9 +7,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+import torch
+
 from apex_x.config import ApexXConfig
 from apex_x.model import TeacherModel
-import torch
 
 from .interfaces import Exporter
 
