@@ -74,6 +74,16 @@
     - probe: `artifacts/service_bridge_ort_real_model.json`
   - TRT bridge with real TensorRT engine:
     - logs: `artifacts/go_trt_bridge_test_real_engine.log`
+    - probe: `artifacts/service_bridge_trt_real_engine.json`
+    - shape-profile diagnostic: `artifacts/service_bridge_trt_real_engine.raw.log`
+- FP8 request-path evidence was refreshed on deployment host:
+  - benchmark artifacts:
+    - `artifacts/perf_gpu_fp8.json`
+    - `artifacts/perf_gpu_fp8.md`
+  - compare artifacts:
+    - `artifacts/perf_gpu_fp8_current.json`
+    - `artifacts/perf_gpu_fp8_compare.json`
+  - effective precision remains FP16 with reason `compute_capability_below_sm90` on `sm75`.
 
 - Runtime capability contract was hardened:
   - canonical reason-code catalog added in `apex_x/runtime/caps.py`

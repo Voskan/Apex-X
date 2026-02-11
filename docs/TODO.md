@@ -131,6 +131,11 @@ Device/deployment-blocked validation queue:
   - blocker: TensorRT plugin kernel parity mismatch (device correctness issue, not toolchain availability).
   - `APEXX_TRT_PLUGIN_LIB=runtime/tensorrt/build_cuda_10_15/libapexx_trt_plugins.so LD_LIBRARY_PATH=runtime/tensorrt/build_cuda_10_15:artifacts/toolchains/tensorrt_10_15_1_29/lib:/home/voskan/anaconda3/lib/python3.13/site-packages/tensorrt_libs:/home/voskan/anaconda3/targets/x86_64-linux/lib:$LD_LIBRARY_PATH python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py`
 - `Status: [ ]` Capture FP8 benchmark evidence on supported GPU (`sm90+`) for P4-07 closure:
+  - local FP8 request evidence captured on this host:
+    - `artifacts/perf_gpu_fp8.json`
+    - `artifacts/perf_gpu_fp8.md`
+    - `artifacts/perf_gpu_fp8_current.json`
+    - `artifacts/perf_gpu_fp8_compare.json`
   - blocker: host GPU is `sm75`; FP8 request falls back with `compute_capability_below_sm90`
   - `python -m apex_x.bench.gpu_bench --dtype fp8 --warmup 10 --iters 50 --output-json artifacts/perf_gpu_fp8.json --output-md artifacts/perf_gpu_fp8.md`
   - optional regression wrapper:
@@ -156,6 +161,7 @@ Device/deployment-blocked validation queue:
     - engine: `artifacts/models/trt_bench_dynamic.engine`
     - Go tests: `artifacts/go_trt_bridge_test_real_engine.log`
     - bridge probe: `artifacts/service_bridge_trt_real_engine.json`
+    - bridge shape-mismatch diagnostic: `artifacts/service_bridge_trt_real_engine.raw.log`
   - blocker: final deployment rerun is still required with production deployment engine.
   - `cd runtime/go && APEXX_TRT_ENGINE_PATH=<engine.plan> APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...`
 
