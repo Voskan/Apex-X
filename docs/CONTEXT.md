@@ -62,6 +62,7 @@
   - engine artifact: `artifacts/models/trt_bench_dynamic.engine`
   - shape sweep: `artifacts/perf_trt_shape_sweep.json`, `artifacts/perf_trt_shape_sweep.md`
   - compare/trend: `artifacts/perf_trt_current.json`, `artifacts/perf_trt_compare.json`, `artifacts/perf_trt_trend.json`
+  - local rerun refreshed on-host evidence at `2026-02-11T13:51:37Z` / `13:51:52Z` (still synthetic engine)
 - Service bridge TensorRT input-shape handling was hardened for dynamic engines:
   - `apex_x/runtime/service_bridge.py` now resolves engine input shapes and infers dynamic dimensions from flat input payloads
   - coverage expanded in `tests/test_runtime_service_bridge.py`
@@ -76,6 +77,14 @@
     - logs: `artifacts/go_trt_bridge_test_real_engine.log`
     - probe: `artifacts/service_bridge_trt_real_engine.json`
     - shape-profile diagnostic: `artifacts/service_bridge_trt_real_engine.raw.log`
+  - local rerun refreshed artifacts with valid and invalid-shape probes (`2026-02-11T13:56Z`)
+- GitHub CLI status on host:
+  - `gh` installed (`2.86.0`)
+  - auth missing (`gh auth status` fails; requires `GH_TOKEN` or `gh auth login`)
+  - branch-protection API blocker evidence:
+    - `artifacts/github_branch_protection_blocker.log`
+  - weekly GPU workflow dispatch blocker evidence:
+    - `artifacts/github_weekly_gpu_blocker.log`
 - FP8 request-path evidence was refreshed on deployment host:
   - benchmark artifacts:
     - `artifacts/perf_gpu_fp8.json`

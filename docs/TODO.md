@@ -109,16 +109,17 @@ Device/deployment-blocked validation queue:
   - TensorRT plugin shared library available:
     - `runtime/tensorrt/build_cuda_10_15/libapexx_trt_plugins.so`
     - validation summary: `artifacts/trt_plugin_validation_summary.{json,md}`
-  - GitHub API branch-protection checks require authenticated `gh` (not installed on host)
+  - GitHub CLI available (`gh 2.86.0`) but unauthenticated on host
+    (`GH_TOKEN` or `gh auth login` required for API/workflow operations)
 - `Status: [ ]` Run TensorRT engine shape sweep on deployment GPU and attach artifacts:
-  - local run completed with synthetic dynamic engine:
+  - local run completed with synthetic dynamic engine (refreshed 2026-02-11):
     - `artifacts/models/trt_bench_dynamic.engine`
     - `artifacts/perf_trt_shape_sweep.json`
     - `artifacts/perf_trt_shape_sweep.md`
   - blocker: final deployment rerun is still required with production deployment engine.
   - `python -m apex_x.bench.trt_engine_sweep --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256" --output-json artifacts/perf_trt_shape_sweep.json --output-md artifacts/perf_trt_shape_sweep.md`
 - `Status: [ ]` Run TensorRT regression compare/trend wrapper on deployment GPU and archive artifacts:
-  - local run completed and compare currently passes on synthetic engine:
+  - local run completed and compare currently passes on synthetic engine (refreshed 2026-02-11):
     - `artifacts/perf_trt_current.json`
     - `artifacts/perf_trt_compare.json`
     - `artifacts/perf_trt_trend.json`
@@ -136,11 +137,15 @@ Device/deployment-blocked validation queue:
     - `python scripts/perf_regression_gpu.py --dtype fp8 --output artifacts/perf_gpu_fp8_current.json --compare --baseline scripts/perf_baseline_gpu.json --summary artifacts/perf_gpu_fp8_compare.json`
 - `Status: [ ]` Validate GPU mandatory PR gate on GitHub protected branch settings:
   - blocker: cannot query/modify protected-branch settings without authenticated GitHub CLI/API access
+    (`gh` installed, but host is not authenticated)
+  - latest blocker log: `artifacts/github_branch_protection_blocker.log`
   - Required status check: `GPU Perf Regression / gpu-perf-regression`
   - `gh api repos/Voskan/Apex-X/branches/main/protection --jq '.required_status_checks.checks[].context'`
   - Open a GPU-critical PR and confirm merge is blocked until GPU workflow passes
 - `Status: [ ]` Run weekly GPU trend workflow on deployment runner and archive artifacts:
-  - blocker: requires GitHub Actions dispatch on self-hosted GPU runner with repo variable management
+  - blocker: requires authenticated GitHub Actions dispatch on self-hosted GPU runner with repo variable management
+    (`gh workflow run ...` currently fails with auth prompt)
+  - latest blocker log: `artifacts/github_weekly_gpu_blocker.log`
   - Enable repository variable `APEXX_ENABLE_GPU_WEEKLY=true`
   - `gh variable set APEXX_ENABLE_GPU_WEEKLY --body true`
   - `gh workflow run perf_trend_weekly.yml -f run_gpu=true -f trt_engine_path=<engine>`
@@ -156,6 +161,7 @@ Device/deployment-blocked validation queue:
     - Go tests: `artifacts/go_trt_bridge_test_real_engine.log`
     - bridge probe: `artifacts/service_bridge_trt_real_engine.json`
     - bridge shape-mismatch diagnostic: `artifacts/service_bridge_trt_real_engine.raw.log`
+  - local rerun refreshed these artifacts on 2026-02-11.
   - blocker: final deployment rerun is still required with production deployment engine.
   - `cd runtime/go && APEXX_TRT_ENGINE_PATH=<engine.plan> APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...`
 
