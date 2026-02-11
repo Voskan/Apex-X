@@ -1,0 +1,2 @@
+/usr/bin/ar qc libapexx_trt_plugin_core.a CMakeFiles/apexx_trt_plugin_core.dir/src/common.cpp.o CMakeFiles/apexx_trt_plugin_core.dir/src/tile_pack_plugin.cpp.o CMakeFiles/apexx_trt_plugin_core.dir/src/tile_ssm_scan_plugin.cpp.o CMakeFiles/apexx_trt_plugin_core.dir/src/tile_unpack_fusion_plugin.cpp.o CMakeFiles/apexx_trt_plugin_core.dir/src/decode_nms_plugin.cpp.o
+/usr/bin/ranlib libapexx_trt_plugin_core.a

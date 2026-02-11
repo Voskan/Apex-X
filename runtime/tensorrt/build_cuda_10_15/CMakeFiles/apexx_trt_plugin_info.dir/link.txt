@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/apexx_trt_plugin_info.dir/link.d CMakeFiles/apexx_trt_plugin_info.dir/src/plugin_info_main.cpp.o -o apexx_trt_plugin_info  libapexx_trt_plugin_core.a

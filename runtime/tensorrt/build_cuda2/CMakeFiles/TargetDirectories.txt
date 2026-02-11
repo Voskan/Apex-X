@@ -1,0 +1,10 @@
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_plugin_core.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_plugins.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_plugin_info.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_plugin_harness.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_tilepack_test.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_tileunpackfusion_test.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_tilessm_test.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/apexx_trt_nms_decode_test.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/edit_cache.dir
+/home/voskan/Desktop/Apex-X/runtime/tensorrt/build_cuda2/CMakeFiles/rebuild_cache.dir
