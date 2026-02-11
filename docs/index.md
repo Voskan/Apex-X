@@ -41,34 +41,34 @@ The core of Apex-X is its **Dual-Stream** architecture, which separates low-reso
 
 ```mermaid
 graph TD
-    subgraph Stream_Input [Input Stage]
+    subgraph Stream_Input ["Input Stage"]
         I[Input Image] --> Pre[Pre-Processing]
     end
 
-    subgraph Stream_PV [Peripheral Vision (Coarse)]
+    subgraph Stream_PV ["Peripheral Vision (Coarse)"]
         Pre --> PV_Backbone[PV Backbone]
-        PV_Backbone --> PV_Feat[Dense 1/16 Features]
+        PV_Backbone --> PV_Feat["Dense 1/16 Features"]
     end
 
-    subgraph Router_Logic [Dynamic Routing]
+    subgraph Router_Logic ["Dynamic Routing"]
         PV_Feat --> Router{Utility Network}
         Router -->|Compute Budget| Budget[Budget Controller]
         Budget -->|Select Top K Tiles| Mask[Active Tile Mask]
         Mask -->|K <= Kmax| Packer[Tile Packer]
     end
 
-    subgraph Stream_FF [Foveal Focus (High-Res)]
+    subgraph Stream_FF ["Foveal Focus (High-Res)"]
         Pre --> Packer
-        Packer -->|Packed Batch [B, K, C, t, t]| FF_Backbone[FF Backbone]
-        FF_Backbone -->|Refined Features| Rec[Tile-SSM / Refinement]
+        Packer -->|"Packed Batch [B, K, C, t, t]"| FF_Backbone[FF Backbone]
+        FF_Backbone -->|Refined Features| Rec["Tile-SSM / Refinement"]
         Rec --> Unpacker[Tile Unpacker]
     end
 
-    subgraph Stream_Fusion [Fusion & Output]
+    subgraph Stream_Fusion ["Fusion & Output"]
         PV_Feat --> Merger[Feature Fusion]
         Unpacker --> Merger
         Merger --> Head[Detection Head]
-        Head --> Output[Bounding Boxes / Masks]
+        Head --> Output["Bounding Boxes / Masks"]
     end
 
     style Router fill:#f55,stroke:#333

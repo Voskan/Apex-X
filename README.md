@@ -45,17 +45,17 @@ Apex-X uses a dual-stream architecture to separate "Peripheral Vision" (always-o
 
 ```mermaid
 graph LR
-    subgraph Stream_PV [Peripheral Vision]
+    subgraph Stream_PV ["Peripheral Vision"]
         PV[Dense Coarse Backbone]
         PV -->|Features| Context[Context Aggregation]
     end
 
-    subgraph Router_Core [Utility Router]
+    subgraph Router_Core ["Utility Router"]
         Context -->|Input| R{Router Policy}
         R -->|Top K% + Budget| Mask[Active Tile Mask]
     end
 
-    subgraph Stream_FF [Foveal Focus]
+    subgraph Stream_FF ["Foveal Focus"]
         Mask -->|Select| Pack[Tile Packing]
         Pack --> FF[High-Res Backbone]
         FF --> Unpack[Tile Unpacking]
