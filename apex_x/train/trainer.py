@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 import torch
 from torch import Tensor
-from pathlib import Path
 
 from apex_x.config import ApexXConfig
 from apex_x.model import ApexXModel, DetHead, DualPathFPN, PVModule, TeacherModel
@@ -632,8 +632,9 @@ class ApexXTrainer:
         checkpoint_path = output_dir / "teacher_checkpoint.pt"
         torch.save(self.teacher.state_dict(), checkpoint_path)
         
-        config_path = output_dir / "config.yaml"
-        # Simple dict dump for now, a proper YAML dump would be better but requires ruamel.yaml or PyYAML
+        # config_path = output_dir / "config.yaml"
+        # Simple dict dump for now; proper YAML requires extra deps
+
         # We'll use json for config to avoid extra deps if needed, but the plan said config.yaml
         # Let's try to just write the dict as json for simplicity and robustness in this env
         import json

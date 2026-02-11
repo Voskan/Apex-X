@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import logging
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Annotated, cast
+from typing import cast
 
 import numpy as np
 
