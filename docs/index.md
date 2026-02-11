@@ -1,72 +1,96 @@
-# Apex-X
+# Apex-X Documentation
 
-<div align="center">
-  <strong>Universal Vision Dynamic Compute Graph</strong>
-  <br>
-  <em>Adaptive Intelligence. Strict Budgets. Edge Ready.</em>
-</div>
+Welcome to the **Apex-X** documentation portal. Apex-X is a dynamic compute graph runtime for efficient computer vision on the edge.
 
 ---
 
-**Apex-X** is a next-generation computer vision runtime designed for constrained environments. It breaks the "one-size-fits-all" paradigm of static Deep Learning models by dynamically allocating compute power to where it matters most in every frame.
-
-## Why Apex-X?
-
 <div class="grid cards" markdown>
 
--   :material-speedometer: **Dynamic Speed**
+-   :material-rocket-launch: **Getting Started**
     ---
-    Process video up to **4x faster** than static baselines by ignoring 60%+ of background pixels.
+    Quickly set up your environment and run your first model.
 
--   :material-clock-fast: **Strict Latency**
-    ---
-    Define a budget (e.g., "15ms"), and the model mathematically guarantees it will finish in time.
+    [:octicons-arrow-right-24: Installation](../README.md#quickstart-cpu)
+    [:octicons-arrow-right-24: GPU Setup](../README.md#quickstart-gpu)
 
--   :material-chip: **Edge Native**
+-   :material-chart-bar: **Benchmarks**
     ---
-    Built for NVIDIA Jetson, TensorRT, and Triton. No heavy transformers required.
+    See how Apex-X compares to YOLOv8, YOLO26, and RT-DETR.
 
--   :material-chart-bell-curve-cumulative: **Production Ready**
+    [:octicons-arrow-right-24: Performance Report](benchmarks.md)
+
+-   :material-cogs: **Engineering Spec**
     ---
-    Exports to standard ONNX. Zero custom operators needed for basic deployment.
+    Deep dive into the architecture, math, and implementation details.
+
+    [:octicons-arrow-right-24: Read the Spec](ENGINEERING_SPEC.md)
+    [:octicons-arrow-right-24: Dual Routing Math](algorithms.md)
+
+-   :material-api: **Runtime & Plugins**
+    ---
+    Learn about TensorRT plugins and deployment contracts.
+
+    [:octicons-arrow-right-24: Plugin Spec](runtime/PLUGIN_SPEC.md)
+    [:octicons-arrow-right-24: TensorRT Integration](runtime/TENSORRT.md)
 
 </div>
 
-## Architecture Overview
+## 🏗 System Architecture
+
+The core of Apex-X is its **Dual-Stream** architecture, which separates low-resolution context processing from high-resolution detail extraction.
 
 ```mermaid
-graph LR
-    Input --> Router;
-    Router -->|Budget Control| Selector;
-    Selector -->|High Importance| Heavy[Heavy CNN];
-    Selector -->|Low Importance| Skip[Skip / Reuse];
-    Heavy --> Merger;
-    Skip --> Merger;
-    Merger --> Head[Detection Head];
+graph TD
+    subgraph Stream_Input [Input Stage]
+        I[Input Image] --> Pre[Pre-Processing]
+    end
+
+    subgraph Stream_PV [Peripheral Vision (Coarse)]
+        Pre --> PV_Backbone[PV Backbone]
+        PV_Backbone --> PV_Feat[Dense 1/16 Features]
+    end
+
+    subgraph Router_Logic [Dynamic Routing]
+        PV_Feat --> Router{Utility Network}
+        Router -->|Compute Budget| Budget[Budget Controller]
+        Budget -->|Select Top K Tiles| Mask[Active Tile Mask]
+        Mask -->|K <= Kmax| Packer[Tile Packer]
+    end
+
+    subgraph Stream_FF [Foveal Focus (High-Res)]
+        Pre --> Packer
+        Packer -->|Packed Batch [B, K, C, t, t]| FF_Backbone[FF Backbone]
+        FF_Backbone -->|Refined Features| Rec[Tile-SSM / Refinement]
+        Rec --> Unpacker[Tile Unpacker]
+    end
+
+    subgraph Stream_Fusion [Fusion & Output]
+        PV_Feat --> Merger[Feature Fusion]
+        Unpacker --> Merger
+        Merger --> Head[Detection Head]
+        Head --> Output[Bounding Boxes / Masks]
+    end
+
+    style Router fill:#f55,stroke:#333
+    style Budget fill:#fa5,stroke:#333
+    style Packer fill:#55f,stroke:#333
+    style Unpacker fill:#55f,stroke:#333
 ```
 
-## Quick Start
+## 📚 Topics
 
-### 1. Install & Train
-```bash
-pip install -e .[dev]
-# Train a small model on CPU to verify setup
-apex-x train examples/smoke_cpu.yaml --steps-per-stage 100
-```
+### Core Concepts
 
-### 2. Export to ONNX
-```bash
-apex-x export artifacts/train_output/config.json \
-    --output model.onnx \
-    --num-classes 3
-```
+1.  **[Algorithms](algorithms.md)**: The mathematical foundation of dual-variable routing and continuous budgeting.
+2.  **[Context](CONTEXT.md)**: The "Project Memory" containing architectural decisions and history.
+3.  **[PRD](PRD.md)**: The Product Requirements Document defining the scope of Apex-X v4.
 
-### 3. Compare Results
-Check out our [Benchmarks](benchmarks.md) to see how Apex-X outperforms YOLOv8 and others in efficiency.
+### Release Notes
 
-## Core Documentation
+-   **[v4 Release Checklist](release/CHECKLIST.md)**: Status of the current release candidate.
+-   **[Migration Guide](release/MIGRATION.md)**: How to upgrade from previous versions.
 
-- **[Algorithms](algorithms.md)**: Understand the math behind dual-variable routing.
-- **[Benchmarks](benchmarks.md)**: Performance comparisons.
-- **[Engineering Spec](ENGINEERING_SPEC.md)**: Deep dive into the implementation.
-- **[Release Notes](release/CHECKLIST.md)**: What's new in v4.
+### Developer Guides
+
+-   **[Contributing](../CONTRIBUTING.md)**: How to contribute code and docs.
+-   **[Decisions Log](DECISIONS.md)**: Record of architectural decision records (ADRs).

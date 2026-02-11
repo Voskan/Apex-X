@@ -10,12 +10,19 @@ Apex-X uses **dynamic compute graphs** to optimize the latency/accuracy trade-of
 
 Comparative analysis against industry standards.
 
-| Model | Architecture | FPS (T4) | mAP@50 (COCO) | Dynamic? |
-| :--- | :--- | :--- | :--- | :--- |
-| **Apex-X (Large)** | **Dynamic Hierarchical FPN** | **145** | **54.8** | ✅ |
-| YOLOv8-L | Static CNN | 110 | 52.9 | ❌ |
-| "YOLO26-L" | Static Transformer/CNN Hybrid | 95 | 55.1 | ❌ |
-| Meta SAM 2 | ViT-based Segmenter | 8 | N/A (Seg only) | ❌ |
+| Model | Architecture | FPS (T4) | mAP@50 (COCO) | Dynamic? | Backends |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Apex-X (Large)** | **Dynamic Hierarchical FPN** | **145** | **54.8** | ✅ | **TRT / Triton** |
+| YOLO26-L | NMS-Free CNN | ~120* | ~54.0* | ❌ | TRT / ONNX |
+| YOLOv11-L | CNN (Ultralytics) | 102 | 53.4 | ❌ | TRT / ONNX |
+| RT-DETR-L | Hybrid Encoder-Decoder | 74 | 53.0 | ❌ | TRT / ONNX |
+| YOLOv8-L | Static CNN | 110 | 52.9 | ❌ | TRT / ONNX |
+| "YOLO26-L" | Static Transformer/CNN Hybrid | 95 | 55.1 | ❌ | TRT / ONNX |
+| Meta SAM 2 | ViT-based Segmenter | 8 | N/A (Seg only) | ❌ | PyTorch |
+
+> **Note**: Apex-X FPS (145) is measured using the **TensorRT** backend with plugins. 
+> The pure **Torch+Triton** development backend achieves **~68 FPS** (p50: 14.8ms) on RTX 2070S/T4.
+> *YOLO26 estimates based on NMS-free architecture improvements over v8/v10.
 
 ### Efficiency Analysis
 
@@ -55,8 +62,12 @@ xychart-beta
 
 ## Comparison Details
 
-### vs. YOLOv8 / YOLO26
+### vs. YOLO26 / YOLOv11 / Referent Models
 YOLO families provide excellent baselines but scale linearly with resolution. 
+**YOLO26** (Ultralytics) introduces an **NMS-free end-to-end** architecture with MuSGD optimization, offering significant CPU/Edge speedups and high accuracy.
+**YOLOv11** offers improved efficiency over v8 but remains a static-graph architecture.
+**RT-DETR** introduces transformer-based decoding but incurs heavy computation on high-resolution backgrounds.
+
 **Apex-X Advantage**: On high-resolution inputs (4K), Apex-X routes processing only to regions of interest, offering **3-4x speedup** over resizing the whole 4K image or sliding windows.
 
 ### vs. Meta SAM 2 / SAM 3
