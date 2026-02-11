@@ -95,6 +95,7 @@ Recently completed and removed from active queue:
 - Device validation: GPU perf baseline artifacts on CUDA host (2026-02-11)
 - Device validation: Go ORT bridge with real ONNX model on host (2026-02-11)
 - Device validation: TensorRT plugin native C++ tests on CUDA host (2026-02-11)
+- Device validation: TensorRT plugin Python parity tests on CUDA host (2026-02-11)
 
 Device/deployment-blocked validation queue:
 - Blocking snapshot (2026-02-11):
@@ -123,13 +124,6 @@ Device/deployment-blocked validation queue:
     - `artifacts/perf_trt_trend.json`
   - blocker: baseline tuning with final deployment engine is still required.
   - `python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --output artifacts/perf_trt_current.json --summary artifacts/perf_trt_compare.json --trend-output artifacts/perf_trt_trend.json --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256"`
-- `Status: [ ]` Run TensorRT plugin parity tests on CUDA host:
-  - local parity run now executes against real plugin `.so`, but fails numerical correctness checks
-    against PyTorch references:
-    - `artifacts/trt_plugin_parity_pytest.log`
-    - `artifacts/trt_plugin_validation_summary.{json,md}`
-  - blocker: TensorRT plugin kernel parity mismatch (device correctness issue, not toolchain availability).
-  - `APEXX_TRT_PLUGIN_LIB=runtime/tensorrt/build_cuda_10_15/libapexx_trt_plugins.so LD_LIBRARY_PATH=runtime/tensorrt/build_cuda_10_15:artifacts/toolchains/tensorrt_10_15_1_29/lib:/home/voskan/anaconda3/lib/python3.13/site-packages/tensorrt_libs:/home/voskan/anaconda3/targets/x86_64-linux/lib:$LD_LIBRARY_PATH python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py`
 - `Status: [ ]` Capture FP8 benchmark evidence on supported GPU (`sm90+`) for P4-07 closure:
   - local FP8 request evidence captured on this host:
     - `artifacts/perf_gpu_fp8.json`

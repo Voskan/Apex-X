@@ -39,12 +39,14 @@ def _get_creator(trt, *, name: str):
     creator = None
     if hasattr(registry, "get_plugin_creator"):
         creator = registry.get_plugin_creator(name, "1", "apexx")
+        if creator is None:
+            creator = registry.get_plugin_creator(name, "1", "")
     if creator is not None:
         if hasattr(creator, "plugin_namespace"):
             creator.plugin_namespace = ""
         return creator
     for item in registry.plugin_creator_list:
-        if item.name == name and getattr(item, "plugin_namespace", "") == "apexx":
+        if item.name == name and getattr(item, "plugin_namespace", "") in {"apexx", ""}:
             if hasattr(item, "plugin_namespace"):
                 item.plugin_namespace = ""
             return item
@@ -99,6 +101,21 @@ def _build_engine(
         runtime = trt.Runtime(logger)
         return runtime.deserialize_cuda_engine(serialized)
     return builder.build_engine(network, config)  # pragma: no cover - TRT API version dependent
+
+
+def _torch_dtype_for_output(engine, trt, name: str) -> torch.dtype:
+    if hasattr(engine, "num_bindings"):
+        binding_index = int(engine.get_binding_index(name))
+        dtype = engine.get_binding_dtype(binding_index)
+    else:
+        dtype = engine.get_tensor_dtype(name)
+    if dtype == trt.DataType.HALF:
+        return torch.float16
+    if dtype == trt.DataType.FLOAT:
+        return torch.float32
+    if dtype == trt.DataType.INT32:
+        return torch.int32
+    raise RuntimeError(f"unsupported TensorRT dtype for {name}: {dtype}")
 
 
 def _execute_engine(
@@ -223,6 +240,10 @@ def test_tensorrt_tileunpackfusion_parity_with_torch_reference() -> None:
     if engine is None:
         pytest.skip("TensorRT engine build returned None")
 
-    out = torch.empty_like(base)
+    out = torch.empty(
+        base.shape,
+        device=base.device,
+        dtype=_torch_dtype_for_output(engine, trt, "merged"),
+    )
     _execute_engine(engine, base=base, packed=packed, idx=idx, levels=levels, alpha=alpha, out=out)
-    assert torch.allclose(out, reference, atol=2e-3, rtol=2e-3)
+    assert torch.allclose(out.to(dtype=reference.dtype), reference, atol=2e-3, rtol=2e-3)

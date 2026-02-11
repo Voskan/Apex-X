@@ -54,10 +54,10 @@
   - configure/build logs:
     - `artifacts/trt_cmake_configure.log`
     - `artifacts/trt_cmake_build.log`
-- TensorRT Python parity harness now executes with real plugin `.so` but currently fails correctness gates:
+- TensorRT Python parity harness now passes on this host with real plugin `.so`:
   - parity log: `artifacts/trt_plugin_parity_pytest.log`
   - summary bundle: `artifacts/trt_plugin_validation_summary.{json,md}`
-  - blocker moved from toolchain availability to plugin numerical parity mismatch.
+  - result: all plugin parity suites pass (`7 passed`, `0 skipped`).
 - Local TensorRT shape-sweep and compare/trend artifacts were captured using a real CUDA engine:
   - engine artifact: `artifacts/models/trt_bench_dynamic.engine`
   - shape sweep: `artifacts/perf_trt_shape_sweep.json`, `artifacts/perf_trt_shape_sweep.md`

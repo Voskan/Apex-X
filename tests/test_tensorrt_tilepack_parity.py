@@ -39,12 +39,14 @@ def _get_tilepack_creator(trt):
     creator = None
     if hasattr(registry, "get_plugin_creator"):
         creator = registry.get_plugin_creator("TilePack", "1", "apexx")
+        if creator is None:
+            creator = registry.get_plugin_creator("TilePack", "1", "")
     if creator is not None:
         if hasattr(creator, "plugin_namespace"):
             creator.plugin_namespace = ""
         return creator
     for item in registry.plugin_creator_list:
-        if item.name == "TilePack" and getattr(item, "plugin_namespace", "") == "apexx":
+        if item.name == "TilePack" and getattr(item, "plugin_namespace", "") in {"apexx", ""}:
             if hasattr(item, "plugin_namespace"):
                 item.plugin_namespace = ""
             return item
@@ -93,6 +95,21 @@ def _build_engine(
         runtime = trt.Runtime(logger)
         return runtime.deserialize_cuda_engine(serialized)
     return builder.build_engine(network, config)  # pragma: no cover - TRT API version dependent
+
+
+def _torch_dtype_for_output(engine, trt, name: str) -> torch.dtype:
+    if hasattr(engine, "num_bindings"):
+        binding_index = int(engine.get_binding_index(name))
+        dtype = engine.get_binding_dtype(binding_index)
+    else:
+        dtype = engine.get_tensor_dtype(name)
+    if dtype == trt.DataType.HALF:
+        return torch.float16
+    if dtype == trt.DataType.FLOAT:
+        return torch.float32
+    if dtype == trt.DataType.INT32:
+        return torch.int32
+    raise RuntimeError(f"unsupported TensorRT dtype for {name}: {dtype}")
 
 
 def _execute_engine(engine, *, x: torch.Tensor, idx: torch.Tensor, out: torch.Tensor) -> None:
@@ -144,9 +161,9 @@ def test_tensorrt_tilepack_parity_with_pytorch_reference() -> None:
     out = torch.empty(
         (batch, kmax, channels, tile_size, tile_size),
         device="cuda",
-        dtype=torch.float16,
+        dtype=_torch_dtype_for_output(engine, trt, "packed"),
     )
     _execute_engine(engine, x=x, idx=idx, out=out)
 
     ref, _ = tilepack_reference(x, idx, tile_size)
-    assert torch.allclose(out, ref, atol=1e-3, rtol=1e-3)
+    assert torch.allclose(out.to(dtype=ref.dtype), ref, atol=1e-3, rtol=1e-3)

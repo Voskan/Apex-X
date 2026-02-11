@@ -39,12 +39,14 @@ def _get_creator(trt, *, name: str):
     creator = None
     if hasattr(registry, "get_plugin_creator"):
         creator = registry.get_plugin_creator(name, "1", "apexx")
+        if creator is None:
+            creator = registry.get_plugin_creator(name, "1", "")
     if creator is not None:
         if hasattr(creator, "plugin_namespace"):
             creator.plugin_namespace = ""
         return creator
     for item in registry.plugin_creator_list:
-        if item.name == name and getattr(item, "plugin_namespace", "") == "apexx":
+        if item.name == name and getattr(item, "plugin_namespace", "") in {"apexx", ""}:
             if hasattr(item, "plugin_namespace"):
                 item.plugin_namespace = ""
             return item
@@ -151,6 +153,21 @@ def _execute_engine(
     torch.cuda.synchronize()
 
 
+def _torch_dtype_for_output(engine, trt, name: str) -> torch.dtype:
+    if hasattr(engine, "num_bindings"):
+        binding_index = int(engine.get_binding_index(name))
+        dtype = engine.get_binding_dtype(binding_index)
+    else:
+        dtype = engine.get_tensor_dtype(name)
+    if dtype == trt.DataType.HALF:
+        return torch.float16
+    if dtype == trt.DataType.FLOAT:
+        return torch.float32
+    if dtype == trt.DataType.INT32:
+        return torch.int32
+    raise RuntimeError(f"unsupported TensorRT dtype for {name}: {dtype}")
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 @pytest.mark.parametrize(("direction", "dir_name"), [(0, "forward"), (1, "backward")])
 def test_tensorrt_tilessm_parity_with_torch_reference(
@@ -181,8 +198,16 @@ def test_tensorrt_tilessm_parity_with_torch_reference(
     if engine is None:
         pytest.skip("TensorRT engine build returned None")
 
-    y_out = torch.empty_like(tokens)
-    final_state_out = torch.empty((batch, channels), device="cuda", dtype=torch.float16)
+    y_out = torch.empty(
+        tokens.shape,
+        device=tokens.device,
+        dtype=_torch_dtype_for_output(engine, trt, "y"),
+    )
+    final_state_out = torch.empty(
+        (batch, channels),
+        device=tokens.device,
+        dtype=_torch_dtype_for_output(engine, trt, "final_state"),
+    )
     _execute_engine(
         engine,
         tokens=tokens,
@@ -204,5 +229,10 @@ def test_tensorrt_tilessm_parity_with_torch_reference(
         init_state=init_state,
         direction=dir_name,  # type: ignore[arg-type]
     )
-    assert torch.allclose(y_out, ref_y, atol=3e-2, rtol=3e-2)
-    assert torch.allclose(final_state_out, ref_final, atol=3e-2, rtol=3e-2)
+    assert torch.allclose(y_out.to(dtype=ref_y.dtype), ref_y, atol=3e-2, rtol=3e-2)
+    assert torch.allclose(
+        final_state_out.to(dtype=ref_final.dtype),
+        ref_final,
+        atol=3e-2,
+        rtol=3e-2,
+    )

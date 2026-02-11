@@ -39,12 +39,14 @@ def _get_creator(trt, *, name: str):
     creator = None
     if hasattr(registry, "get_plugin_creator"):
         creator = registry.get_plugin_creator(name, "1", "apexx")
+        if creator is None:
+            creator = registry.get_plugin_creator(name, "1", "")
     if creator is not None:
         if hasattr(creator, "plugin_namespace"):
             creator.plugin_namespace = ""
         return creator
     for item in registry.plugin_creator_list:
-        if item.name == name and getattr(item, "plugin_namespace", "") == "apexx":
+        if item.name == name and getattr(item, "plugin_namespace", "") in {"apexx", ""}:
             if hasattr(item, "plugin_namespace"):
                 item.plugin_namespace = ""
             return item
@@ -172,6 +174,21 @@ def _execute_engine(
     stream_ptr = int(torch.cuda.current_stream().cuda_stream)
     context.execute_async_v3(stream_ptr)  # pragma: no cover
     torch.cuda.synchronize()
+
+
+def _torch_dtype_for_output(engine, trt, name: str) -> torch.dtype:
+    if hasattr(engine, "num_bindings"):
+        binding_index = int(engine.get_binding_index(name))
+        dtype = engine.get_binding_dtype(binding_index)
+    else:
+        dtype = engine.get_tensor_dtype(name)
+    if dtype == trt.DataType.HALF:
+        return torch.float16
+    if dtype == trt.DataType.FLOAT:
+        return torch.float32
+    if dtype == trt.DataType.INT32:
+        return torch.int32
+    raise RuntimeError(f"unsupported TensorRT dtype for {name}: {dtype}")
 
 
 def _decode_nms_reference(
@@ -305,10 +322,26 @@ def test_tensorrt_decode_nms_parity(
     if engine is None:
         pytest.skip("TensorRT engine build returned None")
 
-    out_boxes = torch.empty((batch, max_detections, 4), device="cuda", dtype=torch.float16)
-    out_scores = torch.empty((batch, max_detections), device="cuda", dtype=torch.float16)
-    out_class_ids = torch.empty((batch, max_detections), device="cuda", dtype=torch.int32)
-    out_valid = torch.empty((batch,), device="cuda", dtype=torch.int32)
+    out_boxes = torch.empty(
+        (batch, max_detections, 4),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_boxes"),
+    )
+    out_scores = torch.empty(
+        (batch, max_detections),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_scores"),
+    )
+    out_class_ids = torch.empty(
+        (batch, max_detections),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_class_ids"),
+    )
+    out_valid = torch.empty(
+        (batch,),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_valid"),
+    )
     _execute_engine(
         engine,
         cls_logits=cls_logits,
@@ -333,10 +366,10 @@ def test_tensorrt_decode_nms_parity(
         score_threshold=score_threshold,
         iou_threshold=iou_threshold,
     )
-    assert torch.equal(out_valid, ref_valid)
-    assert torch.equal(out_class_ids, ref_class_ids)
-    assert torch.allclose(out_scores, ref_scores, atol=6e-2, rtol=6e-2)
-    assert torch.allclose(out_boxes, ref_boxes, atol=6e-2, rtol=6e-2)
+    assert torch.equal(out_valid.to(dtype=ref_valid.dtype), ref_valid)
+    assert torch.equal(out_class_ids.to(dtype=ref_class_ids.dtype), ref_class_ids)
+    assert torch.allclose(out_scores.to(dtype=ref_scores.dtype), ref_scores, atol=6e-2, rtol=6e-2)
+    assert torch.allclose(out_boxes.to(dtype=ref_boxes.dtype), ref_boxes, atol=6e-2, rtol=6e-2)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
@@ -371,10 +404,26 @@ def test_tensorrt_decode_nms_many_boxes_corner_case() -> None:
     if engine is None:
         pytest.skip("TensorRT engine build returned None")
 
-    out_boxes = torch.empty((batch, max_detections, 4), device="cuda", dtype=torch.float16)
-    out_scores = torch.empty((batch, max_detections), device="cuda", dtype=torch.float16)
-    out_class_ids = torch.empty((batch, max_detections), device="cuda", dtype=torch.int32)
-    out_valid = torch.empty((batch,), device="cuda", dtype=torch.int32)
+    out_boxes = torch.empty(
+        (batch, max_detections, 4),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_boxes"),
+    )
+    out_scores = torch.empty(
+        (batch, max_detections),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_scores"),
+    )
+    out_class_ids = torch.empty(
+        (batch, max_detections),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_class_ids"),
+    )
+    out_valid = torch.empty(
+        (batch,),
+        device=cls_logits.device,
+        dtype=_torch_dtype_for_output(engine, trt, "out_valid"),
+    )
     _execute_engine(
         engine,
         cls_logits=cls_logits,
@@ -388,5 +437,5 @@ def test_tensorrt_decode_nms_many_boxes_corner_case() -> None:
         out_valid=out_valid,
     )
     assert int(out_valid[0].item()) <= max_detections
-    assert torch.all(out_class_ids[0, int(out_valid[0].item()) :] == -1)
-    assert torch.all(out_scores[0, int(out_valid[0].item()) :] == 0)
+    assert torch.all(out_class_ids[0, int(out_valid[0].item()) :].to(dtype=torch.int32) == -1)
+    assert torch.all(out_scores[0, int(out_valid[0].item()) :].to(dtype=torch.float16) == 0)
