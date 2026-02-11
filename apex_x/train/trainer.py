@@ -628,16 +628,17 @@ class ApexXTrainer:
         # Save checkpoint and config
         output_dir = Path(self.config.train.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         checkpoint_path = output_dir / "teacher_checkpoint.pt"
         torch.save(self.teacher.state_dict(), checkpoint_path)
-        
+
         # config_path = output_dir / "config.yaml"
         # Simple dict dump for now; proper YAML requires extra deps
 
         # We'll use json for config to avoid extra deps if needed, but the plan said config.yaml
         # Let's try to just write the dict as json for simplicity and robustness in this env
         import json
+
         with open(output_dir / "config.json", "w") as f:
             json.dump(self.config.to_dict(), f, indent=2)
 

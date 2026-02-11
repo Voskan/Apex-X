@@ -32,27 +32,23 @@ class BudgetControllerProtocol(Protocol):
 class CostModelProtocol(Protocol):
     """Public cost-model interface for routing/budget accounting."""
 
-    def cheap_cost(self, level: str, num_tiles: int = 1) -> float:
-        ...
+    def cheap_cost(self, level: str, num_tiles: int = 1) -> float: ...
 
     def heavy_cost(
         self,
         level: str,
         num_tiles: int = 1,
         include_pack_unpack: bool = True,
-    ) -> float:
-        ...
+    ) -> float: ...
 
     def delta_cost(
         self,
         level: str,
         num_tiles: int = 1,
         include_pack_unpack: bool = True,
-    ) -> float:
-        ...
+    ) -> float: ...
 
-    def split_overhead(self, level: str, num_splits: int = 1) -> float:
-        ...
+    def split_overhead(self, level: str, num_splits: int = 1) -> float: ...
 
     def apply_empirical_calibration(
         self,
@@ -60,11 +56,9 @@ class CostModelProtocol(Protocol):
         measured_timings: Mapping[str, float],
         blend: float = 1.0,
         apply: bool = True,
-    ) -> Mapping[str, float]:
-        ...
+    ) -> Mapping[str, float]: ...
 
-    def to_dict(self) -> dict[str, object]:
-        ...
+    def to_dict(self) -> dict[str, object]: ...
 
 
 # Backward-compatible aliases used by existing modules.

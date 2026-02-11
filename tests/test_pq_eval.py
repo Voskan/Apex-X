@@ -23,9 +23,7 @@ def _run_fixture(name: str) -> tuple[dict[str, Any], PQMetrics]:
     gt_map = torch.tensor(payload["gt_map"], dtype=torch.int64).unsqueeze(0)
     pred_segments = [cast(list[dict[str, Any]], payload["pred_segments"])]
     gt_segments = [cast(list[dict[str, Any]], payload["gt_segments"])]
-    thing_class_ids = {
-        int(v) for v in cast(list[int], payload["thing_class_ids"])
-    }
+    thing_class_ids = {int(v) for v in cast(list[int], payload["thing_class_ids"])}
     metrics = evaluate_panoptic_quality(
         pred_panoptic_map=pred_map,
         pred_segments_info=pred_segments,

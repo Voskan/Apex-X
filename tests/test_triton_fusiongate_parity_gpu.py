@@ -108,4 +108,3 @@ def test_triton_fusiongate_fuse_parity_fp16() -> None:
         tolerances=ToleranceConfig(),
     )
     assert report.passed is True
-

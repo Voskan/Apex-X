@@ -195,10 +195,7 @@ def _decode_nms_reference(
             torch.nan_to_num(quality[b], nan=0.0, posinf=60.0, neginf=-60.0)
         ).unsqueeze(1)
         score_mat = (
-            torch.sigmoid(
-                torch.nan_to_num(cls_logits[b], nan=0.0, posinf=60.0, neginf=-60.0)
-            )
-            * q
+            torch.sigmoid(torch.nan_to_num(cls_logits[b], nan=0.0, posinf=60.0, neginf=-60.0)) * q
         )
         pairs = torch.nonzero(score_mat >= score_threshold, as_tuple=False)
         if pairs.numel() == 0:

@@ -334,13 +334,9 @@ def eval_cmd(
             )
             if dataset_eval.det_score_target_metrics is not None:
                 target = dataset_eval.det_score_target_metrics
-                r2_text = (
-                    "n/a" if target["r2"] is None else f"{target['r2']:.6f}"
-                )
+                r2_text = "n/a" if target["r2"] is None else f"{target['r2']:.6f}"
                 corr_text = (
-                    "n/a"
-                    if target["pearson_corr"] is None
-                    else f"{target['pearson_corr']:.6f}"
+                    "n/a" if target["pearson_corr"] is None else f"{target['pearson_corr']:.6f}"
                 )
                 f.write(
                     "- det_score_target: "
@@ -618,17 +614,18 @@ def export_cmd(
 ) -> None:
     overrides = set_values or []
     cfg = _load_config(Path(config), overrides)
-    
+
     # Export TeacherModel (Dense Detector) as it is the trainable/deployable artifact
     model = _build_teacher_for_export(cfg, num_classes=num_classes)
-    
+
     if checkpoint:
         import torch
+
         ckpt_path = Path(checkpoint)
         log_event(LOGGER, "export_loading_checkpoint", fields={"path": str(ckpt_path)})
         state_dict = torch.load(ckpt_path, map_location="cpu")
         model.load_state_dict(state_dict)
-    
+
     model.eval()
 
     output_path = Path(output)
@@ -642,7 +639,6 @@ def export_cmd(
         fields={"output": exported_path, "shape_mode": _normalize_shape_mode(shape_mode)},
     )
     print(f"export ok output={exported_path}")
-
 
 
 def main() -> None:

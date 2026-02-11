@@ -365,9 +365,13 @@ class TensorRTEngineExecutor:
                 name=name,
                 binding_index=binding_index,
             )
-            tensors[name] = torch.from_numpy(input_arr).contiguous().to(
-                device="cuda",
-                dtype=input_dtype,
+            tensors[name] = (
+                torch.from_numpy(input_arr)
+                .contiguous()
+                .to(
+                    device="cuda",
+                    dtype=input_dtype,
+                )
             )
 
         for name in output_names:
@@ -387,15 +391,13 @@ class TensorRTEngineExecutor:
             tensors[name] = torch.empty(shape, device="cuda", dtype=dtype)
 
         self._execute(engine=engine, context=context, tensor_map=tensors)
-        outputs = {
-            name: tensors[name].detach().cpu().numpy().copy()
-            for name in output_names
-        }
+        outputs = {name: tensors[name].detach().cpu().numpy().copy() for name in output_names}
         return TensorRTExecutionResult(
             engine_path=self._engine_path,
             input_name=primary_input_name,
             output_names=output_names,
             outputs=outputs,
         )
+
 
 __all__ = ["TensorRTExecutionResult", "TensorRTEngineExecutor"]

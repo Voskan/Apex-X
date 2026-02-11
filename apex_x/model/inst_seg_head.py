@@ -446,9 +446,8 @@ class PrototypeInstanceSegHead(nn.Module):
         if output_height <= 0 or output_width <= 0:
             raise ValueError("output size must be positive")
 
-        if (
-            output_height != int(mask_logits_lowres.shape[-2])
-            or output_width != int(mask_logits_lowres.shape[-1])
+        if output_height != int(mask_logits_lowres.shape[-2]) or output_width != int(
+            mask_logits_lowres.shape[-1]
         ):
             mask_logits = f.interpolate(
                 mask_logits_lowres,

@@ -114,4 +114,3 @@ def test_tilepack_availability_object_cpu_safe() -> None:
     assert isinstance(availability.available, bool)
     if not availability.available:
         assert availability.reason is not None
-

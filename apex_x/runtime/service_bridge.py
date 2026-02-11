@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover - optional dependency
 TensorRTEngineExecutor: Any
 try:
     from apex_x.runtime.tensorrt import TensorRTEngineExecutor as _TensorRTEngineExecutor
+
     TensorRTEngineExecutor = _TensorRTEngineExecutor
 except Exception:  # pragma: no cover - optional dependency
     TensorRTEngineExecutor = None

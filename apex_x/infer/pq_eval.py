@@ -208,11 +208,7 @@ def _compute_fallback_pq(
             pred_class = int(pred_seg["category_id"])
             pred_mask = pred_map == pred_id
             candidate_gt = sorted(
-                {
-                    int(v)
-                    for v in torch.unique(gt_map[pred_mask]).tolist()
-                    if int(v) != void_id
-                }
+                {int(v) for v in torch.unique(gt_map[pred_mask]).tolist() if int(v) != void_id}
             )
 
             best_gt: int | None = None

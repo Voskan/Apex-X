@@ -66,9 +66,7 @@ def _validate_export_contract(cfg: ApexXConfig) -> dict[str, int]:
             "export contract violation: model.kmax_l1 must be > 0 for nesting depth >=1"
         )
     if depth < 1 and model_cfg.kmax_l1 != 0:
-        raise ValueError(
-            "export contract violation: model.kmax_l1 must be 0 for nesting depth ==0"
-        )
+        raise ValueError("export contract violation: model.kmax_l1 must be 0 for nesting depth ==0")
     if depth >= 2 and model_cfg.kmax_l2 <= 0:
         raise ValueError(
             "export contract violation: model.kmax_l2 must be > 0 for nesting depth >=2"
@@ -127,7 +125,6 @@ class TeacherExportWrapper(torch.nn.Module):
         return out.logits, out.boundaries
 
 
-
 class ApexXExporter(Exporter):
     """Export Apex-X runtime bundle with manifest and ONNX graph artifact."""
 
@@ -146,13 +143,12 @@ class ApexXExporter(Exporter):
             )
 
         paths = _resolve_paths(output_path)
-        
+
         # Prepare dummy input for tracing
         import torch
-        dummy_input = torch.randn(
-            1, 3, cfg.model.input_height, cfg.model.input_width
-        )
-        
+
+        dummy_input = torch.randn(1, 3, cfg.model.input_height, cfg.model.input_width)
+
         dynamic_axes = None
         if self._shape_mode == "dynamic":
             dynamic_axes = {
@@ -166,6 +162,7 @@ class ApexXExporter(Exporter):
 
         if isinstance(model, TeacherModel):
             import torch
+
             model_to_export = TeacherExportWrapper(model)
             output_names = ["logits", "boundaries"]
 
@@ -177,7 +174,7 @@ class ApexXExporter(Exporter):
             output_names=output_names,
             dynamic_axes=dynamic_axes,
         )
-        
+
         # We need to calculate input shape for manifest
         input_shape = _shape_spec(cfg, self._shape_mode)
 

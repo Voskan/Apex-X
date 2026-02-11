@@ -235,9 +235,7 @@ def run_triton_fused_stage1_bench(config: BenchConfig) -> dict[str, Any]:
             "fused_dispatch_p50": fused_p50,
             "fused_dispatch_p95": _p95(fused_timings),
             "speedup_ref_over_fused": (ref_p50 / fused_p50) if fused_p50 > 0.0 else None,
-            "speedup_separate_over_fused": (
-                separate_p50 / fused_p50 if fused_p50 > 0.0 else None
-            ),
+            "speedup_separate_over_fused": (separate_p50 / fused_p50 if fused_p50 > 0.0 else None),
         },
     }
 

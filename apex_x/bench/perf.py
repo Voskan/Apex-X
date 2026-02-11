@@ -212,9 +212,9 @@ def compare_against_baseline(
                 "baseline_ms": baseline_value,
                 "allowed_max_ms": allowed_max,
                 "current_ms": current_value,
-                "regression_ratio": ((current_value / baseline_value) - 1.0)
-                if baseline_value > 0.0
-                else None,
+                "regression_ratio": (
+                    ((current_value / baseline_value) - 1.0) if baseline_value > 0.0 else None
+                ),
             }
         )
 

@@ -594,9 +594,7 @@ def run_model_inference(
                         ) from exc
                     model_output = _run_with_timing(lambda: model.forward(input_batch))
                     execution_backend = "cpu"
-                    execution_fallback_reason = (
-                        "tensorrt_engine_path_missing_reference_fallback"
-                    )
+                    execution_fallback_reason = "tensorrt_engine_path_missing_reference_fallback"
                 except Exception as exc:
                     if fallback_policy == "strict":
                         raise RuntimeError(
@@ -685,9 +683,7 @@ def _normalize_selected_tiles_target(
             "selected_tiles_target length mismatch: "
             f"expected N={num_samples}, got N={selected_target.shape[0]}"
         )
-    if np.issubdtype(selected_target.dtype, np.floating) and not np.isfinite(
-        selected_target
-    ).all():
+    if np.issubdtype(selected_target.dtype, np.floating) and not np.isfinite(selected_target).all():
         raise ValueError("selected_tiles_target must be finite")
     selected_int = selected_target.astype(np.int64, copy=False)
     if np.any(selected_int < 0):

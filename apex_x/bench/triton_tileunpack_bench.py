@@ -143,9 +143,7 @@ def run_triton_tileunpack_bench(config: BenchConfig) -> dict[str, Any]:
         device=device,
     ).contiguous()
     max_idx = (config.height // config.tile_size) * (config.width // config.tile_size)
-    idx = _unique_indices(
-        config.batch, config.kmax, max_idx, seed=config.seed + 17, device=device
-    )
+    idx = _unique_indices(config.batch, config.kmax, max_idx, seed=config.seed + 17, device=device)
     meta = _meta_from_indices(
         idx,
         config.tile_size,

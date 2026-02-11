@@ -378,9 +378,8 @@ def det_loss_with_simota(
     else:
         p = torch.sigmoid(pred_cls)
         p_t = p * targets.cls_target + (1.0 - p) * (1.0 - targets.cls_target)
-        alpha_t = (
-            targets.cls_target * focal_alpha
-            + (1.0 - targets.cls_target) * (1.0 - focal_alpha)
+        alpha_t = targets.cls_target * focal_alpha + (1.0 - targets.cls_target) * (
+            1.0 - focal_alpha
         )
         cls_loss_raw = (
             f.binary_cross_entropy_with_logits(
@@ -424,9 +423,7 @@ def det_loss_with_simota(
     quality_loss = (quality_loss_raw * anchor_weights).sum() / quality_denom
 
     total = (
-        cls_loss_weight * cls_loss
-        + box_loss_weight * box_loss
-        + quality_loss_weight * quality_loss
+        cls_loss_weight * cls_loss + box_loss_weight * box_loss + quality_loss_weight * quality_loss
     )
     return DetLossOutput(
         total_loss=total,
