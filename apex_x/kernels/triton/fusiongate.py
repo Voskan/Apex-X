@@ -7,6 +7,13 @@ from typing import Any, Literal
 import torch
 from torch import Tensor
 
+from .autotune_registry import (
+    build_shape_bucket,
+    get_cached_triton_config,
+    record_triton_autotune_selection,
+    resolve_triton_launch_config,
+)
+
 BackendKind = Literal["reference", "triton"]
 
 
@@ -101,6 +108,14 @@ def _softplus_weight(value: float | Tensor, *, device: torch.device) -> float:
         torch.as_tensor(float(value), dtype=torch.float32, device=device)
     )
     return float(weight.item())
+
+
+def _fusiongate_block_heuristic(n_elements: int) -> int:
+    if n_elements <= 256:
+        return 256
+    if n_elements <= 512:
+        return 512
+    return 1024
 
 
 def fusiongate_alpha_reference(
@@ -212,6 +227,7 @@ if triton is not None:
 
         out = base + alpha * (detail - base)
         tl.store(out_ptr + offs, out, mask=mask)
+
 else:
     _fusiongate_alpha_kernel = None
     _fusiongate_fuse_kernel = None
@@ -246,6 +262,24 @@ def fusiongate_alpha_triton(
     boundary_w = _softplus_weight(boundary_log_weight, device=boundary.device)
     uncertainty_w = _softplus_weight(uncertainty_log_weight, device=boundary.device)
     n_elements = int(boundary.numel())
+    shape_bucket = build_shape_bucket(
+        batch=int(boundary.shape[0]),
+        channels=int(boundary.shape[1]),
+        height=int(boundary.shape[2]),
+        width=int(boundary.shape[3]),
+        n_elements=n_elements,
+        dtype=str(boundary.dtype).replace("torch.", ""),
+    )
+
+    selected_config = get_cached_triton_config(
+        op_name="fusiongate_alpha", shape_bucket=shape_bucket
+    )
+    selection_source = "registry_cache"
+    if selected_config is None:
+        selected_config, selection_source = resolve_triton_launch_config(
+            kernel=_fusiongate_alpha_kernel,
+            fallback_config={"BLOCK_SIZE": _fusiongate_block_heuristic(n_elements)},
+        )
 
     grid = (triton.cdiv(n_elements, 1024),)
     _fusiongate_alpha_kernel[grid](
@@ -256,6 +290,13 @@ def fusiongate_alpha_triton(
         boundary_w,
         uncertainty_w,
         float(bias),
+    )
+    record_triton_autotune_selection(
+        op_name="fusiongate_alpha",
+        kernel_name="_fusiongate_alpha_kernel",
+        shape_bucket=shape_bucket,
+        selected_config=selected_config,
+        selection_source=selection_source,
     )
     return alpha.contiguous()
 
@@ -293,6 +334,22 @@ def fusiongate_fuse_triton(
     n_elements = int(base.numel())
     channels = int(base.shape[1])
     hw = int(base.shape[2] * base.shape[3])
+    shape_bucket = build_shape_bucket(
+        batch=int(base.shape[0]),
+        channels=channels,
+        height=int(base.shape[2]),
+        width=int(base.shape[3]),
+        n_elements=n_elements,
+        dtype=str(base.dtype).replace("torch.", ""),
+    )
+
+    selected_config = get_cached_triton_config(op_name="fusiongate_fuse", shape_bucket=shape_bucket)
+    selection_source = "registry_cache"
+    if selected_config is None:
+        selected_config, selection_source = resolve_triton_launch_config(
+            kernel=_fusiongate_fuse_kernel,
+            fallback_config={"BLOCK_SIZE": _fusiongate_block_heuristic(n_elements)},
+        )
 
     grid = (triton.cdiv(n_elements, 1024),)
     _fusiongate_fuse_kernel[grid](
@@ -303,6 +360,13 @@ def fusiongate_fuse_triton(
         n_elements,
         channels,
         hw,
+    )
+    record_triton_autotune_selection(
+        op_name="fusiongate_fuse",
+        kernel_name="_fusiongate_fuse_kernel",
+        shape_bucket=shape_bucket,
+        selected_config=selected_config,
+        selection_source=selection_source,
     )
     return out.contiguous()
 
@@ -323,9 +387,7 @@ def fusiongate_dispatch(
     inference_only: bool = True,
 ) -> FusionGateDispatchResult:
     if apply_fusion and (base_features is None or detail_features is None):
-        raise ValueError(
-            "base_features and detail_features are required when apply_fusion=True"
-        )
+        raise ValueError("base_features and detail_features are required when apply_fusion=True")
     requires_grad = boundary_proxy.requires_grad or uncertainty_proxy.requires_grad
     if base_features is not None:
         requires_grad = requires_grad or base_features.requires_grad

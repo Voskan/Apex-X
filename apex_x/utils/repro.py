@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import random
 from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -16,6 +19,92 @@ except Exception:  # pragma: no cover - optional dependency in minimal envs
 
 
 _DETERMINISTIC_ENABLED = False
+
+
+def _canonicalize_for_hash(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, np.ndarray):
+        return _canonicalize_for_hash(value.tolist())
+    if isinstance(value, np.generic):
+        return _canonicalize_for_hash(value.item())
+    if isinstance(value, dict):
+        return {
+            str(k): _canonicalize_for_hash(v)
+            for k, v in sorted(value.items(), key=lambda item: str(item[0]))
+        }
+    if isinstance(value, (list, tuple)):
+        return [_canonicalize_for_hash(v) for v in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    raise TypeError(f"Unsupported value type for hashing: {type(value).__name__}")
+
+
+def stable_json_dumps(value: Any) -> str:
+    canonical = _canonicalize_for_hash(value)
+    return json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def hash_json_sha256(value: Any) -> str:
+    payload = stable_json_dumps(value).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def hash_file_sha256(path: str | Path, *, chunk_size: int = 1 << 20) -> str:
+    path_obj = Path(path)
+    hasher = hashlib.sha256()
+    with path_obj.open("rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def build_replay_manifest(
+    *,
+    seed: int,
+    config: dict[str, Any],
+    artifact_paths: dict[str, str | Path] | None = None,
+    include_determinism_state: bool = True,
+) -> dict[str, Any]:
+    if seed < 0:
+        raise ValueError("seed must be >= 0")
+
+    canonical_config = _canonicalize_for_hash(config)
+    config_sha256 = hash_json_sha256(canonical_config)
+
+    artifact_hashes: dict[str, dict[str, str]] = {}
+    if artifact_paths:
+        for name, path in sorted(artifact_paths.items(), key=lambda x: str(x[0])):
+            artifact_hashes[str(name)] = {
+                "path": str(path),
+                "sha256": hash_file_sha256(path),
+            }
+
+    manifest: dict[str, Any] = {
+        "seed": int(seed),
+        "config": canonical_config,
+        "config_sha256": config_sha256,
+        "artifact_hashes": artifact_hashes,
+    }
+    if include_determinism_state:
+        manifest["determinism_state"] = _canonicalize_for_hash(get_determinism_state())
+
+    manifest["artifact_sha256"] = {
+        name: details["sha256"]
+        for name, details in sorted(artifact_hashes.items(), key=lambda item: item[0])
+    }
+
+    manifest["manifest_sha256"] = hash_json_sha256(
+        {
+            "seed": manifest["seed"],
+            "config_sha256": manifest["config_sha256"],
+            "artifact_sha256": manifest["artifact_sha256"],
+        }
+    )
+    return manifest
 
 
 def seed_all(seed: int, deterministic: bool | None = None) -> dict[str, str | bool | None]:
@@ -116,3 +205,16 @@ def deterministic_mode(
     finally:
         prev_enabled = bool(previous.get("deterministic_enabled"))
         set_deterministic_mode(enabled=prev_enabled, warn_only=warn_only)
+
+
+__all__ = [
+    "seed_all",
+    "set_deterministic_mode",
+    "get_determinism_state",
+    "reproducibility_notes",
+    "deterministic_mode",
+    "stable_json_dumps",
+    "hash_json_sha256",
+    "hash_file_sha256",
+    "build_replay_manifest",
+]

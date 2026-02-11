@@ -13,7 +13,7 @@ from apex_x.routing import (
     RouterProtocol,
     build_routing_diagnostics,
     expected_cost,
-    hysteresis_update,
+    hysteresis_update_with_budget,
 )
 from apex_x.tiles import NumpyTileCodec, TileCodecProtocol, tile_grid_shape
 from apex_x.utils import get_logger, log_event, tile_ssm_scan
@@ -51,6 +51,13 @@ class ApexXModel:
             mu_lr=self.config.train.mu_lr,
             mu_min=self.config.train.mu_min,
             mu_max=self.config.train.mu_max,
+            adaptive_lr=self.config.train.dual_adaptive_lr,
+            lr_decay=self.config.train.dual_lr_decay,
+            delta_clip=self.config.train.dual_delta_clip,
+            deadband_ratio=self.config.train.dual_deadband_ratio,
+            error_ema_beta=self.config.train.dual_error_ema_beta,
+            adaptive_lr_min_scale=self.config.train.dual_lr_min_scale,
+            adaptive_lr_max_scale=self.config.train.dual_lr_max_scale,
             logger_name="model.dual",
         )
         self.mu_history: list[float] = [self.dual_controller.mu]
@@ -106,11 +113,12 @@ class ApexXModel:
         if self.prev_mask is None:
             self.prev_mask = [0] * len(utilities)
         if router_enabled:
-            hyst_mask = hysteresis_update(
+            hyst_mask = hysteresis_update_with_budget(
                 utilities,
                 self.prev_mask,
                 cfg.routing.theta_on,
                 cfg.routing.theta_off,
+                cfg.model.kmax_l0,
             )
         else:
             hyst_mask = [1] * len(utilities)

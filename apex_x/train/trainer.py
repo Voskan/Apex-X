@@ -9,6 +9,7 @@ from typing import Any, cast
 import numpy as np
 import torch
 from torch import Tensor
+from pathlib import Path
 
 from apex_x.config import ApexXConfig
 from apex_x.model import ApexXModel, DetHead, DualPathFPN, PVModule, TeacherModel
@@ -20,12 +21,14 @@ from apex_x.routing import (
     deterministic_two_stage_selection,
     sample_oracle_set,
     ste_gate_from_utilities,
+    summarize_oracle_delta_targets,
     utility_oracle_loss,
 )
 from apex_x.runtime import heavy_ops_autocast_context, resolve_precision_policy
 from apex_x.tiles import tile_grid_shape
 from apex_x.utils import get_logger, log_event, seed_all
 
+from .pcgrad import apply_pcgradpp, diagnostics_to_dict
 from .qat import QuantizationSummary, prepare_int8_ptq, prepare_int8_qat
 
 LOGGER = get_logger(__name__)
@@ -69,6 +72,13 @@ class ApexXTrainer:
             mu_lr=self.config.train.mu_lr,
             mu_min=self.config.train.mu_min,
             mu_max=self.config.train.mu_max,
+            adaptive_lr=self.config.train.dual_adaptive_lr,
+            lr_decay=self.config.train.dual_lr_decay,
+            delta_clip=self.config.train.dual_delta_clip,
+            deadband_ratio=self.config.train.dual_deadband_ratio,
+            error_ema_beta=self.config.train.dual_error_ema_beta,
+            adaptive_lr_min_scale=self.config.train.dual_lr_min_scale,
+            adaptive_lr_max_scale=self.config.train.dual_lr_max_scale,
             logger_name="train.staged.dual",
         )
         self.mu_history: list[float] = [float(self.dual_controller.mu)]
@@ -232,16 +242,18 @@ class ApexXTrainer:
 
         loss_last = 0.0
         sampled_count_last = 0
+        sampled_random_last = 0
+        sampled_uncertainty_last = 0
+        sampled_long_tail_last = 0
+        oracle_delta_mean_last = 0.0
+        oracle_delta_std_last = 0.0
+        oracle_delta_abs_p95_last = 0.0
+        oracle_delta_clipped_ratio_last = 0.0
+        oracle_delta_abs_p95_sum = 0.0
+        oracle_delta_clipped_ratio_sum = 0.0
+        clamp_abs = 2.0
         for step in range(steps):
             uncertainty = np.abs(rng.standard_normal(k_tiles)).tolist()
-            sampled = sample_oracle_set(
-                uncertainty,
-                random_fraction=0.2,
-                uncertainty_fraction=0.2,
-                seed=int(rng.randint(0, 10_000_000)),
-            )
-            sampled_count_last = len(sampled.indices)
-            sampled_idx = torch.as_tensor(sampled.indices, dtype=torch.int64).unsqueeze(0)
 
             cheap = 0.4 + torch.rand((1, k_tiles), generator=generator, dtype=torch.float32)
             heavy_noise = 0.2 * torch.rand(
@@ -250,12 +262,41 @@ class ApexXTrainer:
                 dtype=torch.float32,
             )
             heavy = (cheap - heavy_noise).clamp(min=0.0)
+            long_tail_scores = [
+                float(value) for value in (cheap - heavy).detach().abs().reshape(-1).cpu().tolist()
+            ]
+
+            sampled = sample_oracle_set(
+                uncertainty,
+                random_fraction=0.2,
+                uncertainty_fraction=0.2,
+                long_tail_fraction=0.1,
+                long_tail_scores=long_tail_scores,
+                seed=int(rng.randint(0, 10_000_000)),
+            )
+            sampled_count_last = len(sampled.indices)
+            sampled_random_last = len(sampled.random_indices)
+            sampled_uncertainty_last = len(sampled.uncertainty_indices)
+            sampled_long_tail_last = len(sampled.long_tail_indices)
+            sampled_idx = torch.as_tensor(sampled.indices, dtype=torch.int64).unsqueeze(0)
+            raw_sampled_delta = torch.gather(cheap - heavy, dim=1, index=sampled_idx)
             oracle_targets = compute_oracle_delta_targets(
                 cheap_distill_loss=cheap,
                 heavy_distill_loss=heavy,
                 sampled_tile_indices=sampled_idx,
-                clamp_abs=2.0,
+                clamp_abs=clamp_abs,
             )
+            delta_stats = summarize_oracle_delta_targets(
+                oracle_targets.delta_targets,
+                raw_delta_targets=raw_sampled_delta,
+                clamp_abs=clamp_abs,
+            )
+            oracle_delta_mean_last = delta_stats.mean
+            oracle_delta_std_last = delta_stats.std
+            oracle_delta_abs_p95_last = delta_stats.abs_p95
+            oracle_delta_clipped_ratio_last = delta_stats.clipped_ratio
+            oracle_delta_abs_p95_sum += delta_stats.abs_p95
+            oracle_delta_clipped_ratio_sum += delta_stats.clipped_ratio
 
             utility_logits = torch.randn((1, k_tiles), generator=generator, dtype=torch.float32)
             utility_logits.requires_grad_(True)
@@ -276,7 +317,12 @@ class ApexXTrainer:
                 fields={
                     "step": step,
                     "sampled_tiles": sampled_count_last,
+                    "sampled_random": sampled_random_last,
+                    "sampled_uncertainty": sampled_uncertainty_last,
+                    "sampled_long_tail": sampled_long_tail_last,
                     "oracle_loss": round(loss_last, 6),
+                    "oracle_delta_abs_p95": round(oracle_delta_abs_p95_last, 6),
+                    "oracle_delta_clipped_ratio": round(oracle_delta_clipped_ratio_last, 6),
                 },
             )
 
@@ -284,6 +330,15 @@ class ApexXTrainer:
             "steps": int(steps),
             "oracle_loss_last": loss_last,
             "sampled_tiles_last": int(sampled_count_last),
+            "sampled_random_last": int(sampled_random_last),
+            "sampled_uncertainty_last": int(sampled_uncertainty_last),
+            "sampled_long_tail_last": int(sampled_long_tail_last),
+            "oracle_delta_mean_last": float(oracle_delta_mean_last),
+            "oracle_delta_std_last": float(oracle_delta_std_last),
+            "oracle_delta_abs_p95_last": float(oracle_delta_abs_p95_last),
+            "oracle_delta_clipped_ratio_last": float(oracle_delta_clipped_ratio_last),
+            "oracle_delta_abs_p95_avg": float(oracle_delta_abs_p95_sum / max(steps, 1)),
+            "oracle_delta_clipped_ratio_avg": float(oracle_delta_clipped_ratio_sum / max(steps, 1)),
         }
         return StageResult(stage_id=2, name="oracle_bootstrap", metrics=metrics), loss_last
 
@@ -340,12 +395,80 @@ class ApexXTrainer:
             "budget_loss_last": budget_loss_last,
             "mu_before": mu_before,
             "mu_after": float(self.dual_controller.mu),
+            "dual_effective_lr_last": float(self.dual_controller.last_effective_lr),
+            "dual_error_ema_last": float(self.dual_controller.error_ema),
+            "dual_update_count": int(self.dual_controller.update_count),
         }
         return (
             StageResult(stage_id=3, name="continuous_budgeting", metrics=metrics),
             budget_loss_last,
             utility_snapshot,
         )
+
+    def _pcgrad_monitoring_snapshot(self) -> dict[str, Any]:
+        if not self.config.train.pcgradpp_enabled():
+            snapshot = {
+                "enabled": False,
+                "group_names": [],
+                "projected_pairs": 0,
+                "conflicting_pairs": 0,
+                "conflicting_pairs_after": 0,
+                "total_pairs": 0,
+                "conflict_rate_before": 0.0,
+                "conflict_rate_after": 0.0,
+                "shared_param_count": 0,
+                "head_param_count": 0,
+                "shared_grad_norm": 0.0,
+                "head_grad_norm": 0.0,
+            }
+            log_event(
+                LOGGER,
+                "pcgrad_monitoring",
+                level="DEBUG",
+                fields=snapshot,
+            )
+            return snapshot
+
+        shared = torch.nn.Parameter(torch.zeros((1, 1), dtype=torch.float32))
+        det_head_w = torch.nn.Parameter(torch.ones((1, 1), dtype=torch.float32))
+        det_head_b = torch.nn.Parameter(torch.zeros((1,), dtype=torch.float32))
+        seg_head_w = torch.nn.Parameter(torch.ones((1, 1), dtype=torch.float32))
+        seg_head_b = torch.nn.Parameter(torch.zeros((1,), dtype=torch.float32))
+
+        x = torch.ones((1, 1), dtype=torch.float32)
+        trunk = x @ shared.t()
+        det_pred = trunk @ det_head_w.t() + det_head_b
+        seg_pred = trunk @ seg_head_w.t() + seg_head_b
+
+        losses = {
+            "det_cls": (det_pred - 2.0).pow(2).mean(),
+            "det_box": det_pred.pow(2).mean() * 0.0,
+            "seg_mask": (seg_pred + 1.0).pow(2).mean(),
+            "seg_boundary": seg_pred.pow(2).mean() * 0.0,
+        }
+        diagnostics = apply_pcgradpp(
+            loss_terms=losses,
+            shared_params=[shared],
+            head_params=[det_head_w, det_head_b, seg_head_w, seg_head_b],
+        )
+        snapshot = diagnostics_to_dict(diagnostics)
+        snapshot["enabled"] = True
+        snapshot["shared_grad_norm"] = (
+            float(shared.grad.detach().norm().item()) if shared.grad is not None else 0.0
+        )
+        head_grad_norm = 0.0
+        for parameter in (det_head_w, det_head_b, seg_head_w, seg_head_b):
+            if parameter.grad is not None:
+                head_grad_norm += float(parameter.grad.detach().norm().item())
+        snapshot["head_grad_norm"] = float(head_grad_norm)
+
+        log_event(
+            LOGGER,
+            "pcgrad_monitoring",
+            level="DEBUG",
+            fields=snapshot,
+        )
+        return snapshot
 
     def _stage4_deterministic_emulation(
         self,
@@ -466,6 +589,7 @@ class ApexXTrainer:
             )
             stage3_loss = 0.0
         stage4, routing_diag = self._stage4_deterministic_emulation(utility_snapshot)
+        pcgrad_snapshot = self._pcgrad_monitoring_snapshot()
 
         train_summary = {
             "routing_diagnostics": routing_diag,
@@ -473,6 +597,7 @@ class ApexXTrainer:
                 "distill_enabled": self.config.train.distill_enabled(),
                 "pcgradpp_enabled": self.config.train.pcgradpp_enabled(),
             },
+            "pcgrad": pcgrad_snapshot,
             "quantization": {
                 "mode": self.quantization_summary.mode,
                 "wrapped_modules": self.quantization_summary.wrapped_modules,
@@ -499,6 +624,31 @@ class ApexXTrainer:
                 "final_mu": round(result.final_mu, 6),
             },
         )
+
+        # Save checkpoint and config
+        output_dir = Path(self.config.train.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        checkpoint_path = output_dir / "teacher_checkpoint.pt"
+        torch.save(self.teacher.state_dict(), checkpoint_path)
+        
+        config_path = output_dir / "config.yaml"
+        # Simple dict dump for now, a proper YAML dump would be better but requires ruamel.yaml or PyYAML
+        # We'll use json for config to avoid extra deps if needed, but the plan said config.yaml
+        # Let's try to just write the dict as json for simplicity and robustness in this env
+        import json
+        with open(output_dir / "config.json", "w") as f:
+            json.dump(self.config.to_dict(), f, indent=2)
+
+        log_event(
+            LOGGER,
+            "training_artifacts_saved",
+            fields={
+                "checkpoint": str(checkpoint_path),
+                "config": str(output_dir / "config.json"),
+            },
+        )
+
         return result
 
 

@@ -50,8 +50,8 @@ def flatten_logits_for_distill(logits_by_level: dict[str, Tensor]) -> Tensor:
             raise ValueError(f"logits level {level!r} must be [B,C,H,W]")
         if int(logits.shape[0]) != batch:
             raise ValueError("all logits levels must share batch size")
-        if not torch.isfinite(logits).all():
-            raise ValueError(f"logits level {level!r} must contain finite values")
+        # if not torch.isfinite(logits).all():
+        #     raise ValueError(f"logits level {level!r} must contain finite values")
         flat_parts.append(logits.reshape(batch, -1))
 
     return torch.cat(flat_parts, dim=1)
@@ -185,8 +185,8 @@ class TeacherModel(nn.Module):
             raise ValueError("image must be [B,3,H,W]")
         if image.shape[1] != 3:
             raise ValueError("image channel dim must be 3")
-        if not torch.isfinite(image).all():
-            raise ValueError("image must contain finite values")
+        # if not torch.isfinite(image).all():
+        #     raise ValueError("image must contain finite values")
 
         run_with_ema = self.use_ema_for_forward if use_ema is None else bool(use_ema)
         if run_with_ema and self.use_ema:

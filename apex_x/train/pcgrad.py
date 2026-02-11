@@ -40,6 +40,10 @@ class PCGradDiagnostics:
     group_names: tuple[str, ...]
     projected_pairs: int
     conflicting_pairs: int
+    conflicting_pairs_after: int
+    total_pairs: int
+    conflict_rate_before: float
+    conflict_rate_after: float
     shared_param_count: int
     head_param_count: int
 
@@ -111,6 +115,19 @@ def _norm2(grads: Sequence[Tensor], *, eps: float) -> Tensor:
     return total + eps
 
 
+def _count_conflicting_pairs(grad_sets: Sequence[Sequence[Tensor]]) -> int:
+    if len(grad_sets) < 2:
+        return 0
+    conflicts = 0
+    for idx, grads_i in enumerate(grad_sets):
+        for jdx, grads_j in enumerate(grad_sets):
+            if idx == jdx:
+                continue
+            if float(_dot(grads_i, grads_j).item()) < 0.0:
+                conflicts += 1
+    return conflicts
+
+
 def apply_pcgradpp(
     *,
     loss_terms: Mapping[str, Tensor],
@@ -150,6 +167,10 @@ def apply_pcgradpp(
             group_names=tuple(group.name for group in groups),
             projected_pairs=0,
             conflicting_pairs=0,
+            conflicting_pairs_after=0,
+            total_pairs=0,
+            conflict_rate_before=0.0,
+            conflict_rate_after=0.0,
             shared_param_count=0,
             head_param_count=len(heads),
         )
@@ -164,8 +185,9 @@ def apply_pcgradpp(
         base_grads.append(grads)
 
     projected: list[list[Tensor]] = [[grad.clone() for grad in grads] for grads in base_grads]
+    total_pairs = len(groups) * max(len(groups) - 1, 0)
+    conflicting_pairs_before = _count_conflicting_pairs(base_grads)
     projected_pairs = 0
-    conflicting_pairs = 0
 
     for idx, grads_i in enumerate(projected):
         for jdx, grads_j in enumerate(base_grads):
@@ -173,12 +195,19 @@ def apply_pcgradpp(
                 continue
             dot_ij = _dot(grads_i, grads_j)
             if float(dot_ij.item()) < 0.0:
-                conflicting_pairs += 1
                 denom = _norm2(grads_j, eps=eps)
                 coeff = dot_ij / denom
                 for grad_pos in range(len(grads_i)):
                     grads_i[grad_pos] = grads_i[grad_pos] - coeff * grads_j[grad_pos]
                 projected_pairs += 1
+
+    conflicting_pairs_after = _count_conflicting_pairs(projected)
+    conflict_rate_before = (
+        float(conflicting_pairs_before) / float(total_pairs) if total_pairs > 0 else 0.0
+    )
+    conflict_rate_after = (
+        float(conflicting_pairs_after) / float(total_pairs) if total_pairs > 0 else 0.0
+    )
 
     merged_shared: list[Tensor] = []
     for param_pos in range(len(shared)):
@@ -191,7 +220,11 @@ def apply_pcgradpp(
     return PCGradDiagnostics(
         group_names=tuple(group.name for group in groups),
         projected_pairs=projected_pairs,
-        conflicting_pairs=conflicting_pairs,
+        conflicting_pairs=conflicting_pairs_before,
+        conflicting_pairs_after=conflicting_pairs_after,
+        total_pairs=total_pairs,
+        conflict_rate_before=conflict_rate_before,
+        conflict_rate_after=conflict_rate_after,
         shared_param_count=len(shared),
         head_param_count=len(heads),
     )
@@ -203,6 +236,10 @@ def diagnostics_to_dict(diagnostics: PCGradDiagnostics) -> dict[str, Any]:
         "group_names": list(diagnostics.group_names),
         "projected_pairs": diagnostics.projected_pairs,
         "conflicting_pairs": diagnostics.conflicting_pairs,
+        "conflicting_pairs_after": diagnostics.conflicting_pairs_after,
+        "total_pairs": diagnostics.total_pairs,
+        "conflict_rate_before": diagnostics.conflict_rate_before,
+        "conflict_rate_after": diagnostics.conflict_rate_after,
         "shared_param_count": diagnostics.shared_param_count,
         "head_param_count": diagnostics.head_param_count,
     }

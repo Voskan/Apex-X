@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -120,5 +121,87 @@ func TestBatcherBatchesNearbyRequests(t *testing.T) {
 	}
 	if !foundCombinedBatch {
 		t.Fatalf("expected at least one combined batch, got sizes=%v", sizes)
+	}
+}
+
+func TestBatcherInjectsRuntimeTelemetry(t *testing.T) {
+	adapter := &recordingAdapter{}
+	batcher, err := NewBatcher(adapter, BatcherConfig{
+		MaxBatchSize: 2,
+		BatchWindow:  5 * time.Millisecond,
+		QueueSize:    8,
+	})
+	if err != nil {
+		t.Fatalf("NewBatcher() error = %v", err)
+	}
+	batcher.Start()
+	defer batcher.Stop()
+
+	response, submitErr := batcher.Submit(context.Background(), PredictRequest{
+		RequestID:     "req-telemetry",
+		BudgetProfile: BudgetProfileQuality,
+		Input:         []float32{1.0, 2.0},
+		Metadata: map[string]string{
+			"requested_backend":         "tensorrt",
+			"fallback_policy":           "permissive",
+			"selection_fallback_reason": "triton_not_installed",
+		},
+	})
+	if submitErr != nil {
+		t.Fatalf("Submit() error = %v", submitErr)
+	}
+
+	if response.Runtime.RequestedBackend != "tensorrt" {
+		t.Fatalf("unexpected requested backend: %q", response.Runtime.RequestedBackend)
+	}
+	if response.Runtime.SelectedBackend != adapter.Name() {
+		t.Fatalf("unexpected selected backend: %q", response.Runtime.SelectedBackend)
+	}
+	if response.Runtime.ExecutionBackend != adapter.Name() {
+		t.Fatalf("unexpected execution backend: %q", response.Runtime.ExecutionBackend)
+	}
+	if response.Runtime.FallbackPolicy != "permissive" {
+		t.Fatalf("unexpected fallback policy: %q", response.Runtime.FallbackPolicy)
+	}
+	if response.Runtime.SelectionFallbackReason == nil ||
+		*response.Runtime.SelectionFallbackReason != "triton_not_installed" {
+		t.Fatalf("unexpected selection fallback reason: %+v", response.Runtime.SelectionFallbackReason)
+	}
+	if response.Runtime.ExecutionFallbackReason != nil {
+		t.Fatalf("execution fallback reason should be nil, got %+v", response.Runtime.ExecutionFallbackReason)
+	}
+	if response.Runtime.PrecisionProfile != BudgetProfileQuality {
+		t.Fatalf("unexpected precision profile: %q", response.Runtime.PrecisionProfile)
+	}
+	if response.Runtime.LatencyMS.Total < 0.0 ||
+		response.Runtime.LatencyMS.BackendExecute < 0.0 ||
+		response.Runtime.LatencyMS.BackendPreflight < 0.0 {
+		t.Fatalf("latency fields must be non-negative: %+v", response.Runtime.LatencyMS)
+	}
+}
+
+func TestBatcherSubmitReturnsQueueFullWhenQueueSaturated(t *testing.T) {
+	adapter := &recordingAdapter{}
+	batcher, err := NewBatcher(adapter, BatcherConfig{
+		MaxBatchSize: 1,
+		BatchWindow:  20 * time.Millisecond,
+		QueueSize:    1,
+	})
+	if err != nil {
+		t.Fatalf("NewBatcher() error = %v", err)
+	}
+
+	batcher.queue <- batchItem{
+		req:      PredictRequest{RequestID: "occupied"},
+		enqueued: time.Now(),
+		result:   make(chan batchResult, 1),
+	}
+
+	_, submitErr := batcher.Submit(context.Background(), PredictRequest{
+		RequestID:     "overflow",
+		BudgetProfile: BudgetProfileBalanced,
+	})
+	if !errors.Is(submitErr, ErrQueueFull) {
+		t.Fatalf("expected ErrQueueFull, got %v", submitErr)
 	}
 }

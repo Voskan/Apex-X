@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "apex-x"
 version = "0.1.0"
-description = "Apex-X v4: Universal Vision Dynamic Compute Graph baseline"
+description = "Apex-X: Universal Vision Dynamic Compute Graph baseline"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
@@ -37,7 +37,8 @@ dev = [
   "types-PyYAML>=6.0.12"
 ]
 docs = [
-  "mkdocs>=1.6"
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5"
 ]
 
 [project.scripts]

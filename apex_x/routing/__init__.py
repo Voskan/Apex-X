@@ -6,6 +6,7 @@ from .aggregation import (
 from .core import (
     GreedyBudgetController,
     IdentityRouter,
+    TemporalStabilityMetrics,
     count_mask_toggles,
     delta_loss_oracle,
     dual_update,
@@ -13,11 +14,16 @@ from .core import (
     greedy_utility_per_cost,
     hysteresis_rollout,
     hysteresis_update,
+    hysteresis_update_with_budget,
     mean,
+    mean_active_ratio,
     sigmoid,
     split_by_budget,
     stable_rank_tile_ids,
     ste_gate,
+    summarize_temporal_stability,
+    temporal_consistency,
+    tile_flip_rate,
 )
 from .cost_model import CalibrationRecord, LevelCost, StaticCostModel
 from .diagnostics import build_routing_diagnostics, utility_histogram
@@ -25,9 +31,11 @@ from .dual_budget import BudgetDualController
 from .gating import GateMode, sigmoid_probabilities, ste_gate_from_utilities, ste_hard_gate
 from .inference_budget import (
     GreedySelectionResult,
+    ThreeStageSelectionResult,
     TwoStageSelectionResult,
     build_kmax_buffer,
     deterministic_greedy_selection,
+    deterministic_three_stage_selection,
     deterministic_two_stage_selection,
 )
 from .interfaces import (
@@ -40,10 +48,12 @@ from .interfaces import (
 )
 from .kan_like import LightweightSplineActivation, RouterKANLike, RouterKANOutput
 from .oracle_distill import (
+    OracleDeltaStats,
     OracleDeltaTargets,
     RegressionLossType,
     UtilityOracleLossOutput,
     compute_oracle_delta_targets,
+    summarize_oracle_delta_targets,
     utility_oracle_loss,
     utility_ranking_loss,
     utility_regression_loss,
@@ -67,12 +77,14 @@ __all__ = [
     "OracleSetSample",
     "sample_oracle_set",
     "RegressionLossType",
+    "OracleDeltaStats",
     "OracleDeltaTargets",
     "UtilityOracleLossOutput",
     "compute_oracle_delta_targets",
     "utility_regression_loss",
     "utility_ranking_loss",
     "utility_oracle_loss",
+    "summarize_oracle_delta_targets",
     "RouterTinyOutput",
     "RouterTinyMLP",
     "LevelCost",
@@ -94,14 +106,22 @@ __all__ = [
     "ste_gate_from_utilities",
     "GreedySelectionResult",
     "TwoStageSelectionResult",
+    "ThreeStageSelectionResult",
     "build_kmax_buffer",
     "deterministic_greedy_selection",
     "deterministic_two_stage_selection",
+    "deterministic_three_stage_selection",
     "greedy_utility_per_cost",
     "stable_rank_tile_ids",
     "hysteresis_update",
+    "hysteresis_update_with_budget",
     "hysteresis_rollout",
     "count_mask_toggles",
+    "tile_flip_rate",
+    "temporal_consistency",
+    "mean_active_ratio",
+    "TemporalStabilityMetrics",
+    "summarize_temporal_stability",
     "split_by_budget",
     "mean",
 ]

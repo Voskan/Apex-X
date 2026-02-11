@@ -69,10 +69,39 @@ jobs:
             --baseline scripts/perf_baseline_cpu.json \
             --output artifacts/perf_current_ci.json \
             --summary artifacts/perf_compare_ci.json \
+            --trend-output artifacts/perf_trend_cpu_ci.json \
             --infer-iters 15 \
             --micro-iters 25 \
             --infer-warmup 3 \
             --micro-warmup 3
+      - name: Capture runtime capability snapshot (CPU CI)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from apex_x.runtime import detect_runtime_caps
+
+          payload = detect_runtime_caps().to_dict()
+          output = Path("artifacts/runtime/caps_ci.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(f"runtime_caps output={output}")
+          PY
+      - name: Generate release evidence draft (CPU CI)
+        run: |
+          python scripts/release_attestation.py \
+            --runtime-target cpu \
+            --artifact-path performance_report=artifacts/perf_compare_ci.json \
+            --artifact-path runtime_capability_snapshot=artifacts/runtime/caps_ci.json \
+            --gate-status lint_type_tests=PENDING \
+            --gate-status cpu_perf_regression=PASS \
+            --gate-status gpu_perf_regression=N/A \
+            --gate-status runtime_backend_parity=PENDING \
+            --gate-status runtime_capability_transparency=PASS \
+            --gate-status security_review=PENDING \
+            --gate-status documentation_sync=PENDING \
+            --output-json artifacts/release/release_attestation_ci.json \
+            --output-md artifacts/release/release_attestation_ci.md
       - name: Upload perf artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -80,6 +109,10 @@ jobs:
           path: |
             artifacts/perf_current_ci.json
             artifacts/perf_compare_ci.json
+            artifacts/perf_trend_cpu_ci.json
+            artifacts/runtime/caps_ci.json
+            artifacts/release/release_attestation_ci.json
+            artifacts/release/release_attestation_ci.md
 
   go-runtime:
     runs-on: ubuntu-latest
@@ -89,6 +122,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
+      - name: Go runtime canary SLA gate
+        env:
+          APEXX_GO_CANARY_GATE_REQUESTS: "96"
+          APEXX_GO_CANARY_GATE_CONCURRENCY: "12"
+          APEXX_GO_CANARY_GATE_PRIMARY_DELAY_MS: "3"
+          APEXX_GO_CANARY_GATE_CANARY_DELAY_MS: "3"
+          APEXX_GO_CANARY_GATE_MAX_OVERHEAD_RATIO: "0.75"
+          APEXX_GO_CANARY_GATE_MAX_OVERHEAD_ABS_MS: "5.0"
+          APEXX_GO_CANARY_GATE_MAX_TIMEOUT_RATE: "0.00"
+          APEXX_GO_CANARY_GATE_MAX_QUEUE_OVERFLOW_RATE: "0.00"
+        run: |
+          cd runtime/go
+          go test ./internal/service -run TestCanaryLoadGateThresholds -count=1 -v
       - name: Go runtime tests
         run: |
           cd runtime/go

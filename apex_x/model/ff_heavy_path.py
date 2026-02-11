@@ -7,10 +7,11 @@ from torch import Tensor, nn
 from torch.nn import functional as f
 
 from apex_x.kernels.triton import BidirectionalMergeMode, ScanDirection, tilessm_scan_dispatch
+from apex_x.kernels.triton.fused_pack_op_unpack import fused_pack_op_unpack_dispatch
 from apex_x.tiles import OverlapMode, TilePackTorch, TileUnpackTorch
 from apex_x.utils import StableBidirectionalStateSpaceScan, StableStateSpaceScan
 
-from .film import TileFiLM
+from .film import TileFiLM, apply_film
 from .fusion_gate import FusionGate
 from .tile_refine_block import TileRefineBlock
 
@@ -44,8 +45,10 @@ class FFHeavyPath(nn.Module):
         use_refine: bool = True,
         use_fusion_gate: bool = True,
         use_triton_inference_scan: bool = False,
+        use_triton_fused_stage1: bool = False,
         gamma_limit: float = 1.0,
         refine_norm_groups: int = 1,
+        fused_stage1_const_tolerance: float = 1e-6,
     ) -> None:
         super().__init__()
         if channels <= 0:
@@ -65,6 +68,8 @@ class FFHeavyPath(nn.Module):
         self.blend_alpha = float(blend_alpha)
         self.use_fusion_gate = bool(use_fusion_gate)
         self.use_triton_inference_scan = bool(use_triton_inference_scan)
+        self.use_triton_fused_stage1 = bool(use_triton_fused_stage1)
+        self.fused_stage1_const_tolerance = float(fused_stage1_const_tolerance)
 
         self.packer = TilePackTorch()
         self.unpacker = TileUnpackTorch()
@@ -86,6 +91,44 @@ class FFHeavyPath(nn.Module):
         else:
             self.refine = nn.Identity()
         self.fusion_gate = FusionGate() if self.use_fusion_gate else None
+
+    def _indices_are_unique(self, indices: Tensor) -> bool:
+        if indices.ndim != 2:
+            return False
+        if indices.numel() == 0:
+            return True
+        idx_i64 = indices.to(dtype=torch.int64)
+        for batch_idx in range(int(idx_i64.shape[0])):
+            row = idx_i64[batch_idx]
+            if int(torch.unique(row).numel()) != int(row.numel()):
+                return False
+        return True
+
+    def _resolve_fused_stage1_affine_params(
+        self,
+        *,
+        gamma: Tensor,
+        beta: Tensor,
+    ) -> tuple[float, float] | None:
+        if not self.use_triton_fused_stage1:
+            return None
+        if self.training:
+            return None
+        if not isinstance(self.refine, nn.Identity):
+            return None
+        if gamma.numel() <= 0 or beta.numel() <= 0:
+            return None
+        if not torch.isfinite(gamma).all() or not torch.isfinite(beta).all():
+            return None
+
+        gamma_ref = float(gamma.reshape(-1)[0].item())
+        beta_ref = float(beta.reshape(-1)[0].item())
+        tol = self.fused_stage1_const_tolerance
+        if float((gamma - gamma_ref).abs().max().item()) > tol:
+            return None
+        if float((beta - beta_ref).abs().max().item()) > tol:
+            return None
+        return 1.0 + gamma_ref, beta_ref
 
     def _align_proxy(self, proxy: Tensor | None, *, like: Tensor, fallback: float) -> Tensor:
         bsz, _, height, width = like.shape
@@ -131,10 +174,14 @@ class FFHeavyPath(nn.Module):
                     self.scan_bidirectional.backward_scan,
                     direction="backward",
                 )
-                gate = self.scan_bidirectional.merge_gate().to(
-                    dtype=tokens.dtype,
-                    device=tokens.device,
-                ).reshape(1, 1, -1)
+                gate = (
+                    self.scan_bidirectional.merge_gate()
+                    .to(
+                        dtype=tokens.dtype,
+                        device=tokens.device,
+                    )
+                    .reshape(1, 1, -1)
+                )
                 mixed = gate * mixed_f + (1.0 - gate) * mixed_b
                 states = torch.stack((state_f, state_b), dim=1)
                 return mixed, states
@@ -169,12 +216,12 @@ class FFHeavyPath(nn.Module):
             decay=scan_module.constrained_decay()
             .to(dtype=tokens.dtype, device=tokens.device)
             .detach(),
-            input_gain=scan_module.constrained_input_gain().to(
-                dtype=tokens.dtype, device=tokens.device
-            ).detach(),
-            output_gain=scan_module.constrained_output_gain().to(
-                dtype=tokens.dtype, device=tokens.device
-            ).detach(),
+            input_gain=scan_module.constrained_input_gain()
+            .to(dtype=tokens.dtype, device=tokens.device)
+            .detach(),
+            output_gain=scan_module.constrained_output_gain()
+            .to(dtype=tokens.dtype, device=tokens.device)
+            .detach(),
             state_bias=scan_module.state_bias.to(dtype=tokens.dtype, device=tokens.device).detach(),
             direction=direction,
             merge_mode=merge_mode,
@@ -228,18 +275,40 @@ class FFHeavyPath(nn.Module):
             heavy_unfused = dense_features.clone()
         else:
             mixed, state = self._scan(tokens)
-            modulated, gamma, beta = self.film(mixed, packed)
-            refined = self.refine(modulated)
-            if refined.shape != packed.shape:
-                raise ValueError("refine block must preserve packed tile shape")
-            heavy_unfused, _ = self.unpacker.unpack(
-                base_map=dense_features,
-                packed_out=refined,
-                meta=meta,
-                level_priority=1,
-                overlap_mode=self.overlap_mode,
-                blend_alpha=self.blend_alpha,
+            gamma, beta = self.film.film_params(mixed)
+            fused_affine = self._resolve_fused_stage1_affine_params(
+                gamma=gamma,
+                beta=beta,
             )
+            if fused_affine is not None and self._indices_are_unique(meta["indices"]):
+                value_scale, value_bias = fused_affine
+                fused = fused_pack_op_unpack_dispatch(
+                    feature_map=dense_features,
+                    indices=meta["indices"],
+                    tile_size=self.tile_size,
+                    value_scale=value_scale,
+                    value_bias=value_bias,
+                    gate_scale=0.0,
+                    gate_bias=1.0,
+                    require_unique_indices=True,
+                    prefer_triton=True,
+                    allow_fallback=True,
+                    inference_only=True,
+                )
+                heavy_unfused = fused.merged
+            else:
+                modulated = apply_film(packed, gamma, beta)
+                refined = self.refine(modulated)
+                if refined.shape != packed.shape:
+                    raise ValueError("refine block must preserve packed tile shape")
+                heavy_unfused, _ = self.unpacker.unpack(
+                    base_map=dense_features,
+                    packed_out=refined,
+                    meta=meta,
+                    level_priority=1,
+                    overlap_mode=self.overlap_mode,
+                    blend_alpha=self.blend_alpha,
+                )
 
         if self.fusion_gate is None:
             alpha = torch.ones(

@@ -13,7 +13,7 @@ Current status:
 - TileUnpackFusion now has a real TensorRT plugin implementation path (guarded)
 - TileSSMScan now has a real TensorRT plugin implementation path (guarded)
 - Decode+NMS now has a real TensorRT plugin implementation path (guarded)
-- remaining plugins are stubs
+- deployment validation on CUDA/TensorRT targets is still required for full readiness
 - code is guarded to build on machines without TensorRT/CUDA installed
 
 ## Directory Layout
@@ -38,7 +38,7 @@ Contracts are inherited from:
 - `docs/runtime/PLUGIN_SPEC.md`
 - `docs/ENGINEERING_SPEC.md`
 
-Mapped plugin stubs:
+Mapped plugin contracts:
 - `TilePack`
   - contract: `F[B,C,Hf,Wf] + idx[B,K] -> P[B,K,C,t,t] + meta`
   - real TensorRT plugin path available under `runtime/tensorrt/plugins/tilepack.*`
@@ -53,6 +53,26 @@ Mapped plugin stubs:
 - `DecodeNMS` (optional)
   - contract: `cls/box/quality + centers/strides -> boxes/scores/class_ids/valid_counts`
   - real TensorRT plugin path available under `runtime/tensorrt/plugins/nms_decode.*`
+
+## Builder Plugin Contract Validation
+`apex_x/runtime/tensorrt/builder.py` enforces plugin contracts at engine build time.
+
+Default required plugin contracts:
+- `TilePack`
+- `TileSSMScan`
+- `TileUnpackFusion`
+
+Contract checks (strict by default):
+- plugin creator exists in TensorRT registry
+- creator version matches expected value (`"1"`)
+- creator namespace matches expected value (`"apexx"`)
+- creator field-signature metadata includes expected fields:
+  - `TilePack`: `tile_size`
+  - `TileSSMScan`: `direction`, `clamp_value`
+  - `TileUnpackFusion`: none
+  - optional `DecodeNMS`: `max_detections`, `pre_nms_topk`, `score_threshold`, `iou_threshold`
+
+On mismatch in strict mode, builder fails with actionable diagnostics.
 
 ## Build Guard Behavior
 `CMakeLists.txt` probes platform features and sets:
@@ -74,10 +94,9 @@ Use:
   - dynamically loads shared library and invokes minimal plugin call path
 
 ## Remaining Work
-- map stubs to real TensorRT `IPluginV2DynamicExt` implementations
-- add shape inference checks and serialization blobs
-- add CUDA kernels for packed gather/scan/scatter fast path
-- add parity tests vs CPU reference ops (pack/unpack/fusion/decode)
+- harden dynamic-shape and serialization coverage for deployment profiles
+- complete deployment-host parity/perf evidence collection and CI gating
+- tighten plugin ABI/version governance in release artifacts
 - `runtime/tensorrt/plugins/`
   - `tilepack.h`
   - `tilepack.cpp`

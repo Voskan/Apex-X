@@ -4,6 +4,7 @@ import argparse
 import importlib
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=Path("artifacts/perf_gpu_current.json"))
     parser.add_argument("--baseline", type=Path, default=Path("scripts/perf_baseline_gpu.json"))
     parser.add_argument("--summary", type=Path, default=Path("artifacts/perf_gpu_compare.json"))
+    parser.add_argument(
+        "--trend-output",
+        type=Path,
+        default=None,
+        help="Optional normalized trend artifact path for CI/history publishing.",
+    )
     parser.add_argument("--compare", action="store_true", help="Compare output vs baseline")
     parser.add_argument(
         "--emit-baseline-template",
@@ -37,7 +44,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--iters", type=int, default=50)
     parser.add_argument("--seed", type=int, default=123)
-    parser.add_argument("--dtype", type=str, default="fp16", choices=["fp16", "bf16", "fp32"])
+    parser.add_argument(
+        "--dtype",
+        type=str,
+        default="fp16",
+        choices=["fp16", "bf16", "fp32", "fp8"],
+    )
     parser.add_argument("--budget-b1", type=float, default=16.0)
     parser.add_argument("--budget-b2", type=float, default=8.0)
     parser.add_argument("--budget-total", type=float, default=32.0)
@@ -50,6 +62,56 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Dynamic TRT input shape override, e.g. tokens=1x256x128",
     )
     return parser
+
+
+def _build_trend_payload(
+    *,
+    current_report: dict[str, Any],
+    comparison: dict[str, Any],
+) -> dict[str, Any]:
+    checks_raw = comparison.get("checks", [])
+    checks = checks_raw if isinstance(checks_raw, list) else []
+
+    metrics: list[dict[str, Any]] = []
+    failed_metrics = 0
+    for check in checks:
+        if not isinstance(check, dict):
+            continue
+        metric_name = check.get("metric")
+        if not isinstance(metric_name, str) or not metric_name:
+            continue
+        metric_status = str(check.get("status", "unknown"))
+        baseline_ms = check.get("baseline_ms")
+        allowed_max_ms = check.get("allowed_max_ms")
+        current_ms = check.get("current_ms")
+        regression_ratio = check.get("regression_ratio")
+        if metric_status != "pass":
+            failed_metrics += 1
+        metrics.append(
+            {
+                "metric": metric_name,
+                "status": metric_status,
+                "baseline_ms": float(baseline_ms) if baseline_ms is not None else None,
+                "allowed_max_ms": float(allowed_max_ms) if allowed_max_ms is not None else None,
+                "current_ms": float(current_ms) if current_ms is not None else None,
+                "regression_ratio": (
+                    float(regression_ratio) if regression_ratio is not None else None
+                ),
+            }
+        )
+
+    metrics.sort(key=lambda entry: str(entry["metric"]))
+    return {
+        "schema_version": 1,
+        "suite": current_report.get("suite", "apex_x_gpu_benchmark"),
+        "timestamp_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "overall_status": str(comparison.get("status", "unknown")),
+        "required_status": str(comparison.get("required_status", "ok")),
+        "current_status": str(comparison.get("current_status", "unknown")),
+        "total_metrics": len(metrics),
+        "failed_metrics": failed_metrics,
+        "metrics": metrics,
+    }
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> Path:
@@ -182,9 +244,9 @@ def _compare_against_baseline(
                 "baseline_ms": baseline_value,
                 "allowed_max_ms": allowed_max,
                 "current_ms": float(current_value),
-                "regression_ratio": ((current_value / baseline_value) - 1.0)
-                if baseline_value > 0.0
-                else None,
+                "regression_ratio": (
+                    ((current_value / baseline_value) - 1.0) if baseline_value > 0.0 else None
+                ),
             }
         )
 
@@ -237,6 +299,15 @@ def main() -> int:
     baseline = _read_json(args.baseline)
     comparison = _compare_against_baseline(current_report=report, baseline_spec=baseline)
     summary_path = _write_json(args.summary, comparison)
+    if args.trend_output is not None:
+        trend_payload = _build_trend_payload(current_report=report, comparison=comparison)
+        trend_path = _write_json(args.trend_output, trend_payload)
+        print(
+            "perf_gpu_trend "
+            f"status={trend_payload['overall_status']} "
+            f"failed_metrics={trend_payload['failed_metrics']} "
+            f"output={trend_path}"
+        )
     status = str(comparison["status"])
     print(f"perf_gpu_compare status={status} summary={summary_path}")
 

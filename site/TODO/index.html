@@ -1,279 +1,2837 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
-        
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Universal Vision Dynamic Compute Graph">
+      
+      
+      
         <link rel="canonical" href="https://example.com/apex-x/TODO/">
-        <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>TODO - Apex-X Docs</title>
-        <link href="../css/bootstrap.min.css" rel="stylesheet">
-        <link href="../css/fontawesome.min.css" rel="stylesheet">
-        <link href="../css/brands.min.css" rel="stylesheet">
-        <link href="../css/solid.min.css" rel="stylesheet">
-        <link href="../css/v4-font-face.min.css" rel="stylesheet">
-        <link href="../css/base.css" rel="stylesheet">
-        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
-        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
-    </head>
+      
+      
+        <link rel="prev" href="../release/MIGRATION/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>TODO - Apex-X</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
 
-    <body>
-        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
-            <div class="container">
-                <a class="navbar-brand" href="..">Apex-X Docs</a>
-                <!-- Expander button -->
-                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <!-- Expanded navigation -->
-                <div id="navbar-collapse" class="navbar-collapse collapse">
-                        <!-- Main navigation -->
-                        <ul class="nav navbar-nav">
-                            <li class="nav-item">
-                                <a href=".." class="nav-link">Home</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../PRD/" class="nav-link">PRD</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../ENGINEERING_SPEC/" class="nav-link">Engineering Spec</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../QAT/" class="nav-link">QAT Policy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../FP8/" class="nav-link">FP8 Policy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../PERF/" class="nav-link">Performance Regression</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PLUGIN_SPEC/" class="nav-link">Runtime Plugin Spec</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PLUGIN_SPECS/" class="nav-link">Runtime Plugin Specs Alias</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/CAPS/" class="nav-link">Runtime Capability Detection</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PARITY/" class="nav-link">Runtime Parity Framework</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TENSORRT/" class="nav-link">TensorRT Runtime Notes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TENSORRT_BUILD/" class="nav-link">TensorRT Build Guide</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON/" class="nav-link">Triton Runtime Notes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_TILEPACK/" class="nav-link">Triton TilePack</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_TILEUNPACK/" class="nav-link">Triton TileUnpack</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_FUSION/" class="nav-link">Triton FusionGate</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_SSM/" class="nav-link">Triton TileSSM Scan</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_FUSED_STAGE1/" class="nav-link">Triton Fused Stage-1</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../CONTEXT/" class="nav-link">Context</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../DECISIONS/" class="nav-link">Decisions</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="./" class="nav-link active" aria-current="page">TODO</a>
-                            </li>
-                        </ul>
-
-                    <ul class="nav navbar-nav ms-md-auto">
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
-                                <i class="fa fa-search"></i> Search
-                            </a>
-                        </li>
-                            <li class="nav-item">
-                                <a rel="prev" href="../DECISIONS/" class="nav-link">
-                                    <i class="fa fa-arrow-left"></i> Previous
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a rel="next" class="nav-link disabled">
-                                    Next <i class="fa fa-arrow-right"></i>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="https://example.com/apex-x" class="nav-link">apex-x</a>
-                            </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="row">
-                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
-    <div class="navbar-header">
-        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
-            <span class="fa fa-angle-down"></span>
-        </button>
-    </div>
 
     
-    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
-        <ul class="nav flex-column">
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#apex-x-full-readiness-backlog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Apex-X" class="md-header__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Apex-X
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
             
-            <li class="nav-item" data-bs-level="1"><a href="#apex-x-todo" class="nav-link">Apex-X TODO</a>
-              <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#near-term" class="nav-link">Near-Term</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#runtime-and-export" class="nav-link">Runtime and Export</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#training-system" class="nav-link">Training System</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#quality-gates" class="nav-link">Quality Gates</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-              </ul>
-            </li>
-        </ul>
-    </div>
-</div></div>
-                    <div class="col-md-9" role="main">
-
-<h1 id="apex-x-todo">Apex-X TODO</h1>
-<h2 id="near-term">Near-Term</h2>
-<ul>
-<li>Implement full DET head outputs on multi-scale features (<code>P3..P7</code>) in CPU baseline API.</li>
-<li>Implement instance segmentation prototype assembly + tile boundary refine path.</li>
-<li>Add quadtree split selection implementation (<code>B1/B2</code>, <code>S_i/O_split</code>) for <code>L1/L2</code>.</li>
-<li>Add temporal state object and hysteresis unit tests with sequence-level assertions.</li>
-</ul>
-<h2 id="runtime-and-export">Runtime and Export</h2>
-<ul>
-<li>Add ONNX export contract checks for fixed <code>Kmax</code> and tile-size constants.</li>
-<li>Add plugin I/O compliance test vectors for <code>TilePack</code>, <code>TileSSMScan</code>, <code>TileUnpackFusion</code>.</li>
-<li>Add TensorRT/ORT parity harness skeleton.</li>
-<li>Implement full Triton fused kernels for:</li>
-<li>pack + pre-norm gather path</li>
-<li>tile scan / Tile-SSM streaming path</li>
-<li>unpack + gated fusion scatter path</li>
-<li>Implement full TensorRT plugin stack (non-placeholder):</li>
-<li><code>TilePack</code></li>
-<li><code>TileSSMScan</code></li>
-<li><code>TileUnpackFusion</code></li>
-<li>fused decode + NMS path</li>
-<li>Implement ONNX Runtime custom-op adapter path for sparse tile execution.</li>
-<li>Add profile-based runtime selection (<code>Quality/Balanced/Edge</code>) with strict regression gates.</li>
-<li>Add end-to-end TRT/ORT vs reference parity tests (accuracy + deterministic tile-set parity).</li>
-</ul>
-<h2 id="training-system">Training System</h2>
-<ul>
-<li>Add utility-oracle sampling utilities and distillation delta label pipeline.</li>
-<li>Add continuous-budget trainer loop with dual variable scheduling.</li>
-<li>Add PCGrad++ projection hook for shared trunk parameters.</li>
-</ul>
-<h2 id="quality-gates">Quality Gates</h2>
-<ul>
-<li>Add regression thresholds file for p50/p95 latency and memory.</li>
-<li>Add repeatability tests for deterministic ordering modes.</li>
-<li>Add stricter CI checks for docs-contract drift.</li>
-</ul></div>
-            </div>
+              TODO
+            
+          </span>
         </div>
-
-        <footer class="col-md-12">
-            <hr>
-            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
-        </footer>
-        <script src="../js/bootstrap.bundle.min.js"></script>
-        <script>
-            var base_url = "..",
-                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
-        </script>
-        <script src="../js/base.js"></script>
-        <script src="../search/main.js"></script>
-
-        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="searchModalLabel">Search</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>From here you can search these documents. Enter your search terms below.</p>
-                <form>
-                    <div class="form-group">
-                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
-                    </div>
-                </form>
-                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
-            </div>
-            <div class="modal-footer">
-            </div>
-        </div>
+      </div>
     </div>
-</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th style="width: 20%;">Keys</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="help shortcut"><kbd>?</kbd></td>
-                    <td>Open this help</td>
-                  </tr>
-                  <tr>
-                    <td class="next shortcut"><kbd>n</kbd></td>
-                    <td>Next page</td>
-                  </tr>
-                  <tr>
-                    <td class="prev shortcut"><kbd>p</kbd></td>
-                    <td>Previous page</td>
-                  </tr>
-                  <tr>
-                    <td class="search shortcut"><kbd>s</kbd></td>
-                    <td>Search</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="modal-footer">
-            </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
         </div>
+      </div>
     </div>
+  </div>
 </div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
 
-    </body>
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../benchmarks/" class="md-tabs__link">
+          
+  
+  
+  Overview
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PRD/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PERF/" class="md-tabs__link">
+          
+  
+  
+  Performance
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runtime/PLUGIN_SPEC/" class="md-tabs__link">
+          
+  
+  
+  Runtime
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../release/CHECKLIST/" class="md-tabs__link">
+          
+  
+  
+  Release
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Activity
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Apex-X" class="md-nav__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Apex-X
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overview
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DECISIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PRD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINEERING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../QAT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QAT Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FP8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FP8 Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Performance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU Bench
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CI_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runtime
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/PLUGIN_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/CAPS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TensorRT
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    TensorRT
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_BUILD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_INT8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    INT8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_POST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Postprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/GO_SERVICE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Triton
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Triton
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TilePack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEUNPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TileUnpack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fusion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_SSM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SSM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSED_STAGE1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/CHECKLIST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/MIGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Activity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Activity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-definition-of-100-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Definition of "100% Ready"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-current-snapshot-context-for-prioritization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Current Snapshot (Context for Prioritization)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-execution-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Execution Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-critical-path-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Critical Path (Order)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p1-end-to-end-runtime-path-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P1 - End-to-End Runtime Path Completion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p2-triton-completion-correctness-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P2 - Triton Completion (Correctness + Speed)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P2 - Triton Completion (Correctness + Speed)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p2-01-close-feature-gaps-in-triton-tile-unpack-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-01. Close feature gaps in Triton tile unpack path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2-02-stabilize-tilessm-triton-limits-and-long-sequence-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-02. Stabilize TileSSM Triton limits and long-sequence behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2-03-promote-fused-stage-1-path-to-default-accelerated-route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-03. Promote fused stage-1 path to default accelerated route
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2-05-triton-perf-autotune-and-kernel-configuration-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-05. Triton perf autotune and kernel configuration registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p3-tensorrt-production-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P3 - TensorRT Production Completion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P3 - TensorRT Production Completion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p3-02-shape-inference-serialization-and-dynamic-shape-coverage-for-trt-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3-02. Shape inference, serialization, and dynamic-shape coverage for TRT plugins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p3-05-tensorrt-end-to-end-parity-harness-against-reference-and-triton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3-05. TensorRT end-to-end parity harness against reference and Triton
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p4-math-and-model-quality-track-best-math-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P4 - Math and Model Quality Track ("Best Math" Execution)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P4 - Math and Model Quality Track (&#34;Best Math&#34; Execution)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p4-07-fp8-policy-from-declaration-to-measurable-runtime-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P4-07. FP8 policy from declaration to measurable runtime value
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p6-cicd-hard-gates-and-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P6 - CI/CD Hard Gates and Release
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P6 - CI/CD Hard Gates and Release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p6-01-make-gpu-regression-workflow-mandatory-for-gpu-critical-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P6-01. Make GPU regression workflow mandatory for GPU-critical changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p6-02-unified-perf-regression-policy-cpu-gpu-trt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P6-02. Unified perf regression policy (CPU + GPU + TRT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cross-cutting-work-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cross-Cutting Work Packages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Cross-Cutting Work Packages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#x-02-telemetry-schema-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        X-02. Telemetry schema normalization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-evidence-requirements-for-best-result-best-math" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Evidence Requirements for "Best Result / Best Math"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-exit-criteria-by-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Exit Criteria by Phase
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-definition-of-100-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Definition of "100% Ready"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-current-snapshot-context-for-prioritization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Current Snapshot (Context for Prioritization)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-execution-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Execution Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-critical-path-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Critical Path (Order)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p1-end-to-end-runtime-path-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P1 - End-to-End Runtime Path Completion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p2-triton-completion-correctness-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P2 - Triton Completion (Correctness + Speed)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P2 - Triton Completion (Correctness + Speed)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p2-01-close-feature-gaps-in-triton-tile-unpack-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-01. Close feature gaps in Triton tile unpack path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2-02-stabilize-tilessm-triton-limits-and-long-sequence-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-02. Stabilize TileSSM Triton limits and long-sequence behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2-03-promote-fused-stage-1-path-to-default-accelerated-route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-03. Promote fused stage-1 path to default accelerated route
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2-05-triton-perf-autotune-and-kernel-configuration-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2-05. Triton perf autotune and kernel configuration registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p3-tensorrt-production-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P3 - TensorRT Production Completion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P3 - TensorRT Production Completion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p3-02-shape-inference-serialization-and-dynamic-shape-coverage-for-trt-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3-02. Shape inference, serialization, and dynamic-shape coverage for TRT plugins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p3-05-tensorrt-end-to-end-parity-harness-against-reference-and-triton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3-05. TensorRT end-to-end parity harness against reference and Triton
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p4-math-and-model-quality-track-best-math-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P4 - Math and Model Quality Track ("Best Math" Execution)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P4 - Math and Model Quality Track (&#34;Best Math&#34; Execution)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p4-07-fp8-policy-from-declaration-to-measurable-runtime-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P4-07. FP8 policy from declaration to measurable runtime value
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-p6-cicd-hard-gates-and-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase P6 - CI/CD Hard Gates and Release
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase P6 - CI/CD Hard Gates and Release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p6-01-make-gpu-regression-workflow-mandatory-for-gpu-critical-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P6-01. Make GPU regression workflow mandatory for GPU-critical changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p6-02-unified-perf-regression-policy-cpu-gpu-trt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P6-02. Unified perf regression policy (CPU + GPU + TRT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cross-cutting-work-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cross-Cutting Work Packages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Cross-Cutting Work Packages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#x-02-telemetry-schema-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        X-02. Telemetry schema normalization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-evidence-requirements-for-best-result-best-math" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Evidence Requirements for "Best Result / Best Math"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-exit-criteria-by-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Exit Criteria by Phase
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="apex-x-full-readiness-backlog">Apex-X Full Readiness Backlog</h1>
+<p>Last updated: 2026-02-11</p>
+<p>This file is the execution backlog for taking Apex-X from CPU-first reference + partial GPU acceleration
+to a full production-ready GPU project with strict correctness, performance, and reproducibility gates.</p>
+<p>The target is "100% ready" under a concrete engineering definition, not marketing wording.</p>
+<h2 id="1-definition-of-100-ready">1. Definition of "100% Ready"</h2>
+<p>All items below must be true:</p>
+<ol>
+<li>End-to-end inference (<code>predict</code>, <code>eval</code>, service runtime) works on:</li>
+<li><code>cpu</code> reference</li>
+<li><code>torch</code> CUDA path</li>
+<li><code>triton</code> accelerated path</li>
+<li><code>tensorrt</code> engine path</li>
+<li>No critical runtime path depends on placeholder/no-op stubs.</li>
+<li>CPU vs GPU vs TRT parity is validated on golden sets with explicit tolerances.</li>
+<li>Performance gates are enforced in CI:</li>
+<li>latency (<code>p50</code>, <code>p95</code>)</li>
+<li>throughput</li>
+<li>peak memory</li>
+<li>compile/build success on target environments</li>
+<li>Precision policy is operational:</li>
+<li>FP16 stable</li>
+<li>INT8 calibrated path stable</li>
+<li>FP8 policy and fallback behavior validated</li>
+<li>Go runtime service executes real inference backends (not synthetic scoring stubs).</li>
+<li>Release checklist is pass/fail with reproducible artifacts and rollback playbook.</li>
+</ol>
+<h2 id="2-current-snapshot-context-for-prioritization">2. Current Snapshot (Context for Prioritization)</h2>
+<ul>
+<li>CPU baseline is stable and well tested.</li>
+<li>Triton kernel paths exist for major tile ops and TileSSM, with fallback semantics.</li>
+<li>TensorRT builder/calibration and plugin code paths exist, but full integration and validation
+  must be tightened end-to-end.</li>
+<li>GPU CI exists but is optional; not yet a mandatory merge gate for GPU-critical changes.</li>
+<li>Some CLI/service/export paths still need stronger production-grade backend wiring.</li>
+</ul>
+<h2 id="3-execution-rules">3. Execution Rules</h2>
+<ol>
+<li>Every task must include:</li>
+<li>concrete code changes</li>
+<li>tests</li>
+<li>documentation updates</li>
+<li>measurable acceptance criteria</li>
+<li>No task is marked done without:</li>
+<li>green tests</li>
+<li>parity evidence</li>
+<li>benchmark evidence (when performance-related)</li>
+<li>Any shape-contract or runtime-contract change must update:</li>
+<li><code>docs/PRD.md</code></li>
+<li><code>docs/ENGINEERING_SPEC.md</code></li>
+<li><code>docs/DECISIONS.md</code></li>
+<li><code>docs/CONTEXT.md</code></li>
+</ol>
+<p>Status legend for tasks below:
+- <code>Status: [x]</code> completed and validated
+- <code>Status: [~]</code> partially implemented
+- <code>Status: [ ]</code> not started</p>
+<h2 id="4-critical-path-order">4. Critical Path (Order)</h2>
+<ol>
+<li>Phase P0: freeze contracts and observability baseline (completed 2026-02-10)</li>
+<li>Phase P1: end-to-end backend selection and execution</li>
+<li>Phase P2: Triton parity + performance completion</li>
+<li>Phase P3: TensorRT production completion</li>
+<li>Phase P4: training/math excellence track</li>
+<li>Phase P5: Go service production integration</li>
+<li>Phase P6: CI/CD hard gates and release readiness</li>
+</ol>
+<p>Recently completed and removed from active queue:
+- <code>P2-04</code> Remove legacy fused Triton stub dependency (2026-02-10)
+- <code>P5-01</code> Replace synthetic adapter scoring with real backend inference calls (2026-02-11)
+- <code>P5-02</code> Service-level batching and timeout SLA enforcement (2026-02-11)
+- <code>P5-03</code> Canary parity mode in service runtime (2026-02-11)
+- <code>P6-03</code> Release checklist CI evidence attestation wiring (2026-02-11)
+- <code>X-03</code> Backward compatibility migration notes + changelog (2026-02-11)
+- <code>P4-06</code> Temporal hysteresis and state reuse quality gates (2026-02-11)
+- <code>X-01</code> Runtime documentation consistency sweep (2026-02-11)
+- <code>P4-05</code> Quadtree split policy completion with budget-aware recursion (2026-02-11)
+- <code>P4-03</code> Deterministic inference budgeting stress tests (2026-02-11)
+- <code>P4-02</code> Continuous budget controller convergence guarantees (2026-02-11)
+- <code>P4-04</code> PCGrad++ completeness on shared trunk in multi-task training (2026-02-11)
+- <code>P4-01</code> Utility-oracle data pipeline hardening (2026-02-11)
+- <code>P1-02</code> Replace export no-op with real export pipeline (2026-02-11)
+- <code>P1-03</code> End-to-end <code>predict</code> path on GPU backends (2026-02-11)
+- <code>P1-04</code> End-to-end <code>eval</code> path with real model execution (2026-02-11)
+- <code>P3-04</code> FP16/INT8 mixed precision policy enforcement for sensitive layers (2026-02-11)
+- <code>P3-01</code> End-to-end plugin registration and contract validation at build time (2026-02-11)
+- <code>P3-03</code> INT8 production calibration flow and cache governance (2026-02-11)</p>
+<p>Device-blocked validation queue (current host without CUDA/TensorRT runtime):
+- Blocking snapshot (2026-02-10):
+  - <code>torch.cuda.is_available() == False</code>
+  - <code>torch.cuda.device_count() == 0</code>
+  - <code>tensorrt</code> Python module unavailable
+  - <code>triton</code> Python module unavailable
+- <code>Status: [ ]</code> Run TensorRT engine shape sweep on deployment GPU and attach artifacts:
+  - <code>python -m apex_x.bench.trt_engine_sweep --trt-engine-path &lt;engine&gt; --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256" --output-json artifacts/perf_trt_shape_sweep.json --output-md artifacts/perf_trt_shape_sweep.md</code>
+- <code>Status: [ ]</code> Run TensorRT regression compare/trend wrapper on deployment GPU and archive artifacts:
+  - <code>python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --output artifacts/perf_trt_current.json --summary artifacts/perf_trt_compare.json --trend-output artifacts/perf_trt_trend.json --trt-engine-path &lt;engine&gt; --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256"</code>
+- <code>Status: [ ]</code> Run TensorRT plugin parity tests on CUDA host:
+  - <code>python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py</code>
+- <code>Status: [ ]</code> Run TensorRT plugin C++ shape/serialization tests after native build:
+  - <code>cmake -S runtime/tensorrt -B runtime/tensorrt/build -DAPEXX_ENABLE_TRT=ON</code>
+  - <code>cmake --build runtime/tensorrt/build -j</code>
+  - <code>ctest --test-dir runtime/tensorrt/build --output-on-failure</code>
+- <code>Status: [ ]</code> Run Triton GPU parity tests on CUDA+Triton host:
+  - <code>python -m pytest -q tests/test_triton_*_gpu.py</code>
+- <code>Status: [ ]</code> Capture GPU perf baseline artifacts for PR gate evidence:
+  - <code>python -m apex_x.bench.gpu_bench --warmup 10 --iters 50 --output-json artifacts/perf_gpu.json --output-md artifacts/perf_gpu.md</code>
+- <code>Status: [ ]</code> Capture FP8 benchmark evidence on supported GPU (<code>sm90+</code>) for P4-07 closure:
+  - <code>python -m apex_x.bench.gpu_bench --dtype fp8 --warmup 10 --iters 50 --output-json artifacts/perf_gpu_fp8.json --output-md artifacts/perf_gpu_fp8.md</code>
+  - optional regression wrapper:
+    - <code>python scripts/perf_regression_gpu.py --dtype fp8 --output artifacts/perf_gpu_fp8_current.json --compare --baseline scripts/perf_baseline_gpu.json --summary artifacts/perf_gpu_fp8_compare.json</code>
+- <code>Status: [ ]</code> Validate GPU mandatory PR gate on GitHub protected branch settings:
+  - Required status check: <code>GPU Perf Regression / gpu-perf-regression</code>
+  - Open a GPU-critical PR and confirm merge is blocked until GPU workflow passes
+- <code>Status: [ ]</code> Run weekly GPU trend workflow on deployment runner and archive artifacts:
+  - Enable repository variable <code>APEXX_ENABLE_GPU_WEEKLY=true</code>
+  - Verify <code>.github/workflows/perf_trend_weekly.yml</code> uploads:
+    - <code>artifacts/perf_gpu_current_weekly.json</code>
+    - <code>artifacts/perf_gpu_compare_weekly.json</code>
+    - <code>artifacts/perf_gpu_trend_weekly.json</code>
+- <code>Status: [ ]</code> Validate Go runtime ORT bridge path with real ONNX model on deployment host:
+  - <code>cd runtime/go &amp;&amp; APEXX_ORT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" go test ./...</code>
+- <code>Status: [ ]</code> Validate Go runtime TRT bridge/native path with deployment engine on CUDA+TensorRT host:
+  - <code>cd runtime/go &amp;&amp; APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...</code></p>
+<hr />
+<h2 id="phase-p1-end-to-end-runtime-path-completion">Phase P1 - End-to-End Runtime Path Completion</h2>
+<hr />
+<h2 id="phase-p2-triton-completion-correctness-speed">Phase P2 - Triton Completion (Correctness + Speed)</h2>
+<h3 id="p2-01-close-feature-gaps-in-triton-tile-unpack-path">P2-01. Close feature gaps in Triton tile unpack path</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Fallback-only branches break expectations for full GPU mode.</p>
+<p>Implementation:
+- Implement missing behavior branches in Triton path where currently forced to reference fallback
+  (for example blend-related branch if configured).
+- Keep deterministic overlap semantics identical to reference.</p>
+<p>Progress (2026-02-11):
+- Removed forced reference-only dispatch branch for <code>overlap_mode=\"blend\"</code>.
+- Added ordered blend composition path in <code>tileunpack_triton(...)</code> with parity-equivalent
+  overlap semantics.
+- Extended overlap tests:
+  - CPU dispatch contract no longer expects hardcoded blend fallback reason.
+  - GPU overlap suite now includes blend parity case.
+- Remaining gap:
+  - optimize blend path with dedicated Triton kernels and attach CUDA perf evidence.</p>
+<p>Files:
+- <code>apex_x/kernels/triton/tileunpack.py</code>
+- <code>tests/test_triton_tileunpack*.py</code>
+- <code>docs/runtime/TRITON_TILEUNPACK.md</code></p>
+<p>Acceptance:
+- Triton path covers all configured operation modes in spec.
+- No silent fallback for supported modes.</p>
+<p>Validation:
+- <code>python -m pytest -q tests/test_triton_tileunpack*</code></p>
+<h3 id="p2-02-stabilize-tilessm-triton-limits-and-long-sequence-behavior">P2-02. Stabilize TileSSM Triton limits and long-sequence behavior</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Sequence-length limitations and edge cases can invalidate large-scene workloads.</p>
+<p>Implementation:
+- Review and improve compile/runtime limits.
+- Add chunked/streamed path when sequence length exceeds kernel-friendly bound.</p>
+<p>Progress (2026-02-11):
+- Added long-sequence chunked forward execution in Triton TileSSM path:
+  - <code>K &gt; 4096</code> now executes as streamed chunk launches with state carry-over.
+  - preserves forward/backward/bidirectional composition semantics while avoiding
+    oversized single-launch kernels.
+- Added CPU-safe unit tests for chunking contract:
+  - <code>tests/test_triton_tilessm_parity_dispatch.py</code>
+  - validates multi-chunk and single-launch paths for <code>_scan_triton_forward(...)</code>.
+- Remaining gap:
+  - run CUDA Triton parity/perf tests for large-<code>K</code> scenarios and capture deployment artifacts.</p>
+<p>Files:
+- <code>apex_x/kernels/triton/tilessm_scan.py</code>
+- <code>tests/test_triton_tilessm_*</code>
+- <code>docs/runtime/TRITON_SSM.md</code></p>
+<p>Acceptance:
+- Large <code>K</code> scenarios pass correctness tests with documented fallback/streaming policy.</p>
+<p>Validation:
+- <code>python -m pytest -q tests/test_triton_tilessm_*</code></p>
+<h3 id="p2-03-promote-fused-stage-1-path-to-default-accelerated-route">P2-03. Promote fused stage-1 path to default accelerated route</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Stage-1 fused kernel exists and should be first-class for real speedups.</p>
+<p>Implementation:
+- Integrate <code>fused_pack_op_unpack</code> path into runtime selector where compatible.
+- Ensure deterministic output parity against decomposed path.</p>
+<p>Progress (2026-02-11):
+- Added compatibility-gated Stage-1 fused selector in <code>FFHeavyPath</code> inference path:
+  - uses <code>fused_pack_op_unpack_dispatch(...)</code> when strict compatibility predicates pass
+  - falls back deterministically to decomposed <code>pack -&gt; FiLM -&gt; unpack</code> otherwise.
+- Integrated runtime plugin wiring:
+  - <code>FFModule</code> now forwards runtime plugin enablement into <code>FFHeavyPath</code> fused-stage selector.
+- Added unit coverage:
+  - <code>tests/test_ff_heavy_path_fused_stage1.py</code>
+  - validates selector activation, decomposed parity, and fallback on non-constant FiLM params.
+- Remaining gap:
+  - capture CUDA benchmark evidence showing measurable speedup against decomposed route
+    under compatible selector scenarios.</p>
+<p>Files:
+- <code>apex_x/kernels/triton/fused_pack_op_unpack.py</code>
+- <code>apex_x/model/ff_heavy_path.py</code>
+- <code>tests/test_triton_fused_stage1_*</code>
+- <code>docs/runtime/TRITON_FUSED_STAGE1.md</code></p>
+<p>Acceptance:
+- Measurable speedup over decomposed path on target GPUs.
+- Parity checks pass under profile tolerances.</p>
+<p>Validation:
+- <code>python -m pytest -q tests/test_triton_fused_stage1_*</code>
+- <code>python -m apex_x.bench.gpu_bench --warmup 10 --iters 50</code></p>
+<h3 id="p2-05-triton-perf-autotune-and-kernel-configuration-registry">P2-05. Triton perf autotune and kernel configuration registry</h3>
+<p>Status: [~]</p>
+<p>Why:
+- "Best result" requires shape-aware tuning, not static launch settings.</p>
+<p>Implementation:
+- Add autotune registry per op/shape bucket.
+- Cache selected configs and expose telemetry.</p>
+<p>Progress (2026-02-11):
+- Added Triton autotune registry module:
+  - <code>apex_x/kernels/triton/autotune_registry.py</code>
+  - tracks per-op/per-shape-bucket selected launch config, selection source, and cache hit/miss counts
+- Wired registry telemetry into Triton kernels with autotune configs:
+  - TilePack (<code>_tilepack_kernel</code>)
+  - TileUnpack priority/scatter (<code>_tileunpack_priority_kernel</code>, <code>_tileunpack_scatter_kernel</code>)
+  - FusionGate alpha/fuse (<code>_fusiongate_alpha_kernel</code>, <code>_fusiongate_fuse_kernel</code>)
+  - Fused stage-1 pack/op/unpack (<code>_fused_pack_op_unpack_kernel</code>)
+- Extended GPU benchmark report output:
+  - JSON now includes <code>triton_autotune</code> block with <code>summary</code> + <code>entries</code>
+  - Markdown summary now includes <code>Triton Autotune Registry</code> table
+- Added CPU-safe contract tests:
+  - <code>tests/test_triton_autotune_registry.py</code>
+- Remaining gap:
+  - capture CUDA deployment evidence demonstrating p50/p95 improvement under cached/tuned configs.</p>
+<p>Files:
+- <code>apex_x/kernels/triton/*.py</code>
+- <code>apex_x/bench/gpu_bench.py</code>
+- <code>docs/PERF_GPU.md</code></p>
+<p>Acceptance:
+- Benchmark report captures chosen config and resulting p50/p95 improvements.</p>
+<p>Validation:
+- <code>python -m pytest -q tests/test_triton_autotune_registry.py tests/test_gpu_bench_fp8.py</code>
+- <code>python -m apex_x.bench.gpu_bench --output-json artifacts/perf_gpu.json --output-md artifacts/perf_gpu.md</code></p>
+<hr />
+<h2 id="phase-p3-tensorrt-production-completion">Phase P3 - TensorRT Production Completion</h2>
+<h3 id="p3-02-shape-inference-serialization-and-dynamic-shape-coverage-for-trt-plugins">P3-02. Shape inference, serialization, and dynamic-shape coverage for TRT plugins</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Dynamic shape failures are a common production outage source.</p>
+<p>Implementation:
+- Complete shape function coverage for all required plugins.
+- Add serialization/deserialization roundtrip tests.</p>
+<p>Files:
+- <code>runtime/tensorrt/src/*.cpp</code>
+- <code>runtime/tensorrt/plugins/*</code>
+- <code>tests/test_tensorrt_plugins*.py</code>
+- <code>docs/runtime/PLUGIN_SPEC.md</code></p>
+<p>Acceptance:
+- Plugins pass shape + serialization tests across defined profile ranges.</p>
+<p>Validation:
+- <code>ctest --test-dir runtime/tensorrt/build</code>
+- <code>python -m pytest -q tests/test_tensorrt_plugins*</code></p>
+<h3 id="p3-05-tensorrt-end-to-end-parity-harness-against-reference-and-triton">P3-05. TensorRT end-to-end parity harness against reference and Triton</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Need evidence that TRT path is fast and correct.</p>
+<p>Implementation:
+- Build parity suite:
+  - reference vs triton
+  - reference vs tensorrt
+  - triton vs tensorrt
+- Include shape sweep and precision sweep.</p>
+<p>Progress (2026-02-11):
+- Added backend matrix parity APIs in <code>apex_x/runtime/parity.py</code>:
+  - <code>ParityMatrixCase</code>
+  - <code>run_parity_matrix_case(...)</code>
+  - <code>run_parity_sweep(...)</code>
+  - <code>ParitySweepReport</code>
+- Added CPU-safe sweep tests for TRT parity harness contract:
+  - <code>tests/test_trt_parity_harness.py</code>
+  - validates pair matrix, shape sweep, and precision sweep execution.
+- Remaining gap:
+  - execute real CUDA-backed parity suites for Triton and TensorRT engines and attach artifacts
+    from deployment environment.</p>
+<p>Files:
+- <code>apex_x/runtime/parity.py</code>
+- <code>tests/test_trt_parity*.py</code>
+- <code>docs/runtime/PARITY.md</code></p>
+<p>Acceptance:
+- All required cases pass tolerance and mismatch-ratio thresholds.</p>
+<p>Validation:
+- <code>python -m pytest -q tests/test_trt_parity*</code></p>
+<hr />
+<h2 id="phase-p4-math-and-model-quality-track-best-math-execution">Phase P4 - Math and Model Quality Track ("Best Math" Execution)</h2>
+<h3 id="p4-07-fp8-policy-from-declaration-to-measurable-runtime-value">P4-07. FP8 policy from declaration to measurable runtime value</h3>
+<p>Status: [~]</p>
+<p>Why:
+- FP8 policy exists; readiness requires operational and measured gain.</p>
+<p>Implementation:
+- Integrate FP8 execution where supported for heavy ops.
+- Add explicit fallback telemetry and parity/perf tests.</p>
+<p>Progress (2026-02-11):
+- Precision fallback reasons were normalized to canonical runtime reason-codes in:
+  - <code>apex_x/runtime/precision.py</code>
+- GPU bench now supports explicit FP8 request mode with operational telemetry:
+  - <code>--dtype fp8</code> in <code>apex_x/bench/gpu_bench.py</code>
+  - report fields:
+    - <code>requested_dtype</code>
+    - <code>effective_dtype</code>
+    - <code>fp8_requested</code>
+    - <code>fp8_enabled</code>
+    - <code>fp8_fallback_reason</code>
+- GPU perf regression wrapper now accepts FP8 request mode:
+  - <code>scripts/perf_regression_gpu.py --dtype fp8</code>
+- Added FP8 telemetry tests:
+  - <code>tests/test_gpu_bench_fp8.py</code>
+  - expanded <code>tests/test_precision_policy.py</code>
+- Remaining gap:
+  - run FP8 benchmark on supported deployment GPU (sm90+) and attach measurable perf evidence.</p>
+<p>Files:
+- <code>apex_x/runtime/precision.py</code>
+- <code>apex_x/model/ff_heavy_path.py</code>
+- <code>docs/FP8.md</code>
+- <code>tests/test_precision_policy.py</code></p>
+<p>Acceptance:
+- On supported GPUs, FP8 path runs and demonstrates measurable speed/memory advantage
+  within agreed quality envelope.</p>
+<p>Validation:
+- <code>python -m pytest -q tests/test_precision_policy.py</code>
+- <code>python -m apex_x.bench.gpu_bench --output-json artifacts/perf_gpu_fp8.json</code></p>
+<hr />
+<h2 id="phase-p6-cicd-hard-gates-and-release">Phase P6 - CI/CD Hard Gates and Release</h2>
+<h3 id="p6-01-make-gpu-regression-workflow-mandatory-for-gpu-critical-changes">P6-01. Make GPU regression workflow mandatory for GPU-critical changes</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Optional GPU checks allow silent performance/correctness regressions.</p>
+<p>Implementation:
+- Enforce required status checks for files touching:
+  - <code>apex_x/kernels/</code>
+  - <code>apex_x/runtime/</code>
+  - <code>runtime/tensorrt/</code>
+- Keep controlled self-hosted runner policy.</p>
+<p>Progress (2026-02-11):
+- <code>.github/workflows/perf_gpu.yml</code> now triggers on <code>pull_request</code> when GPU-critical paths change.
+- Trusted-branch policy is enforced:
+  - same-repo PRs run <code>gpu-perf-regression</code> on self-hosted GPU runner
+  - fork PRs are blocked by <code>blocked-untrusted-pr</code> (no untrusted code on self-hosted GPU)
+- Contract test coverage now protects workflow policy from regressions:
+  - <code>tests/test_gpu_ci_workflow_contract.py</code>
+  - validates PR path triggers, trust guard, and self-hosted GPU runner labels.
+- Remaining gap:
+  - repository branch protection must require <code>GPU Perf Regression / gpu-perf-regression</code> status check.</p>
+<p>Files:
+- <code>.github/workflows/perf_gpu.yml</code>
+- <code>.github/workflows/ci.yml</code>
+- <code>docs/CI_GPU.md</code></p>
+<p>Acceptance:
+- PRs touching GPU-critical paths cannot merge without GPU checks.</p>
+<p>Validation:
+- Workflow dry-run on protected branch policy.</p>
+<h3 id="p6-02-unified-perf-regression-policy-cpu-gpu-trt">P6-02. Unified perf regression policy (CPU + GPU + TRT)</h3>
+<p>Status: [~]</p>
+<p>Why:
+- Need one rulebook for perf pass/fail.</p>
+<p>Implementation:
+- Normalize baseline schema and thresholds across CPU/GPU suites.
+- Add trend artifact generation for weekly comparison.</p>
+<p>Progress (2026-02-11):
+- Added normalized trend artifact output to both regression runners:
+  - <code>scripts/perf_regression.py --trend-output ...</code>
+  - <code>scripts/perf_regression_gpu.py --trend-output ...</code>
+- Added TensorRT shape-sweep regression wrapper aligned with the same compare/trend policy:
+  - <code>scripts/perf_regression_trt.py</code>
+  - baseline spec: <code>scripts/perf_baseline_trt.json</code>
+  - normalized trend artifact: <code>artifacts/perf_trt_trend*.json</code>
+- CI jobs now publish trend artifacts:
+  - CPU: <code>artifacts/perf_trend_cpu_ci.json</code> in <code>.github/workflows/ci.yml</code>
+  - GPU: <code>artifacts/perf_gpu_trend_ci.json</code> in <code>.github/workflows/perf_gpu.yml</code>
+- GPU and weekly workflows now run optional TensorRT compare/trend when <code>TRT_ENGINE_PATH</code> is provided:
+  - CI: <code>artifacts/perf_trt_current_ci.json</code>, <code>artifacts/perf_trt_compare_ci.json</code>, <code>artifacts/perf_trt_trend_ci.json</code>
+  - weekly: <code>artifacts/perf_trt_current_weekly.json</code>, <code>artifacts/perf_trt_compare_weekly.json</code>, <code>artifacts/perf_trt_trend_weekly.json</code>
+- Added weekly trend workflow:
+  - <code>.github/workflows/perf_trend_weekly.yml</code>
+  - CPU weekly artifact set is always generated
+  - GPU weekly artifact set is generated on self-hosted GPU when enabled (<code>APEXX_ENABLE_GPU_WEEKLY=true</code>)
+- Remaining gap:
+  - validate GPU compare + weekly GPU trend jobs on deployment CUDA runner and tune final baseline tolerances there.</p>
+<p>Files:
+- <code>scripts/perf_regression.py</code>
+- <code>scripts/perf_regression_gpu.py</code>
+- <code>scripts/perf_baseline_cpu.json</code>
+- <code>scripts/perf_baseline_gpu.json</code>
+- <code>docs/PERF.md</code>
+- <code>docs/PERF_GPU.md</code></p>
+<p>Acceptance:
+- Same regression formula and reporting format across suites.</p>
+<p>Validation:
+- <code>python scripts/perf_regression.py --compare --baseline scripts/perf_baseline_cpu.json</code>
+- <code>python scripts/perf_regression_gpu.py --compare --baseline scripts/perf_baseline_gpu.json</code>
+- <code>python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --trt-engine-path &lt;engine&gt;</code></p>
+<h2 id="5-cross-cutting-work-packages">5. Cross-Cutting Work Packages</h2>
+<h3 id="x-02-telemetry-schema-normalization">X-02. Telemetry schema normalization</h3>
+<p>Status: [x]</p>
+<p>Scope:
+- Ensure CLI, Python runtime, and Go service emit aligned telemetry keys:
+  - backend
+  - precision profile
+  - fallback reason
+  - selected tile stats
+  - latency breakdown</p>
+<p>Progress (2026-02-10):
+- Python runner telemetry now emits explicit latency breakdown in runtime metadata:
+  - <code>runtime.latency_ms.total</code>
+  - <code>runtime.latency_ms.backend_execute</code>
+  - <code>runtime.latency_ms.backend_preflight</code>
+- CLI <code>predict</code>/<code>eval</code> JSON reports include the same runtime latency fields.
+- Test coverage added for runtime latency schema in:
+  - <code>tests/test_infer_runner.py</code>
+  - <code>tests/test_cli.py</code>
+- Go runtime <code>/predict</code> response now emits aligned runtime telemetry keys:
+  - <code>requested_backend</code>, <code>selected_backend</code>, <code>execution_backend</code>
+  - <code>fallback_policy</code>, <code>precision_profile</code>
+  - <code>selection_fallback_reason</code>, <code>execution_fallback_reason</code>
+  - <code>latency_ms.total</code>, <code>latency_ms.backend_execute</code>, <code>latency_ms.backend_preflight</code>
+- Go runtime telemetry schema is covered by service tests:
+  - <code>runtime/go/internal/service/batcher_test.go</code>
+  - <code>runtime/go/internal/service/http_test.go</code>
+  - <code>runtime/go/internal/service/integration_test.go</code></p>
+<p>Acceptance:
+- Telemetry fields are documented once and validated in tests.</p>
+<h2 id="6-evidence-requirements-for-best-result-best-math">6. Evidence Requirements for "Best Result / Best Math"</h2>
+<p>To claim top-tier quality credibly, the repository must provide:</p>
+<ol>
+<li>Reproducible benchmark protocol:</li>
+<li>fixed datasets/splits</li>
+<li>fixed preprocessing</li>
+<li>fixed seed policy</li>
+<li>Baseline comparison set:</li>
+<li>strong public baselines under equal constraints</li>
+<li>Full reporting:</li>
+<li>quality metrics</li>
+<li>latency/throughput</li>
+<li>memory and cost</li>
+<li>Ablation report:</li>
+<li>router/oracle</li>
+<li>budgeting</li>
+<li>quadtree depth</li>
+<li>precision modes</li>
+<li>Public artifact package:</li>
+<li>configs</li>
+<li>logs</li>
+<li>checkpoints/engines</li>
+<li>scripts for rerun</li>
+</ol>
+<p>Without this evidence package, claims should be phrased as "improved within tested setup", not global best.</p>
+<hr />
+<h2 id="7-exit-criteria-by-phase">7. Exit Criteria by Phase</h2>
+<p>Phase exit is allowed only when all phase tasks are done and validated.</p>
+<ul>
+<li>P0 exit:</li>
+<li>contracts/tolerances/golden replay are locked</li>
+<li>P1 exit:</li>
+<li>CLI/eval/export real backend path complete</li>
+<li>P2 exit:</li>
+<li>Triton feature parity + perf gates pass</li>
+<li>P3 exit:</li>
+<li>TensorRT plugin/build/parity/int8 gates pass</li>
+<li>P4 exit:</li>
+<li>math quality track shows reproducible improvements under budget</li>
+<li>P5 exit:</li>
+<li>Go service uses real inference with SLA + telemetry</li>
+<li>P6 exit:</li>
+<li>CI hard gates and release checklist operational</li>
+</ul>
+<p>Project can be called "full production-ready GPU support" only after all exits pass.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
 </html>

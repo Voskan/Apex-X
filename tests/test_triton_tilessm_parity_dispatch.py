@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
+import apex_x.kernels.triton.tilessm_scan as tilessm_mod
 from apex_x.kernels.triton.tilessm_scan import (
     BidirectionalMergeMode,
     get_triton_tilessm_availability,
@@ -282,3 +284,100 @@ def test_clean_scan_api_returns_y_for_direction() -> None:
     )
     assert y.shape == tokens.shape
     assert torch.isfinite(y).all()
+
+
+def test_tilessm_triton_forward_chunking_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    tokens = torch.randn((1, 9000, 2), dtype=torch.float32)
+    params = {
+        "decay": torch.ones((2,), dtype=torch.float32),
+        "input_gain": torch.ones((2,), dtype=torch.float32),
+        "output_gain": torch.ones((2,), dtype=torch.float32),
+        "state_bias": torch.zeros((2,), dtype=torch.float32),
+    }
+    launches: list[int] = []
+
+    def _fake_scan_single(
+        chunk_tokens: torch.Tensor,
+        *,
+        decay: torch.Tensor,
+        input_gain: torch.Tensor,
+        output_gain: torch.Tensor,
+        state_bias: torch.Tensor,
+        init_state: torch.Tensor | None,
+        clamp_value: float,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        _ = (decay, input_gain, output_gain, state_bias, clamp_value)
+        launches.append(int(chunk_tokens.shape[1]))
+        state = (
+            torch.zeros((chunk_tokens.shape[0], chunk_tokens.shape[2]), dtype=chunk_tokens.dtype)
+            if init_state is None
+            else init_state
+        )
+        final_state = state + float(chunk_tokens.shape[1])
+        y = torch.full_like(chunk_tokens, fill_value=float(final_state[0, 0].item()))
+        return y, final_state
+
+    monkeypatch.setattr(tilessm_mod, "_scan_triton_forward_single", _fake_scan_single)
+    out, final_state = tilessm_mod._scan_triton_forward(
+        tokens,
+        decay=params["decay"],
+        input_gain=params["input_gain"],
+        output_gain=params["output_gain"],
+        state_bias=params["state_bias"],
+        init_state=None,
+        clamp_value=1e4,
+    )
+
+    assert launches == [4096, 4096, 808]
+    assert out.shape == tokens.shape
+    assert torch.all(out[:, :4096, :] == 4096.0)
+    assert torch.all(out[:, 4096:8192, :] == 8192.0)
+    assert torch.all(out[:, 8192:, :] == 9000.0)
+    assert torch.all(final_state == 9000.0)
+
+
+def test_tilessm_triton_forward_single_launch_within_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tokens = torch.randn((1, 256, 3), dtype=torch.float32)
+    params = {
+        "decay": torch.ones((3,), dtype=torch.float32),
+        "input_gain": torch.ones((3,), dtype=torch.float32),
+        "output_gain": torch.ones((3,), dtype=torch.float32),
+        "state_bias": torch.zeros((3,), dtype=torch.float32),
+    }
+    launches: list[int] = []
+
+    def _fake_scan_single(
+        chunk_tokens: torch.Tensor,
+        *,
+        decay: torch.Tensor,
+        input_gain: torch.Tensor,
+        output_gain: torch.Tensor,
+        state_bias: torch.Tensor,
+        init_state: torch.Tensor | None,
+        clamp_value: float,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        _ = (decay, input_gain, output_gain, state_bias, init_state, clamp_value)
+        launches.append(int(chunk_tokens.shape[1]))
+        final_state = torch.full(
+            (chunk_tokens.shape[0], chunk_tokens.shape[2]),
+            fill_value=float(chunk_tokens.shape[1]),
+            dtype=chunk_tokens.dtype,
+        )
+        return chunk_tokens, final_state
+
+    monkeypatch.setattr(tilessm_mod, "_scan_triton_forward_single", _fake_scan_single)
+    out, final_state = tilessm_mod._scan_triton_forward(
+        tokens,
+        decay=params["decay"],
+        input_gain=params["input_gain"],
+        output_gain=params["output_gain"],
+        state_bias=params["state_bias"],
+        init_state=None,
+        clamp_value=1e4,
+    )
+
+    assert launches == [256]
+    assert torch.equal(out, tokens)
+    assert torch.all(final_state == 256.0)

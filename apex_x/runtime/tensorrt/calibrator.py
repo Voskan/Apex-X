@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Mapping
+import hashlib
+import json
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -15,21 +17,63 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 CalibrationBatch = Mapping[str, np.ndarray] | np.ndarray
+CALIBRATION_CACHE_MAGIC = "APEXX_CALIBRATION_CACHE_V1"
 
 
 class CalibrationDataLoader(Protocol):
     """Protocol for calibration dataset loaders consumed by TRT calibrator."""
 
-    def __iter__(self) -> Iterator[CalibrationBatch]:
-        ...
+    def __iter__(self) -> Iterator[CalibrationBatch]: ...
 
 
 @dataclass(frozen=True, slots=True)
 class CalibratorConfig:
     input_names: tuple[str, ...]
     cache_path: Path | None = None
+    cache_key: str | None = None
     device: str = "cuda"
     force_float32: bool = True
+
+
+def build_calibration_dataset_digest(
+    batches: Sequence[CalibrationBatch],
+    *,
+    max_batches: int = 32,
+) -> str:
+    if max_batches <= 0:
+        raise ValueError("max_batches must be > 0")
+    if not batches:
+        raise ValueError("batches must be non-empty")
+
+    sampled = min(len(batches), max_batches)
+    hasher = hashlib.sha256()
+    hasher.update(b"apexx_calibration_dataset_digest_v1")
+    hasher.update(f"|total={len(batches)}|sampled={sampled}".encode())
+
+    for idx in range(sampled):
+        batch = batches[idx]
+        hasher.update(f"|batch={idx}".encode())
+        if isinstance(batch, np.ndarray):
+            array = np.ascontiguousarray(batch)
+            hasher.update(b"|array|")
+            hasher.update(str(array.dtype).encode("utf-8"))
+            hasher.update(str(tuple(array.shape)).encode("utf-8"))
+            hasher.update(array.view(np.uint8).tobytes())
+            continue
+        if isinstance(batch, Mapping):
+            hasher.update(b"|mapping|")
+            for name in sorted(batch):
+                value = batch[name]
+                if not isinstance(value, np.ndarray):
+                    raise ValueError(f"calibration input {name} must be a numpy array")
+                array = np.ascontiguousarray(value)
+                hasher.update(name.encode("utf-8"))
+                hasher.update(str(array.dtype).encode("utf-8"))
+                hasher.update(str(tuple(array.shape)).encode("utf-8"))
+                hasher.update(array.view(np.uint8).tobytes())
+            continue
+        raise ValueError("calibration batch must be numpy array or mapping of numpy arrays")
+    return hasher.hexdigest()
 
 
 def _normalize_batch(
@@ -39,9 +83,7 @@ def _normalize_batch(
 ) -> dict[str, np.ndarray]:
     if isinstance(batch, np.ndarray):
         if len(input_names) != 1:
-            raise ValueError(
-                "single-array calibration batch requires exactly one input name"
-            )
+            raise ValueError("single-array calibration batch requires exactly one input name")
         normalized = {input_names[0]: batch}
     elif isinstance(batch, Mapping):
         normalized = {}
@@ -80,6 +122,8 @@ class _EntropyCalibratorBase:
         self._batch_size: int | None = None
         self._device_tensors: dict[str, torch.Tensor] = {}
         self._cache_path = None if config.cache_path is None else Path(config.cache_path)
+        if config.cache_key is not None and not str(config.cache_key).strip():
+            raise ValueError("cache_key must be non-empty when provided")
         self._prime_first_batch()
 
     def _prime_first_batch(self) -> None:
@@ -140,13 +184,64 @@ class _EntropyCalibratorBase:
             return None
         if not self._cache_path.exists():
             return None
-        return self._cache_path.read_bytes()
+        blob = self._cache_path.read_bytes()
+        parsed = _parse_calibration_cache_blob(blob)
+        if parsed is None:
+            # Legacy cache blobs are accepted only when no cache-key governance is required.
+            if self.config.cache_key is None:
+                return blob
+            return None
+
+        metadata, payload = parsed
+        key_in_blob = metadata.get("cache_key")
+        if self.config.cache_key is None:
+            return payload
+        if not isinstance(key_in_blob, str):
+            return None
+        if key_in_blob != self.config.cache_key:
+            return None
+        return payload
 
     def write_calibration_cache(self, cache: bytes) -> None:
         if self._cache_path is None:
             return
         self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self._cache_path.write_bytes(cache)
+        if self.config.cache_key is None:
+            self._cache_path.write_bytes(cache)
+            return
+        wrapped = _build_calibration_cache_blob(
+            payload=cache,
+            cache_key=self.config.cache_key,
+        )
+        self._cache_path.write_bytes(wrapped)
+
+
+def _build_calibration_cache_blob(*, payload: bytes, cache_key: str) -> bytes:
+    metadata = {
+        "schema_version": 1,
+        "cache_key": cache_key,
+    }
+    header = json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return CALIBRATION_CACHE_MAGIC.encode("utf-8") + b"\n" + header + b"\n\n" + payload
+
+
+def _parse_calibration_cache_blob(blob: bytes) -> tuple[dict[str, object], bytes] | None:
+    prefix = CALIBRATION_CACHE_MAGIC.encode("utf-8") + b"\n"
+    if not blob.startswith(prefix):
+        return None
+    separator = b"\n\n"
+    split = blob.find(separator, len(prefix))
+    if split < 0:
+        return None
+    header_bytes = blob[len(prefix) : split]
+    payload = blob[split + len(separator) :]
+    try:
+        metadata = json.loads(header_bytes.decode("utf-8"))
+    except Exception:
+        return None
+    if not isinstance(metadata, dict):
+        return None
+    return metadata, payload
 
 
 if trt is not None:
@@ -187,9 +282,7 @@ else:
             config: CalibratorConfig,
         ) -> None:
             _ = (loader, config)
-            raise RuntimeError(
-                "tensorrt Python package is required for TensorRTEntropyCalibrator"
-            )
+            raise RuntimeError("tensorrt Python package is required for TensorRTEntropyCalibrator")
 
 
 TensorRTEntropyCalibrator: type[object]
@@ -204,5 +297,7 @@ __all__ = [
     "CalibrationBatch",
     "CalibrationDataLoader",
     "CalibratorConfig",
+    "CALIBRATION_CACHE_MAGIC",
+    "build_calibration_dataset_digest",
     "TensorRTEntropyCalibrator",
 ]

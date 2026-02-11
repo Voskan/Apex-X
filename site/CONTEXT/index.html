@@ -1,197 +1,3181 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
-        
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Universal Vision Dynamic Compute Graph">
+      
+      
+      
         <link rel="canonical" href="https://example.com/apex-x/CONTEXT/">
-        <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Context - Apex-X Docs</title>
-        <link href="../css/bootstrap.min.css" rel="stylesheet">
-        <link href="../css/fontawesome.min.css" rel="stylesheet">
-        <link href="../css/brands.min.css" rel="stylesheet">
-        <link href="../css/solid.min.css" rel="stylesheet">
-        <link href="../css/v4-font-face.min.css" rel="stylesheet">
-        <link href="../css/base.css" rel="stylesheet">
-        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
-        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
-    </head>
+      
+      
+        <link rel="prev" href="../algorithms/">
+      
+      
+        <link rel="next" href="../DECISIONS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Context - Apex-X</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
 
-    <body>
-        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
-            <div class="container">
-                <a class="navbar-brand" href="..">Apex-X Docs</a>
-                <!-- Expander button -->
-                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <!-- Expanded navigation -->
-                <div id="navbar-collapse" class="navbar-collapse collapse">
-                        <!-- Main navigation -->
-                        <ul class="nav navbar-nav">
-                            <li class="nav-item">
-                                <a href=".." class="nav-link">Home</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../PRD/" class="nav-link">PRD</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../ENGINEERING_SPEC/" class="nav-link">Engineering Spec</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../QAT/" class="nav-link">QAT Policy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../FP8/" class="nav-link">FP8 Policy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../PERF/" class="nav-link">Performance Regression</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PLUGIN_SPEC/" class="nav-link">Runtime Plugin Spec</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PLUGIN_SPECS/" class="nav-link">Runtime Plugin Specs Alias</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/CAPS/" class="nav-link">Runtime Capability Detection</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PARITY/" class="nav-link">Runtime Parity Framework</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TENSORRT/" class="nav-link">TensorRT Runtime Notes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TENSORRT_BUILD/" class="nav-link">TensorRT Build Guide</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON/" class="nav-link">Triton Runtime Notes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_TILEPACK/" class="nav-link">Triton TilePack</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_TILEUNPACK/" class="nav-link">Triton TileUnpack</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_FUSION/" class="nav-link">Triton FusionGate</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_SSM/" class="nav-link">Triton TileSSM Scan</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_FUSED_STAGE1/" class="nav-link">Triton Fused Stage-1</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="./" class="nav-link active" aria-current="page">Context</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../DECISIONS/" class="nav-link">Decisions</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../TODO/" class="nav-link">TODO</a>
-                            </li>
-                        </ul>
-
-                    <ul class="nav navbar-nav ms-md-auto">
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
-                                <i class="fa fa-search"></i> Search
-                            </a>
-                        </li>
-                            <li class="nav-item">
-                                <a rel="prev" href="../runtime/TRITON_FUSED_STAGE1/" class="nav-link">
-                                    <i class="fa fa-arrow-left"></i> Previous
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a rel="next" href="../DECISIONS/" class="nav-link">
-                                    Next <i class="fa fa-arrow-right"></i>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="https://example.com/apex-x" class="nav-link">apex-x</a>
-                            </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="row">
-                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
-    <div class="navbar-header">
-        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
-            <span class="fa fa-angle-down"></span>
-        </button>
-    </div>
 
     
-    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
-        <ul class="nav flex-column">
-            
-            <li class="nav-item" data-bs-level="1"><a href="#apex-x-project-context-persistent-memory" class="nav-link">Apex-X Project Context (Persistent Memory)</a>
-              <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#authoritative-links-mandatory" class="nav-link">Authoritative Links (Mandatory)</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#project-identity" class="nav-link">Project Identity</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#current-architecture-snapshot" class="nav-link">Current Architecture Snapshot</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#what-exists-right-now-2026-02-07" class="nav-link">What Exists Right Now (2026-02-07)</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#invariants-to-preserve" class="nav-link">Invariants to Preserve</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#open-risks" class="nav-link">Open Risks</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#immediate-next-steps" class="nav-link">Immediate Next Steps</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#latest-update-2026-02-08-triton-fused-stage-1-pipeline" class="nav-link">Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#latest-update-2026-02-08-triton-tilessm-scan-baseline" class="nav-link">Latest Update (2026-02-08): Triton TileSSM Scan Baseline</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#latest-update-2026-02-08-triton-tilessm-multi-direction" class="nav-link">Latest Update (2026-02-08): Triton TileSSM Multi-Direction</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#latest-update-2026-02-08-tensorrt-build-hardening-harness" class="nav-link">Latest Update (2026-02-08): TensorRT Build Hardening + Harness</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#update-protocol-every-significant-change" class="nav-link">Update Protocol (Every Significant Change)</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-              </ul>
-            </li>
-        </ul>
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#apex-x-project-context-persistent-memory" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
-</div></div>
-                    <div class="col-md-9" role="main">
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Apex-X" class="md-header__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Apex-X
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Context
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../benchmarks/" class="md-tabs__link">
+          
+  
+  
+  Overview
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PRD/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PERF/" class="md-tabs__link">
+          
+  
+  
+  Performance
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runtime/PLUGIN_SPEC/" class="md-tabs__link">
+          
+  
+  
+  Runtime
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../release/CHECKLIST/" class="md-tabs__link">
+          
+  
+  
+  Release
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TODO/" class="md-tabs__link">
+          
+  
+  
+  Activity
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Apex-X" class="md-nav__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Apex-X
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overview
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#authoritative-links-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authoritative Links (Mandatory)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Identity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recent-updates-2026-02-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recent Updates (2026-02-11)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-architecture-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Architecture Snapshot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-exists-right-now-2026-02-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Exists Right Now (2026-02-07)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#invariants-to-preserve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invariants to Preserve
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#immediate-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-triton-fused-stage-1-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-triton-tilessm-scan-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Triton TileSSM Scan Baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Triton TileSSM Scan Baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-triton-tilessm-multi-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Triton TileSSM Multi-Direction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Triton TileSSM Multi-Direction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-build-hardening-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT Build Hardening + Harness
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT Build Hardening + Harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exact-build-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exact Build Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-tilepack-plugin-real-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-tileunpackfusion-plugin-priority-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-tilessmscan-plugin-forward-backward-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-decodenms-plugin-det-postprocessing-in-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-python-engine-builder-int8-calibrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#engine-build-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine Build Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-unified-gpu-benchmark-suite-torchtritontrt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-locations_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-gpu-perf-regression-ci-workflow-baseline-compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-locations_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-go-runtime-hardening-loaders-batching-metrics-logging-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#update-protocol-every-significant-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update Protocol (Every Significant Change)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DECISIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PRD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINEERING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../QAT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QAT Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FP8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FP8 Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Performance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU Bench
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CI_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runtime
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/PLUGIN_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/CAPS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TensorRT
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    TensorRT
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_BUILD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_INT8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    INT8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_POST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Postprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/GO_SERVICE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Triton
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Triton
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TilePack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEUNPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TileUnpack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fusion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_SSM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SSM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSED_STAGE1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/CHECKLIST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/MIGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Activity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Activity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TODO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#authoritative-links-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authoritative Links (Mandatory)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Identity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recent-updates-2026-02-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recent Updates (2026-02-11)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-architecture-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Architecture Snapshot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-exists-right-now-2026-02-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Exists Right Now (2026-02-07)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#invariants-to-preserve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invariants to Preserve
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#immediate-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-triton-fused-stage-1-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-triton-tilessm-scan-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Triton TileSSM Scan Baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Triton TileSSM Scan Baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-triton-tilessm-multi-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Triton TileSSM Multi-Direction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Triton TileSSM Multi-Direction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-build-hardening-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT Build Hardening + Harness
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT Build Hardening + Harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exact-build-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exact Build Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-tilepack-plugin-real-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-tileunpackfusion-plugin-priority-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-tilessmscan-plugin-forward-backward-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-decodenms-plugin-det-postprocessing-in-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-tensorrt-python-engine-builder-int8-calibrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#engine-build-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine Build Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-unified-gpu-benchmark-suite-torchtritontrt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-locations_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-gpu-perf-regression-ci-workflow-baseline-compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-locations_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#latest-update-2026-02-08-go-runtime-hardening-loaders-batching-metrics-logging-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-commands_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-status_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-work_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#update-protocol-every-significant-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update Protocol (Every Significant Change)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
 
 <h1 id="apex-x-project-context-persistent-memory">Apex-X Project Context (Persistent Memory)</h1>
 <h2 id="authoritative-links-mandatory">Authoritative Links (Mandatory)</h2>
@@ -208,6 +3192,405 @@
 <li>Version: <code>0.1.0</code></li>
 <li>License: <code>Apache-2.0</code></li>
 <li>Current baseline: CPU-only reference implementation</li>
+</ul>
+<h2 id="recent-updates-2026-02-11">Recent Updates (2026-02-11)</h2>
+<ul>
+<li>Runtime capability contract was hardened:</li>
+<li>canonical reason-code catalog added in <code>apex_x/runtime/caps.py</code></li>
+<li>dynamic reason strings were removed in favor of stable reason codes</li>
+<li>runtime reason catalog exposed via <code>runtime_reason_catalog()</code></li>
+<li>Capability docs/spec alignment updates:</li>
+<li><code>docs/runtime/CAPS.md</code> now defines frozen backend capability matrix and reason-code contract</li>
+<li><code>docs/ENGINEERING_SPEC.md</code> includes explicit runtime capability and parity contract section</li>
+<li><code>docs/PRD.md</code> adds FR-14 for runtime capability transparency</li>
+<li>Parity tolerance framework was extended:</li>
+<li>FP8 tolerance added to <code>ToleranceConfig</code></li>
+<li>profile API added (<code>quality</code>, <code>balanced</code>, <code>edge</code>) with op/e2e tolerance bundles</li>
+<li>new tests added in <code>tests/test_runtime_parity.py</code></li>
+<li>Deterministic replay package was added:</li>
+<li>golden fixtures: <code>tests/fixtures/replay_golden_small.json</code>, <code>tests/fixtures/replay_golden_medium.json</code></li>
+<li>replay hash utilities in <code>apex_x/utils/repro.py</code> (<code>build_replay_manifest</code>, JSON/file SHA256 helpers)</li>
+<li>replay validation test in <code>tests/test_replay_golden.py</code></li>
+<li>CLI backend selection contract was added:</li>
+<li><code>--backend cpu|torch|triton|tensorrt</code></li>
+<li><code>--fallback-policy strict|permissive</code></li>
+<li>strict mode returns actionable errors; permissive mode falls back deterministically</li>
+<li>backend selection metadata is emitted by <code>predict</code> and <code>eval</code></li>
+<li>TODO progression:</li>
+<li>completed tasks <code>P0-01</code>, <code>P0-02</code>, <code>P0-03</code>, and <code>P1-01</code> were removed from <code>docs/TODO.md</code></li>
+<li>completed task <code>P2-04</code> was removed from active backlog and moved to completed history</li>
+<li>CI/perf gate hardening updates:</li>
+<li>GPU perf workflow now has PR path trigger for GPU-critical code paths:<ul>
+<li><code>apex_x/kernels/**</code></li>
+<li><code>apex_x/runtime/**</code></li>
+<li><code>runtime/tensorrt/**</code></li>
+</ul>
+</li>
+<li>fork PRs are fail-closed for GPU workflow execution (<code>blocked-untrusted-pr</code>)</li>
+<li>CPU and GPU perf regression scripts now emit normalized trend artifacts:<ul>
+<li>CPU: <code>--trend-output artifacts/perf_trend_cpu_ci.json</code></li>
+<li>GPU: <code>--trend-output artifacts/perf_gpu_trend_ci.json</code></li>
+</ul>
+</li>
+<li>weekly trend workflow added:<ul>
+<li><code>.github/workflows/perf_trend_weekly.yml</code></li>
+<li>CPU weekly trend always runs</li>
+<li>GPU weekly trend runs on self-hosted CUDA when <code>APEXX_ENABLE_GPU_WEEKLY=true</code></li>
+</ul>
+</li>
+<li>workflow policy contract test added:<ul>
+<li><code>tests/test_gpu_ci_workflow_contract.py</code></li>
+<li>guards GPU-critical PR triggers + trusted self-hosted execution rules</li>
+</ul>
+</li>
+<li>Release checklist evidence automation was added:</li>
+<li>new generator script: <code>scripts/release_attestation.py</code></li>
+<li>outputs JSON + Markdown attestation bundles with artifact SHA256/status fields</li>
+<li>CI workflows now auto-publish release evidence drafts:<ul>
+<li>CPU CI: <code>artifacts/release/release_attestation_ci.{json,md}</code></li>
+<li>GPU CI: <code>artifacts/release/release_attestation_gpu_ci.{json,md}</code></li>
+<li>weekly trend CPU/GPU jobs publish corresponding weekly attestation bundles</li>
+</ul>
+</li>
+<li>Backward-compatibility migration documentation was finalized:</li>
+<li>migration guide: <code>docs/release/MIGRATION.md</code></li>
+<li>project changelog baseline: <code>CHANGELOG.md</code></li>
+<li>X-03 was removed from active queue after adding explicit deprecation timeline and migration actions.</li>
+<li>Temporal hysteresis quality gates were expanded:</li>
+<li>new budget-aware update API: <code>hysteresis_update_with_budget(...)</code></li>
+<li><code>hysteresis_rollout(...)</code> now supports optional <code>max_active</code> frame cap</li>
+<li>new stability metrics:<ul>
+<li><code>tile_flip_rate(...)</code></li>
+<li><code>temporal_consistency(...)</code></li>
+<li><code>mean_active_ratio(...)</code></li>
+<li><code>summarize_temporal_stability(...)</code></li>
+</ul>
+</li>
+<li>model CPU baseline now applies budget-aware hysteresis using <code>kmax_l0</code></li>
+<li>new sequence-level tests in <code>tests/test_temporal_hysteresis_metrics.py</code></li>
+<li>Quadtree recursion budgeting was extended to depth-2 deterministic selection:</li>
+<li>new API: <code>deterministic_three_stage_selection(...)</code> in <code>apex_x/routing/inference_budget.py</code></li>
+<li>stage contracts:<ul>
+<li><code>L0</code> under <code>B1</code></li>
+<li><code>L0 -&gt; L1</code> split under <code>B2</code></li>
+<li><code>L1 -&gt; L2</code> split under <code>B3</code></li>
+</ul>
+</li>
+<li>deterministic parent tie-break at split stages: score desc, tile-id asc</li>
+<li><code>Kmax_L1</code>/<code>Kmax_L2</code> capacity limits enforced during child expansion</li>
+<li>new tests: <code>tests/test_three_stage_selection.py</code></li>
+<li>Deterministic inference-budget stress coverage was expanded:</li>
+<li>new stress suite: <code>tests/test_inference_budget_stress.py</code></li>
+<li>covers:<ul>
+<li>equal-utility tie scaling</li>
+<li>zero/near-zero delta-cost stability</li>
+<li>saturated <code>Kmax</code> clipping</li>
+<li>adversarial close-score repeatability</li>
+</ul>
+</li>
+<li>Continuous dual-budget convergence controls were hardened:</li>
+<li><code>BudgetDualController</code> now supports adaptive update schedule with:<ul>
+<li>step decay</li>
+<li>EMA-scaled learning-rate modulation</li>
+<li>deadband near target budget</li>
+<li>optional delta clipping</li>
+</ul>
+</li>
+<li>trainer/model wiring now passes dual schedule config fields from <code>TrainConfig</code></li>
+<li>stage-3 trainer metrics now report dual dynamics:<ul>
+<li><code>dual_effective_lr_last</code></li>
+<li><code>dual_error_ema_last</code></li>
+<li><code>dual_update_count</code></li>
+</ul>
+</li>
+<li>new convergence test suite: <code>tests/test_dual_budget_convergence.py</code></li>
+<li>PCGrad++ monitoring was completed for shared-trunk training:</li>
+<li><code>apply_pcgradpp(...)</code> diagnostics now include conflict metrics before/after projection</li>
+<li>trainer emits <code>train_summary["pcgrad"]</code> payload with:<ul>
+<li>pair counts/rates (<code>before</code> vs <code>after</code>)</li>
+<li>shared/head parameter counts</li>
+<li>gradient norm snapshots</li>
+</ul>
+</li>
+<li>head-gradient non-projection and conflict-rate behavior are covered in:<ul>
+<li><code>tests/test_pcgradpp.py</code></li>
+<li><code>tests/test_trainer_stages.py</code></li>
+</ul>
+</li>
+<li>FP8 operational telemetry was extended:</li>
+<li><code>precision.py</code> fallback reasons now align to canonical runtime reason-codes</li>
+<li>GPU benchmark now supports explicit FP8 request mode (<code>--dtype fp8</code>)</li>
+<li>benchmark report now includes requested-vs-effective precision fields:<ul>
+<li><code>requested_dtype</code></li>
+<li><code>effective_dtype</code></li>
+<li><code>fp8_requested</code></li>
+<li><code>fp8_enabled</code></li>
+<li><code>fp8_fallback_reason</code></li>
+</ul>
+</li>
+<li>FP8 telemetry coverage added in:<ul>
+<li><code>tests/test_precision_policy.py</code></li>
+<li><code>tests/test_gpu_bench_fp8.py</code></li>
+</ul>
+</li>
+<li>Unified perf regression policy was extended to TensorRT shape-sweep:</li>
+<li>new script: <code>scripts/perf_regression_trt.py</code></li>
+<li>new baseline: <code>scripts/perf_baseline_trt.json</code></li>
+<li>trend artifacts:<ul>
+<li><code>artifacts/perf_trt_trend_ci.json</code></li>
+<li><code>artifacts/perf_trt_trend_weekly.json</code></li>
+</ul>
+</li>
+<li>GPU workflows now run optional TRT compare/trend when <code>TRT_ENGINE_PATH</code> is provided.</li>
+<li>Oracle supervision pipeline was hardened:</li>
+<li>oracle sampler now supports a third component for long-tail tile selection</li>
+<li>stage-2 trainer now logs/reports oracle label diagnostics:<ul>
+<li>sample composition (<code>random</code>, <code>uncertainty</code>, <code>long_tail</code>)</li>
+<li>delta distribution summary (<code>mean/std/min/max/abs_p95</code>)</li>
+<li>clipping diagnostics (<code>clipped_ratio</code>)</li>
+</ul>
+</li>
+<li>new stats helper added: <code>summarize_oracle_delta_targets(...)</code></li>
+<li>coverage expanded in:<ul>
+<li><code>tests/test_oracle_sampling.py</code></li>
+<li><code>tests/test_oracle_distill.py</code></li>
+<li><code>tests/test_trainer_stages.py</code></li>
+</ul>
+</li>
+<li>Export and predict runtime paths reached active-queue completion status:</li>
+<li><code>P1-02</code> closure validated by export contract tests:<ul>
+<li><code>tests/test_export.py</code></li>
+<li><code>tests/test_tensorrt_export_manifest.py</code></li>
+</ul>
+</li>
+<li><code>P1-03</code> closure validated by runner/CLI backend execution tests:<ul>
+<li><code>tests/test_infer_runner.py</code></li>
+<li><code>tests/test_cli.py</code></li>
+</ul>
+</li>
+<li>deployment-host evidence for real TensorRT engines remains tracked in device-blocked queue.</li>
+<li>Eval runtime path reached active-queue completion status:</li>
+<li><code>P1-04</code> closure validated by eval + dataset execution contract tests:<ul>
+<li><code>tests/test_eval_metrics.py</code></li>
+<li><code>tests/test_infer_runner.py</code></li>
+<li><code>tests/test_cli.py</code></li>
+</ul>
+</li>
+<li>TensorRT INT8 sensitive-layer precision enforcement was hardened:</li>
+<li>builder now emits per-layer precision evidence in <code>EngineBuildResult.layer_precision_status</code></li>
+<li>strict precision-constraint mode now fails build when matched layers cannot be constrained</li>
+<li>new coverage added in <code>tests/test_tensorrt_precision_policy.py</code></li>
+<li>TensorRT plugin build-time contract validation was hardened:</li>
+<li>builder now validates plugin creator contracts for:<ul>
+<li>presence</li>
+<li>version</li>
+<li>namespace</li>
+<li>plugin field-signature metadata</li>
+</ul>
+</li>
+<li>strict mode emits actionable mismatch errors for required plugins</li>
+<li><code>PluginContract</code> overrides are now supported in build config</li>
+<li>new non-CUDA unit coverage:<ul>
+<li><code>tests/test_tensorrt_plugin_contracts.py</code></li>
+</ul>
+</li>
+<li>TensorRT INT8 calibration cache governance was completed:</li>
+<li>cache-key contract now binds calibration cache reuse to:<ul>
+<li>model/export identity hash</li>
+<li>plugin version/namespace metadata</li>
+<li>precision profile</li>
+<li>calibration dataset version (explicit or auto-digest)</li>
+</ul>
+</li>
+<li>calibrator cache blob now enforces key-aware stale-cache invalidation.</li>
+<li>legacy raw cache blobs are accepted only when key governance is disabled.</li>
+<li>new non-CUDA unit coverage:<ul>
+<li><code>tests/test_tensorrt_int8_cache.py</code></li>
+</ul>
+</li>
+<li>TensorRT parity harness was expanded with backend matrix + sweep APIs:</li>
+<li><code>ParityMatrixCase</code> and <code>run_parity_matrix_case(...)</code> compare:<ul>
+<li>reference vs triton</li>
+<li>reference vs tensorrt</li>
+<li>triton vs tensorrt</li>
+</ul>
+</li>
+<li><code>run_parity_sweep(...)</code> provides shape/precision sweep aggregation with profile-aware tolerances.</li>
+<li>CPU-safe harness contract coverage added in:<ul>
+<li><code>tests/test_trt_parity_harness.py</code></li>
+</ul>
+</li>
+<li>Triton TileSSM long-sequence behavior was hardened:</li>
+<li>Triton forward scan now streams long sequences in chunks when <code>K &gt; 4096</code>.</li>
+<li>chunk execution carries recurrent state between launches to preserve recurrence semantics.</li>
+<li>CPU-safe chunking contract tests added in:<ul>
+<li><code>tests/test_triton_tilessm_parity_dispatch.py</code></li>
+</ul>
+</li>
+<li>Triton TileUnpack overlap blend dispatch gap was reduced:</li>
+<li><code>overlap_mode=\"blend\"</code> no longer has a forced reference-only dispatch branch.</li>
+<li>blend overlap path now executes through <code>tileunpack_triton(...)</code> entrypoint with
+    ordered composition parity semantics.</li>
+<li>overlap tests expanded:<ul>
+<li><code>tests/test_triton_tileunpack_overlap_dispatch.py</code></li>
+<li><code>tests/test_triton_tileunpack_overlap_gpu.py</code></li>
+</ul>
+</li>
+<li>Triton Stage-1 fused selector was integrated into FF heavy-path inference:</li>
+<li><code>FFHeavyPath</code> now routes to <code>fused_pack_op_unpack_dispatch(...)</code> only when strict
+    compatibility predicates hold (eval, identity refine, constant FiLM params, unique indices).</li>
+<li>non-compatible cases remain on deterministic decomposed <code>pack -&gt; FiLM -&gt; unpack</code> path.</li>
+<li>new coverage:<ul>
+<li><code>tests/test_ff_heavy_path_fused_stage1.py</code></li>
+</ul>
+</li>
+<li>Triton autotune registry + benchmark telemetry were added:</li>
+<li>new module: <code>apex_x/kernels/triton/autotune_registry.py</code></li>
+<li>registry records per-op/per-shape-bucket selected launch config and cache counters</li>
+<li>instrumented kernels:<ul>
+<li>TilePack</li>
+<li>TileUnpack priority/scatter</li>
+<li>FusionGate alpha/fuse</li>
+<li>fused stage-1 pack/op/unpack</li>
+</ul>
+</li>
+<li>GPU benchmark report now exports:<ul>
+<li><code>triton_autotune.summary</code></li>
+<li><code>triton_autotune.entries</code></li>
+</ul>
+</li>
+<li>CPU-safe contract coverage added in:<ul>
+<li><code>tests/test_triton_autotune_registry.py</code></li>
+</ul>
+</li>
+<li>Runtime docs consistency sweep completed:</li>
+<li>synchronized current implementation status in:<ul>
+<li><code>docs/runtime/TRITON.md</code></li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+</ul>
+</li>
+<li>Release readiness docs were strengthened:</li>
+<li>added <code>docs/release/CHECKLIST.md</code> with mandatory artifact attestation + rollback section</li>
+<li>linked checklist in <code>README.md</code>, docs index, and MkDocs navigation</li>
+<li>Go runtime telemetry schema was aligned with Python CLI/runtime reports:</li>
+<li><code>/predict</code> response now includes <code>runtime</code> payload with backend selection, fallback, precision, and latency breakdown</li>
+<li>latency keys aligned to <code>latency_ms.total</code>, <code>latency_ms.backend_execute</code>, <code>latency_ms.backend_preflight</code></li>
+<li>service test coverage updated for runtime telemetry schema</li>
+<li>explicit SLA-oriented error policies added:<ul>
+<li>queue saturation returns <code>429 Too Many Requests</code></li>
+<li>predict timeout returns <code>504 Gateway Timeout</code></li>
+</ul>
+</li>
+<li>Go runtime backend bridge execution path was added:</li>
+<li>ORT and TRT adapters now support optional Python bridge execution via:<ul>
+<li><code>APEXX_ORT_BRIDGE_CMD</code></li>
+<li><code>APEXX_TRT_BRIDGE_CMD</code></li>
+</ul>
+</li>
+<li>bridge protocol entrypoint implemented at <code>apex_x/runtime/service_bridge.py</code></li>
+<li>Go service backend error classification now maps:<ul>
+<li>backend unavailable -&gt; <code>503 Service Unavailable</code></li>
+<li>backend inference/protocol failure -&gt; <code>502 Bad Gateway</code></li>
+</ul>
+</li>
+<li>synthetic score fallback was removed from ORT/TRT adapters (fail-closed behavior)</li>
+<li>native host limitation snapshot:<ul>
+<li>Go <code>onnxruntime</code> native pkg-config package is unavailable on this host</li>
+<li>TensorRT Python module is unavailable on this host</li>
+</ul>
+</li>
+<li>Go runtime canary parity mode was added:</li>
+<li>optional shadow adapter execution with configurable sample rate</li>
+<li>mismatch telemetry counters (<code>samples</code>, <code>compares</code>, <code>mismatches</code>, <code>errors</code>, <code>mismatch_ratio</code>)</li>
+<li>canary behavior is asynchronous to avoid impacting primary response path</li>
+<li>configurable canary payload capture policy and storage controls were added:<ul>
+<li>policy: <code>off|mismatch|error|all</code></li>
+<li>JSONL sink: <code>APEXX_CANARY_CAPTURE_PATH</code></li>
+<li>file size guard: <code>APEXX_CANARY_CAPTURE_MAX_BYTES</code></li>
+</ul>
+</li>
+<li>SLA gate test was added for timeout/overflow rates and canary overhead:<ul>
+<li><code>TestCanaryLoadGateThresholds</code> in <code>runtime/go/internal/service/sla_gate_test.go</code></li>
+<li>CI wiring added in <code>.github/workflows/ci.yml</code> (<code>go-runtime</code> job)</li>
+</ul>
+</li>
+<li>Inference runner abstraction was added for CLI predict/eval:</li>
+<li>new module <code>apex_x/infer/runner.py</code> introduces:<ul>
+<li><code>run_model_inference(...)</code> with a common inference result schema</li>
+<li><code>RuntimeMetadata</code> and <code>InferenceRunResult</code> dataclasses</li>
+<li><code>extract_routing_diagnostics(...)</code> (replacing ad-hoc placeholder extraction)</li>
+<li>FFModule-based <code>torch</code> executor path for backend-specific execution</li>
+<li>triton execution branch with capability checks and deterministic fallback behavior</li>
+</ul>
+</li>
+<li><code>apex_x/cli.py</code> now uses the runner for both <code>predict</code> and <code>eval</code></li>
+<li><code>predict</code> now supports <code>--report-json</code> with runtime metadata + routing diagnostics payload</li>
+<li>TensorRT branch now performs preflight validation:<ul>
+<li>capability gate (<code>cuda</code> + TensorRT Python)</li>
+<li>env-driven artifact checks (<code>APEXX_EXPORT_MANIFEST_PATH</code>, <code>APEXX_TRT_ENGINE_PATH</code>)</li>
+<li>deterministic fallback/error reasons when runtime execution is unavailable</li>
+</ul>
+</li>
+<li>TensorRT runtime execution path is now implemented:<ul>
+<li>new <code>TensorRTEngineExecutor</code> in <code>apex_x/runtime/tensorrt/executor.py</code></li>
+<li>runner executes real TensorRT serialized engine inference when <code>APEXX_TRT_ENGINE_PATH</code> is set</li>
+<li>optional runtime env controls:</li>
+<li><code>APEXX_TRT_PLUGIN_LIB</code> for plugin shared libraries</li>
+<li><code>APEXX_TRT_INPUT_NAME</code> for explicit input tensor selection</li>
+<li><code>APEXX_TRT_PRIMARY_OUTPUT_NAME</code> for primary output mapping in CLI result schema</li>
+<li><code>APEXX_TRT_EXTRA_INPUTS_NPZ</code> for named auxiliary tensors in multi-input TRT engines</li>
+<li><code>APEXX_TRT_DET_BOXES_NAME</code>, <code>APEXX_TRT_DET_SCORES_NAME</code>,
+    <code>APEXX_TRT_DET_CLASS_IDS_NAME</code>, <code>APEXX_TRT_DET_VALID_NAME</code>
+    for explicit DET output binding into CLI det schema</li>
+</ul>
+</li>
+<li>TensorRT deployment shape-sweep harness was added:<ul>
+<li><code>apex_x/bench/trt_engine_sweep.py</code></li>
+<li>supports repeated shape cases for single/multi-input engines</li>
+<li>emits JSON + Markdown sweep summary for per-shape TRT runtime evidence</li>
+</ul>
+</li>
+<li>runtime metadata now explicitly includes:<ul>
+<li>requested backend</li>
+<li>selected backend</li>
+<li>actual execution backend</li>
+<li>precision profile</li>
+<li>selection/execution fallback reasons</li>
+<li>latency breakdown (<code>total</code>, <code>backend_execute</code>, <code>backend_preflight</code>)</li>
+<li>runtime capability snapshot</li>
+</ul>
+</li>
+<li>Eval dataset adapter path was added:</li>
+<li><code>apex_x/infer/runner.py</code> now includes:<ul>
+<li><code>load_eval_images_npz(...)</code></li>
+<li><code>load_eval_dataset_npz(...)</code></li>
+<li><code>evaluate_model_dataset(...)</code></li>
+<li><code>ModelDatasetEvalSummary</code></li>
+</ul>
+</li>
+<li><code>apex_x/cli.py eval</code> now accepts:<ul>
+<li><code>--dataset-npz</code> for <code>.npz/.npy</code> image arrays</li>
+<li><code>--max-samples</code> for deterministic subset evaluation</li>
+</ul>
+</li>
+<li>when dataset eval is enabled, reports include <code>model_eval</code> aggregates in JSON/Markdown</li>
+<li>optional dataset target contract:<ul>
+<li><code>.npz</code> key <code>det_score_target</code> (or compat alias <code>det_scores_target</code>)</li>
+<li><code>.npz</code> key <code>selected_tiles_target</code> (or compat alias <code>selected_tiles_targets</code>)</li>
+<li>model-eval report now includes target regression metrics:</li>
+<li><code>det_score_target</code>: <code>mae</code>, <code>rmse</code>, <code>bias</code>, <code>r2</code>, <code>pearson_corr</code></li>
+<li><code>selected_tiles_target</code>: <code>mae</code>, <code>rmse</code>, <code>bias</code>, <code>exact_match_rate</code></li>
+</ul>
+</li>
+<li>eval JSON reports now always include <code>runtime</code> metadata for backend/precision/fallback traceability</li>
+<li>Export/TRT handoff integration was added:</li>
+<li><code>apex_x/runtime/tensorrt/builder.py</code> now provides:<ul>
+<li><code>load_export_manifest(...)</code></li>
+<li><code>TensorRTEngineBuilder.build_from_export_manifest(...)</code></li>
+</ul>
+</li>
+<li>manifest loader validates ONNX path and optional SHA256 integrity before build handoff</li>
 </ul>
 <h2 id="current-architecture-snapshot">Current Architecture Snapshot</h2>
 <ul>
@@ -690,7 +4073,7 @@
 </ul>
 </li>
 <li>Verification status:<ul>
-<li><code>python -m pytest -q</code> passed</li>
+<li><code>python -m pytest -q</code> passedprodoljai</li>
 <li><code>ruff check .</code> passed</li>
 <li><code>mypy</code> passed</li>
 </ul>
@@ -3578,6 +6961,733 @@
 <li><code>pytest tests/test_import_smoke.py</code>: passed</li>
 <li>Local CMake configure/build execution could not be run in this environment because <code>cmake</code> binary is not installed (<code>command not found</code>).</li>
 </ul>
+<h2 id="latest-update-2026-02-08-tensorrt-tilepack-plugin-real-implementation">Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPECS.md</code> (alias page)</li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li>Implemented real TensorRT TilePack plugin under:</li>
+<li><code>runtime/tensorrt/plugins/tilepack.h</code></li>
+<li><code>runtime/tensorrt/plugins/tilepack.cpp</code></li>
+<li><code>runtime/tensorrt/plugins/tilepack.cu</code></li>
+<li>Implemented plugin contract and behavior:</li>
+<li>plugin type/version/namespace:<ul>
+<li><code>TilePack</code> / <code>1</code> / <code>apexx</code></li>
+</ul>
+</li>
+<li>tensor contract:<ul>
+<li>input0: <code>F[B,C,H,W]</code> FP16</li>
+<li>input1: <code>idx[B,K]</code> INT32</li>
+<li>output0: <code>P[B,K,C,t,t]</code> FP16</li>
+</ul>
+</li>
+<li><code>getOutputDimensions(...)</code> shape inference for dynamic dims.</li>
+<li><code>supportsFormatCombination(...)</code> with linear format + required dtypes.</li>
+<li>serialization/deserialization of <code>tile_size</code>.</li>
+<li><code>enqueue(...)</code> calls CUDA helper <code>launch_tilepack_fp16(...)</code>.</li>
+<li>Implemented CUDA gather kernel:</li>
+<li>launches over total elements in <code>P</code></li>
+<li>maps each output element to source <code>F</code> via tile index and local <code>(dy, dx)</code></li>
+<li>zero-fills invalid tile indices / out-of-bounds accesses</li>
+<li>contiguous output layout <code>[B,K,C,t,t]</code>.</li>
+<li>Added C++ integration/parity test harness:</li>
+<li><code>runtime/tensorrt/tests/tilepack_plugin_test.cpp</code></li>
+<li>test covers:<ul>
+<li>creator-based plugin construction</li>
+<li>plugin serialization/deserialization</li>
+<li><code>enqueue(...)</code> execution on CUDA buffers</li>
+<li>parity vs host reference implementation.</li>
+</ul>
+</li>
+<li>Added Python parity test for engine-level integration:</li>
+<li><code>tests/test_tensorrt_tilepack_parity.py</code></li>
+<li>builds TRT engine with TilePack plugin (when TRT Python + CUDA available)</li>
+<li>compares output to PyTorch reference (<code>tilepack_reference</code>).</li>
+<li>Hardened CMake wiring for real plugin path in <code>runtime/tensorrt/CMakeLists.txt</code>:</li>
+<li>fixed runtime library detection guard so <code>nvinfer/cudart</code> discovery actually runs.</li>
+<li>gated shared plugin target creation on runtime library availability to avoid configure/link failures on partial installs.</li>
+<li>real plugin build remains optional and guarded.</li>
+<li><code>apexx_trt_tilepack_test</code> only builds when real plugin path is enabled.</li>
+<li>Updated docs:</li>
+<li><code>docs/runtime/TENSORRT_BUILD.md</code></li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+</ul>
+<h3 id="run-commands_3">Run Commands</h3>
+<ul>
+<li>Python-level checks:</li>
+<li><code>python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py</code></li>
+<li>TensorRT C++ build/test (when <code>cmake</code>, TensorRT, CUDA available):</li>
+<li><code>cd runtime/tensorrt</code></li>
+<li><code>cmake -S . -B build -DAPEXX_ENABLE_REAL_TILEPACK_PLUGIN=ON</code></li>
+<li><code>cmake --build build -j</code></li>
+<li><code>./build/apexx_trt_tilepack_test</code></li>
+<li>Python TRT parity (optional):</li>
+<li><code>export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_tilepack_parity.py</code></li>
+</ul>
+<h3 id="validation-status_3">Validation Status</h3>
+<ul>
+<li><code>python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py</code>:</li>
+<li>passed</li>
+<li>TRT parity test skipped on CPU-only environment (expected).</li>
+<li>Local CMake build/test for TensorRT plugin could not be executed in this environment because <code>cmake</code> is unavailable.</li>
+</ul>
+<h3 id="remaining-work_2">Remaining Work</h3>
+<ul>
+<li>Add INT8 support path for TilePack plugin (currently FP16-only).</li>
+<li>Add stronger shape/stride guard coverage for dynamic-shape edge cases in C++ tests.</li>
+<li>Add CI GPU lane for TensorRT plugin parity/perf once CUDA runners are available.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-tensorrt-tileunpackfusion-plugin-priority-alpha">Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPECS.md</code></li>
+<li>Implemented real TensorRT <code>TileUnpackFusion</code> plugin:</li>
+<li><code>runtime/tensorrt/plugins/tileunpackfusion.h</code></li>
+<li><code>runtime/tensorrt/plugins/tileunpackfusion.cpp</code></li>
+<li><code>runtime/tensorrt/plugins/tileunpackfusion.cu</code></li>
+<li>Plugin contract implemented (TensorRT dynamic ext):</li>
+<li>inputs:<ul>
+<li><code>F_base[B,C,H,W]</code> FP16</li>
+<li><code>P_out[B,K,C,t,t]</code> FP16</li>
+<li><code>idx[B,K]</code> INT32</li>
+<li><code>levels[B,K]</code> INT32 (priority source for deterministic nesting semantics)</li>
+<li>optional <code>alpha[B,1,H,W]</code> FP16</li>
+</ul>
+</li>
+<li>output:<ul>
+<li><code>F_merged[B,C,H,W]</code> FP16</li>
+</ul>
+</li>
+<li>Runtime semantics implemented:</li>
+<li>deterministic overwrite priority per pixel:<ul>
+<li>higher <code>levels</code> wins (e.g. <code>L2 &gt; L1 &gt; L0</code>)</li>
+<li>tie-break inside same level by tile order <code>k</code> (later <code>k</code> wins)</li>
+</ul>
+</li>
+<li>two-pass CUDA path:<ul>
+<li>pass 1: atomic winner-key map over <code>[B,H,W]</code></li>
+<li>pass 2: scatter only winner tile pixels</li>
+</ul>
+</li>
+<li>fusion behavior:<ul>
+<li>without alpha: overwrite winner pixel value</li>
+<li>with alpha: <code>F = F_base + alpha * (F_winner - F_base)</code> (per pixel/channel)</li>
+</ul>
+</li>
+<li>output map starts from dense base copy, so non-selected pixels stay unchanged</li>
+<li>CMake/runtime wiring:</li>
+<li>updated <code>runtime/tensorrt/CMakeLists.txt</code></li>
+<li>added build option:<ul>
+<li><code>APEXX_ENABLE_REAL_TILEUNPACKFUSION_PLUGIN</code> (default <code>ON</code>)</li>
+</ul>
+</li>
+<li>real plugin sources are linked into shared plugin library when TRT/CUDA libs are available</li>
+<li>added C++ test target:<ul>
+<li><code>apexx_trt_tileunpackfusion_test</code></li>
+</ul>
+</li>
+<li>Added C++ priority correctness harness:</li>
+<li><code>runtime/tensorrt/tests/tileunpackfusion_plugin_test.cpp</code></li>
+<li>crafted overlap case validates <code>L2</code> overwrite over <code>L1/L0</code> on same region</li>
+<li>Added Python TensorRT parity test vs PyTorch reference path:</li>
+<li><code>tests/test_tensorrt_tileunpackfusion_parity.py</code></li>
+<li>compares TRT plugin output to <code>TileUnpackTorch + FusionGate</code> composed reference</li>
+<li>Updated docs:</li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li><code>docs/runtime/TENSORRT_BUILD.md</code></li>
+</ul>
+<h3 id="run-commands_4">Run Commands</h3>
+<ul>
+<li>Python checks (CPU env will skip CUDA-dependent TRT tests):</li>
+<li><code>python -m ruff check tests/test_tensorrt_tileunpackfusion_parity.py</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py</code></li>
+<li>C++ build/test (when <code>cmake</code> + TensorRT + CUDA available):</li>
+<li><code>cd runtime/tensorrt</code></li>
+<li><code>cmake -S . -B build -DAPEXX_ENABLE_REAL_TILEUNPACKFUSION_PLUGIN=ON</code></li>
+<li><code>cmake --build build -j</code></li>
+<li><code>./build/apexx_trt_tileunpackfusion_test</code></li>
+<li>Optional Python parity run with plugin library:</li>
+<li><code>export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_tileunpackfusion_parity.py</code></li>
+</ul>
+<h3 id="validation-status_4">Validation Status</h3>
+<ul>
+<li><code>ruff</code> on new parity test: passed.</li>
+<li><code>pytest</code> targeted run:</li>
+<li>passed for non-TRT tests</li>
+<li>TRT parity tests skipped in this CPU-only environment (expected).</li>
+<li>Local TensorRT C++ compile/run for the new plugin was not executed here because <code>cmake</code> is unavailable in this environment.</li>
+</ul>
+<h3 id="remaining-work_3">Remaining Work</h3>
+<ul>
+<li>Add native blend-mode merge path inside TensorRT plugin (currently overwrite + optional alpha fusion path).</li>
+<li>Add stricter input-range safeguards for very large/negative <code>levels</code> to prevent key-overflow edge cases.</li>
+<li>Add GPU CI lane that builds <code>apexx_trt_tileunpackfusion_test</code> and runs Python TRT parity.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-tensorrt-tilessmscan-plugin-forward-backward-flag">Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPECS.md</code></li>
+<li>Implemented real TensorRT <code>TileSSMScan</code> plugin:</li>
+<li><code>runtime/tensorrt/plugins/tilessm_scan.h</code></li>
+<li><code>runtime/tensorrt/plugins/tilessm_scan.cpp</code></li>
+<li><code>runtime/tensorrt/plugins/tilessm_scan.cu</code></li>
+<li>Plugin contract implemented (TensorRT dynamic ext):</li>
+<li>inputs:<ul>
+<li><code>tokens[B,K,C]</code> FP16</li>
+<li><code>decay[C]</code>, <code>input_gain[C]</code>, <code>output_gain[C]</code>, <code>state_bias[C]</code> FP16</li>
+<li>optional <code>init_state[B,C]</code> FP16</li>
+</ul>
+</li>
+<li>outputs:<ul>
+<li><code>y[B,K,C]</code> FP16</li>
+<li><code>final_state[B,C]</code> FP16</li>
+</ul>
+</li>
+<li>plugin fields:<ul>
+<li><code>direction</code> (<code>0=forward</code>, <code>1=backward</code>)</li>
+<li><code>clamp_value</code> (default <code>1e4</code>)</li>
+</ul>
+</li>
+<li>Runtime recurrence semantics implemented to match torch placeholder:</li>
+<li>per-channel recurrence across <code>K</code>:<ul>
+<li><code>state = decay * state + (1 - decay) * (input_gain * token + state_bias)</code></li>
+<li><code>y = output_gain * state</code></li>
+</ul>
+</li>
+<li>stability constraints:<ul>
+<li><code>decay</code> clamped to <code>(1e-6, 1-1e-6)</code></li>
+<li><code>token</code> NaN sanitization + clamp to <code>[-clamp_value, clamp_value]</code></li>
+</ul>
+</li>
+<li>backward direction scans from <code>K-1</code> to <code>0</code> while writing outputs in original index positions.</li>
+<li>CMake/runtime wiring:</li>
+<li>updated <code>runtime/tensorrt/CMakeLists.txt</code></li>
+<li>added build option:<ul>
+<li><code>APEXX_ENABLE_REAL_TILESSM_PLUGIN</code> (default <code>ON</code>)</li>
+</ul>
+</li>
+<li>real plugin sources are linked into shared plugin library when TRT/CUDA libs are available</li>
+<li>added C++ test/benchmark target:<ul>
+<li><code>apexx_trt_tilessm_test</code></li>
+</ul>
+</li>
+<li>Added C++ plugin test + microbenchmark harness:</li>
+<li><code>runtime/tensorrt/tests/tilessm_scan_plugin_test.cpp</code></li>
+<li>validates plugin output vs host reference for:<ul>
+<li>forward direction</li>
+<li>backward direction</li>
+</ul>
+</li>
+<li>prints lightweight performance metrics from CUDA-event timing:<ul>
+<li>average latency (ms)</li>
+<li>token throughput (tok/s)</li>
+</ul>
+</li>
+<li>Added Python TensorRT parity tests:</li>
+<li><code>tests/test_tensorrt_tilessm_parity.py</code></li>
+<li>compares TensorRT engine outputs to <code>tilessm_scan_reference(...)</code> for forward/backward on small shapes.</li>
+<li>Updated docs:</li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li><code>docs/runtime/TENSORRT_BUILD.md</code></li>
+</ul>
+<h3 id="run-commands_5">Run Commands</h3>
+<ul>
+<li>Python checks (CPU env will skip CUDA-dependent TRT tests):</li>
+<li><code>python -m ruff check tests/test_tensorrt_tilessm_parity.py</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_import_smoke.py</code></li>
+<li>C++ build/test/bench (when <code>cmake</code> + TensorRT + CUDA available):</li>
+<li><code>cd runtime/tensorrt</code></li>
+<li><code>cmake -S . -B build -DAPEXX_ENABLE_REAL_TILESSM_PLUGIN=ON</code></li>
+<li><code>cmake --build build -j</code></li>
+<li><code>./build/apexx_trt_tilessm_test</code></li>
+<li>Optional Python parity run with plugin library:</li>
+<li><code>export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_tilessm_parity.py</code></li>
+</ul>
+<h3 id="validation-status_5">Validation Status</h3>
+<ul>
+<li><code>ruff</code> on new TRT TileSSM parity test: passed.</li>
+<li><code>pytest</code> targeted run:</li>
+<li>passed for non-TRT tests</li>
+<li>TRT parity tests skipped in this CPU-only environment (expected).</li>
+<li>Local TensorRT C++ compile/run for new TileSSM plugin was not executed here because <code>cmake</code> is unavailable in this environment.</li>
+</ul>
+<h3 id="remaining-work_4">Remaining Work</h3>
+<ul>
+<li>Add TensorRT-side multi-direction merge modes (<code>sum/avg/gated</code>) beyond single-direction plugin field.</li>
+<li>Add broader dtype support (<code>fp32</code>/<code>bf16</code>) if needed for debugging and parity triage.</li>
+<li>Add GPU CI lane that builds and runs <code>apexx_trt_tilessm_test</code> and Python TRT parity tests.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-tensorrt-decodenms-plugin-det-postprocessing-in-engine">Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/ENGINEERING_SPEC.md</code> (DET decode/NMS behavior)</li>
+<li>Implemented real TensorRT Decode+NMS plugin:</li>
+<li><code>runtime/tensorrt/plugins/nms_decode.h</code></li>
+<li><code>runtime/tensorrt/plugins/nms_decode.cpp</code></li>
+<li><code>runtime/tensorrt/plugins/nms_decode.cu</code></li>
+<li>Plugin contract implemented (TensorRT dynamic ext):</li>
+<li>inputs:<ul>
+<li><code>cls_logits[B,N,C]</code> FP16</li>
+<li><code>box_reg[B,N,4]</code> FP16 (<code>l,t,r,b</code> logits)</li>
+<li><code>quality[B,N]</code> FP16</li>
+<li><code>centers[N,2]</code> FP16</li>
+<li><code>strides[N]</code> FP16</li>
+</ul>
+</li>
+<li>outputs:<ul>
+<li><code>boxes[B,max_det,4]</code> FP16</li>
+<li><code>scores[B,max_det]</code> FP16</li>
+<li><code>class_ids[B,max_det]</code> INT32</li>
+<li><code>valid_counts[B]</code> INT32</li>
+</ul>
+</li>
+<li>plugin fields:<ul>
+<li><code>max_detections</code></li>
+<li><code>pre_nms_topk</code></li>
+<li><code>score_threshold</code></li>
+<li><code>iou_threshold</code></li>
+</ul>
+</li>
+<li>Runtime semantics implemented to match project PyTorch path:</li>
+<li>decode:<ul>
+<li><code>dist = softplus(clamp(box_reg,-20,20)) * stride</code></li>
+<li><code>xyxy</code> from <code>(cx,cy)</code> and decoded distances</li>
+</ul>
+</li>
+<li>score:<ul>
+<li><code>sigmoid(clamp(cls,-60,60)) * sigmoid(clamp(quality,-60,60))</code></li>
+</ul>
+</li>
+<li>candidate selection:<ul>
+<li>threshold by <code>score_threshold</code></li>
+<li>top-k by <code>pre_nms_topk</code> with deterministic tie-break (<code>pair_id = anchor*C + class</code>)</li>
+</ul>
+</li>
+<li>class-wise deterministic NMS:<ul>
+<li>IoU suppression per class</li>
+<li>final ordering by score descending, tie-break by pair-id ascending</li>
+</ul>
+</li>
+<li>padding semantics:<ul>
+<li>invalid rows use <code>class_ids=-1</code>, <code>scores=0</code>, <code>boxes=0</code></li>
+</ul>
+</li>
+<li>CMake/runtime wiring:</li>
+<li>updated <code>runtime/tensorrt/CMakeLists.txt</code></li>
+<li>added build option:<ul>
+<li><code>APEXX_ENABLE_REAL_NMS_DECODE_PLUGIN</code> (default <code>ON</code>)</li>
+</ul>
+</li>
+<li>added C++ test target:<ul>
+<li><code>apexx_trt_nms_decode_test</code></li>
+</ul>
+</li>
+<li>Added C++ plugin parity/benchmark harness:</li>
+<li><code>runtime/tensorrt/tests/nms_decode_plugin_test.cpp</code></li>
+<li>compares plugin outputs to host reference</li>
+<li>includes corner case checks:<ul>
+<li>no boxes (high threshold)</li>
+<li>many candidates</li>
+</ul>
+</li>
+<li>includes lightweight latency metric printout</li>
+<li>Added Python parity tests vs PyTorch decode+nms reference:</li>
+<li><code>tests/test_tensorrt_nms_decode_parity.py</code></li>
+<li>covers:<ul>
+<li>fixed-seed parity</li>
+<li>no boxes corner case</li>
+<li>many boxes corner case</li>
+</ul>
+</li>
+<li>Updated docs:</li>
+<li>new:<ul>
+<li><code>docs/runtime/TENSORRT_POST.md</code></li>
+</ul>
+</li>
+<li>updated:<ul>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li><code>docs/runtime/TENSORRT_BUILD.md</code></li>
+<li><code>docs/index.md</code></li>
+<li><code>mkdocs.yml</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="run-commands_6">Run Commands</h3>
+<ul>
+<li>Python checks (CPU env will skip CUDA/TRT tests):</li>
+<li><code>python -m ruff check tests/test_tensorrt_nms_decode_parity.py tests/test_tensorrt_tilepack_parity.py</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_nms_decode_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_det_decode_nms.py tests/test_import_smoke.py</code></li>
+<li>C++ build/test (when <code>cmake</code> + TensorRT + CUDA available):</li>
+<li><code>cd runtime/tensorrt</code></li>
+<li><code>cmake -S . -B build -DAPEXX_ENABLE_REAL_NMS_DECODE_PLUGIN=ON</code></li>
+<li><code>cmake --build build -j</code></li>
+<li><code>./build/apexx_trt_nms_decode_test</code></li>
+<li>Optional Python TRT parity:</li>
+<li><code>export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so</code></li>
+<li><code>python -m pytest -q tests/test_tensorrt_nms_decode_parity.py</code></li>
+</ul>
+<h3 id="validation-status_6">Validation Status</h3>
+<ul>
+<li><code>ruff</code> on changed TensorRT parity tests: passed.</li>
+<li><code>pytest</code> targeted suite:</li>
+<li>passed for CPU-safe tests</li>
+<li>TRT tests skipped on CPU-only environment (expected).</li>
+<li><code>mkdocs build --strict</code> could not run in this environment because <code>mkdocs</code> is not installed.</li>
+<li>Local TensorRT C++ compile/run for new Decode+NMS plugin was not executed here because <code>cmake</code> is unavailable in this environment.</li>
+</ul>
+<h3 id="remaining-work_5">Remaining Work</h3>
+<ul>
+<li>Optional backend integration path to TensorRT EfficientNMS (when exact deterministic parity requirements are satisfied).</li>
+<li>Performance optimization of CUDA kernel (current implementation prioritizes correctness/determinism over throughput).</li>
+<li>GPU CI lane to compile/run <code>apexx_trt_nms_decode_test</code> and Python TRT decode+NMS parity tests.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-tensorrt-python-engine-builder-int8-calibrator">Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/ENGINEERING_SPEC.md</code></li>
+<li><code>docs/runtime/PLUGIN_SPEC.md</code></li>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li><code>docs/runtime/TENSORRT_BUILD.md</code></li>
+<li><code>docs/runtime/TENSORRT_POST.md</code></li>
+<li>Added Python TensorRT builder package:</li>
+<li><code>apex_x/runtime/tensorrt/__init__.py</code></li>
+<li><code>apex_x/runtime/tensorrt/builder.py</code></li>
+<li><code>apex_x/runtime/tensorrt/calibrator.py</code></li>
+<li>Added API exports:</li>
+<li>updated <code>apex_x/runtime/__init__.py</code></li>
+<li>runtime now exposes:<ul>
+<li><code>TensorRTEngineBuilder</code></li>
+<li><code>TensorRTEngineBuildConfig</code></li>
+<li><code>EngineBuildResult</code></li>
+<li><code>TensorRTEntropyCalibrator</code></li>
+<li>calibration typing/config objects</li>
+</ul>
+</li>
+<li>Builder capabilities implemented:</li>
+<li>build from ONNX:<ul>
+<li><code>TensorRTEngineBuilder.build_from_onnx(...)</code></li>
+</ul>
+</li>
+<li>build from direct TRT network factory:<ul>
+<li><code>TensorRTEngineBuilder.build_from_network(...)</code></li>
+</ul>
+</li>
+<li>optional plugin-library loading via <code>ctypes</code> with global symbol visibility</li>
+<li>custom plugin registry checks for:<ul>
+<li>required: <code>TilePack</code>, <code>TileSSMScan</code>, <code>TileUnpackFusion</code></li>
+<li>optional: <code>DecodeNMS</code></li>
+</ul>
+</li>
+<li>FP16 build support</li>
+<li>INT8 build support with calibrator attachment and cache path</li>
+<li>router/KAN FP16 constraints during INT8 builds via layer-name keywords</li>
+<li>Calibrator capabilities implemented:</li>
+<li><code>TensorRTEntropyCalibrator</code> (IInt8EntropyCalibrator2-backed when TRT is available)</li>
+<li>streams calibration batches from iterable loader</li>
+<li>supports batch format:<ul>
+<li>single-input <code>np.ndarray</code></li>
+<li>multi-input <code>dict[str, np.ndarray]</code></li>
+</ul>
+</li>
+<li>stable cache I/O:<ul>
+<li><code>read_calibration_cache()</code></li>
+<li><code>write_calibration_cache(...)</code></li>
+</ul>
+</li>
+<li>keeps device tensors alive across <code>get_batch(...)</code> calls</li>
+<li>Added docs:</li>
+<li>new:<ul>
+<li><code>docs/runtime/TENSORRT_INT8.md</code></li>
+</ul>
+</li>
+<li>updated:<ul>
+<li><code>docs/runtime/TENSORRT.md</code></li>
+<li><code>docs/index.md</code></li>
+<li><code>mkdocs.yml</code></li>
+</ul>
+</li>
+<li>Added tests:</li>
+<li><code>tests/test_tensorrt_builder_smoke.py</code></li>
+<li>coverage:<ul>
+<li>no-TRT failure path (deterministic error)</li>
+<li>FP16 tiny-network smoke build (skip with capability guards)</li>
+<li>INT8 tiny-network + calibration smoke build (skip with capability guards)</li>
+</ul>
+</li>
+</ul>
+<h3 id="engine-build-commands">Engine Build Commands</h3>
+<ul>
+<li>FP16 direct-network smoke:</li>
+<li><code>python -m pytest -q tests/test_tensorrt_builder_smoke.py -k fp16</code></li>
+<li>INT8 direct-network smoke:</li>
+<li><code>python -m pytest -q tests/test_tensorrt_builder_smoke.py -k int8</code></li>
+<li>Python build usage (programmatic):</li>
+<li>use <code>TensorRTEngineBuilder.build_from_network(...)</code> or <code>build_from_onnx(...)</code></li>
+<li>recommended artifact paths:<ul>
+<li>engines: <code>artifacts/trt/*.engine</code></li>
+<li>calibration caches: <code>artifacts/trt/*.cache</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="artifact-locations">Artifact Locations</h3>
+<ul>
+<li>Engine outputs:</li>
+<li>path passed to <code>engine_path</code> (recommended: <code>artifacts/trt/</code>)</li>
+<li>INT8 calibration cache:</li>
+<li>path passed via <code>TensorRTEngineBuildConfig.calibration_cache_path</code></li>
+<li>recommended: <code>artifacts/trt/int8.cache</code></li>
+</ul>
+<h3 id="validation-status_7">Validation Status</h3>
+<ul>
+<li><code>ruff</code> on changed runtime TRT builder/calibrator files: passed.</li>
+<li><code>mypy</code> on changed runtime TRT builder/calibrator files: passed.</li>
+<li><code>pytest</code> targeted run:</li>
+<li>passed for CPU-safe tests</li>
+<li>CUDA/TRT-dependent tests skipped in this environment (expected).</li>
+<li><code>mkdocs build --strict</code> could not run in this environment because <code>mkdocs</code> is not installed.</li>
+</ul>
+<h3 id="remaining-work_6">Remaining Work</h3>
+<ul>
+<li>Add CLI wrapper command for Python TRT builder workflow (currently programmatic API only).</li>
+<li>Add ONNX custom-op placeholder integration example with concrete node/plugin mapping.</li>
+<li>Add GPU CI lane executing TRT builder smoke tests with plugin library loading.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-unified-gpu-benchmark-suite-torchtritontrt">Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/PRD.md</code></li>
+<li><code>docs/ENGINEERING_SPEC.md</code></li>
+<li><code>docs/PERF.md</code></li>
+<li><code>docs/runtime/TRITON.md</code></li>
+<li>Added unified CUDA benchmark runner:</li>
+<li><code>apex_x/bench/gpu_bench.py</code></li>
+<li>Runner coverage implemented:</li>
+<li>Tile ops microbench:<ul>
+<li><code>TilePack</code> (torch reference vs Triton dispatch)</li>
+<li><code>TileUnpack</code> (torch reference vs Triton dispatch)</li>
+<li><code>FusionGate</code> (torch reference vs Triton dispatch)</li>
+</ul>
+</li>
+<li>TileSSM microbench:<ul>
+<li>torch reference vs Triton dispatch</li>
+<li>TensorRT plugin path benchmark for <code>TileSSMScan</code> (when TensorRT Python + plugin library are available)</li>
+</ul>
+</li>
+<li>End-to-end FF inference benchmark:<ul>
+<li>torch eager path</li>
+<li>torch+Triton fast-path (Triton requested for inference scan with fallback guard)</li>
+<li>optional TensorRT engine benchmark (<code>--trt-engine-path</code>)</li>
+</ul>
+</li>
+<li>Report outputs implemented:</li>
+<li>JSON: <code>artifacts/perf_gpu.json</code> (default)</li>
+<li>Markdown: <code>artifacts/perf_gpu.md</code> (default)</li>
+<li>Metrics include <code>p50/p95</code>, throughput (<code>tiles/tokens/elements/frames per second</code>), and CUDA peak memory (<code>max_memory_allocated</code>).</li>
+<li>Added GPU perf documentation:</li>
+<li><code>docs/PERF_GPU.md</code></li>
+<li>Updated docs navigation:</li>
+<li><code>docs/index.md</code></li>
+<li><code>mkdocs.yml</code></li>
+</ul>
+<h3 id="run-commands_7">Run Commands</h3>
+<ul>
+<li>Default fixed-profile GPU benchmark:</li>
+<li><code>python -m apex_x.bench.gpu_bench --output-json artifacts/perf_gpu.json --output-md artifacts/perf_gpu.md</code></li>
+<li>Faster smoke-like run:</li>
+<li><code>python -m apex_x.bench.gpu_bench --warmup 3 --iters 10 --output-json artifacts/perf_gpu_smoke.json --output-md artifacts/perf_gpu_smoke.md</code></li>
+<li>Enable TensorRT plugin TileSSM bench:</li>
+<li><code>export APEXX_TRT_PLUGIN_LIB=/abs/path/to/libapexx_trt_plugins.so</code></li>
+<li><code>python -m apex_x.bench.gpu_bench</code></li>
+<li>Optional TensorRT engine benchmark:</li>
+<li><code>python -m apex_x.bench.gpu_bench --trt-engine-path artifacts/trt/apex_x.engine --trt-input-shape input=1x3x128x128</code></li>
+</ul>
+<h3 id="artifact-locations_1">Artifact Locations</h3>
+<ul>
+<li>JSON report:</li>
+<li><code>artifacts/perf_gpu.json</code> (or <code>--output-json</code>)</li>
+<li>Markdown summary:</li>
+<li><code>artifacts/perf_gpu.md</code> (or <code>--output-md</code>)</li>
+</ul>
+<h3 id="validation-status_8">Validation Status</h3>
+<ul>
+<li>Local run in this environment:</li>
+<li>suite executes with capability guards</li>
+<li>when CUDA is unavailable, output is <code>status=skipped</code> with explicit reason.</li>
+<li>Static checks and mypy/test status are tracked per current session commands.</li>
+</ul>
+<h3 id="remaining-work_7">Remaining Work</h3>
+<ul>
+<li>Add GPU CI lane to run <code>apex_x/bench/gpu_bench.py</code> on fixed CUDA runners and compare against a committed GPU baseline.</li>
+<li>Add optional CSV/time-series exporter for long-run perf trend tracking.</li>
+<li>Add explicit TRT engine profile presets for common deployed input signatures.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-gpu-perf-regression-ci-workflow-baseline-compare">Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/PRD.md</code></li>
+<li><code>docs/ENGINEERING_SPEC.md</code></li>
+<li>Added GPU perf regression workflow:</li>
+<li><code>.github/workflows/perf_gpu.yml</code></li>
+<li>Workflow behavior:</li>
+<li>skipped by default on manual dispatch (<code>run_mode=skip</code>)</li>
+<li>executes only when:<ul>
+<li>manual dispatch sets <code>run_mode=self-hosted-gpu</code>, or</li>
+<li>nightly schedule runs with repository variable <code>APEXX_ENABLE_GPU_NIGHTLY=true</code></li>
+</ul>
+</li>
+<li>runs on <code>runs-on: [self-hosted, linux, x64, gpu]</code></li>
+<li>keeps CPU perf regression intact in <code>.github/workflows/ci.yml</code> (<code>perf-regression</code> job unchanged)</li>
+<li>Added GPU regression compare script:</li>
+<li><code>scripts/perf_regression_gpu.py</code></li>
+<li>runs <code>apex_x/bench/gpu_bench.py</code> via Python module API and compares against stored baseline thresholds</li>
+<li>Added stored GPU baseline JSON:</li>
+<li><code>scripts/perf_baseline_gpu.json</code></li>
+<li>Added documentation:</li>
+<li><code>docs/CI_GPU.md</code> (self-hosted setup, nightly switch, baseline maintenance, security notes)</li>
+<li>updated docs nav in <code>docs/index.md</code> and <code>mkdocs.yml</code></li>
+</ul>
+<h3 id="run-commands_8">Run Commands</h3>
+<ul>
+<li>Local GPU regression compare:</li>
+<li><code>python scripts/perf_regression_gpu.py --compare --baseline scripts/perf_baseline_gpu.json --output artifacts/perf_gpu_current_local.json --summary artifacts/perf_gpu_compare_local.json</code></li>
+<li>Regenerate baseline template on target GPU runner:</li>
+<li><code>python scripts/perf_regression_gpu.py --emit-baseline-template --baseline scripts/perf_baseline_gpu.json</code></li>
+<li>Manual workflow run:</li>
+<li>dispatch <code>GPU Perf Regression</code> with <code>run_mode=self-hosted-gpu</code></li>
+</ul>
+<h3 id="artifact-locations_2">Artifact Locations</h3>
+<ul>
+<li>GPU current run report:</li>
+<li><code>artifacts/perf_gpu_current_ci.json</code></li>
+<li>GPU compare summary:</li>
+<li><code>artifacts/perf_gpu_compare_ci.json</code></li>
+<li>Uploaded artifact name in workflow:</li>
+<li><code>perf-gpu-regression-artifacts</code></li>
+</ul>
+<h3 id="validation-status_9">Validation Status</h3>
+<ul>
+<li>Local validation in this environment:</li>
+<li><code>python scripts/perf_regression_gpu.py --help</code>: passed</li>
+<li><code>python scripts/perf_regression_gpu.py --compare ...</code>: executed and failed as expected (<code>status=skipped</code> on CPU-only host)</li>
+<li><code>ruff check scripts/perf_regression_gpu.py</code>: passed</li>
+<li><code>python -m py_compile scripts/perf_regression_gpu.py</code>: passed</li>
+<li><code>ruff check .github/workflows/perf_gpu.yml</code>: not applicable (YAML)</li>
+</ul>
+<h3 id="remaining-work_8">Remaining Work</h3>
+<ul>
+<li>Calibrate <code>scripts/perf_baseline_gpu.json</code> on the real self-hosted GPU runner and tighten tolerances.</li>
+<li>Add optional GPU matrix (per GPU class) with separate baselines when heterogeneous runners are used.</li>
+<li>Add GPU docs build validation on the same self-hosted environment if needed.</li>
+</ul>
+<h2 id="latest-update-2026-02-08-go-runtime-hardening-loaders-batching-metrics-logging-integration">Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)</h2>
+<ul>
+<li>Read and aligned implementation to:</li>
+<li><code>docs/CONTEXT.md</code></li>
+<li><code>docs/PRD.md</code></li>
+<li><code>docs/ENGINEERING_SPEC.md</code></li>
+<li><code>runtime/go/README.md</code></li>
+<li>Hardened engine loader paths in <code>runtime/go/internal/service/</code>:</li>
+<li>ONNX CPU baseline loader:<ul>
+<li><code>adapter_ort.go</code></li>
+<li><code>NewORTAdapter(...)</code> now validates and loads model path from flag or <code>APEXX_ORT_MODEL_PATH</code></li>
+<li>rejects missing/empty model files</li>
+</ul>
+</li>
+<li>TensorRT loader via CGO:<ul>
+<li><code>adapter_tensorrt_cgo.go</code></li>
+<li>implements C-side engine file loader/free wrapper</li>
+<li>validates engine file path from flag or <code>APEXX_TRT_ENGINE_PATH</code></li>
+<li>retains inference execution as baseline/mock response path while loader is real</li>
+</ul>
+</li>
+<li>Implemented dynamic batching observability:</li>
+<li><code>batcher.go</code><ul>
+<li>tracks enqueue timestamps per request</li>
+<li>computes per-batch average queue wait and inference time</li>
+<li>records batch errors and structured batch logs</li>
+</ul>
+</li>
+<li><code>metrics.go</code><ul>
+<li>added metrics:</li>
+<li>batch size avg/max</li>
+<li>queue latency avg/max</li>
+<li>inference latency avg/max</li>
+<li>batch errors</li>
+</ul>
+</li>
+<li>Added structured logging + optional telemetry hooks:</li>
+<li><code>http.go</code>, <code>batcher.go</code>, <code>cmd/apexx-runtime/main.go</code></li>
+<li>configurable structured logger (<code>json|text</code>, level)</li>
+<li>optional hook interface:<ul>
+<li><code>telemetry.go</code> (<code>TelemetryHooks</code>, <code>NopTelemetryHooks</code>)</li>
+</ul>
+</li>
+<li>request and batch lifecycle now expose hook call points for OTel integration</li>
+<li>Added integration and loader tests:</li>
+<li><code>runtime/go/internal/service/integration_test.go</code><ul>
+<li>starts HTTP server</li>
+<li>validates <code>/health</code></li>
+<li>validates structured <code>/predict</code> response</li>
+<li>load simulation verifies batching groups requests under pressure</li>
+<li>validates expanded <code>/metrics</code> keys</li>
+</ul>
+</li>
+<li><code>runtime/go/internal/service/adapter_ort_test.go</code><ul>
+<li>ONNX loader success/failure/env override coverage</li>
+</ul>
+</li>
+<li>Updated runtime docs:</li>
+<li>new: <code>docs/runtime/GO_SERVICE.md</code></li>
+<li>updated: <code>runtime/go/README.md</code></li>
+<li>docs nav updates:<ul>
+<li><code>docs/index.md</code></li>
+<li><code>mkdocs.yml</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="run-commands_9">Run Commands</h3>
+<ul>
+<li>Go unit + integration tests:</li>
+<li><code>cd runtime/go &amp;&amp; go test ./...</code></li>
+<li>Go tests with TensorRT build tags and CGO:</li>
+<li><code>cd runtime/go &amp;&amp; CGO_ENABLED=1 go test -tags tensorrt ./...</code></li>
+<li>Run CPU service mode:</li>
+<li><code>cd runtime/go</code></li>
+<li><code>mkdir -p models</code></li>
+<li>place a non-empty ONNX model at <code>models/apex-x.onnx</code></li>
+<li><code>go run ./cmd/apexx-runtime -adapter onnxruntime -model-path models/apex-x.onnx</code></li>
+<li>Run TensorRT service mode (loader path):</li>
+<li><code>cd runtime/go</code></li>
+<li><code>CGO_ENABLED=1 go run -tags tensorrt ./cmd/apexx-runtime -adapter tensorrt -engine-path models/apex-x.plan</code></li>
+</ul>
+<h3 id="validation-status_10">Validation Status</h3>
+<ul>
+<li><code>go test ./...</code>: passed</li>
+<li><code>CGO_ENABLED=1 go test -tags tensorrt ./...</code>: passed</li>
+<li>YAML parse check for docs nav (<code>mkdocs.yml</code>): passed</li>
+</ul>
+<h3 id="remaining-work_9">Remaining Work</h3>
+<ul>
+<li>Replace TensorRT adapter mock inference path with actual engine execution and tensor bindings.</li>
+<li>Add optional native OpenTelemetry implementation module (tracer/meter exporters) wired to current telemetry hooks.</li>
+<li>Add TLS/auth/rate-limit hardening around external-facing runtime service deployments.</li>
+</ul>
 <h2 id="update-protocol-every-significant-change">Update Protocol (Every Significant Change)</h2>
 <ul>
 <li>Update this file with:</li>
@@ -3586,82 +7696,67 @@
 <li>what to do next</li>
 <li>If architecture changed, also update <code>docs/DECISIONS.md</code></li>
 <li>If requirements changed, update PRD/spec first, then code</li>
-</ul></div>
-            </div>
-        </div>
+</ul>
 
-        <footer class="col-md-12">
-            <hr>
-            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
-        </footer>
-        <script src="../js/bootstrap.bundle.min.js"></script>
-        <script>
-            var base_url = "..",
-                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
-        </script>
-        <script src="../js/base.js"></script>
-        <script src="../search/main.js"></script>
 
-        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="searchModalLabel">Search</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
             </div>
-            <div class="modal-body">
-                <p>From here you can search these documents. Enter your search terms below.</p>
-                <form>
-                    <div class="form-group">
-                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
-                    </div>
-                </form>
-                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
-            </div>
-            <div class="modal-footer">
-            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-    </div>
-</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th style="width: 20%;">Keys</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="help shortcut"><kbd>?</kbd></td>
-                    <td>Open this help</td>
-                  </tr>
-                  <tr>
-                    <td class="next shortcut"><kbd>n</kbd></td>
-                    <td>Next page</td>
-                  </tr>
-                  <tr>
-                    <td class="prev shortcut"><kbd>p</kbd></td>
-                    <td>Previous page</td>
-                  </tr>
-                  <tr>
-                    <td class="search shortcut"><kbd>s</kbd></td>
-                    <td>Search</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="modal-footer">
-            </div>
-        </div>
-    </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
 </div>
-
-    </body>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
 </html>

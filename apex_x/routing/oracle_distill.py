@@ -28,6 +28,18 @@ class UtilityOracleLossOutput:
     num_pairs: int
 
 
+@dataclass(frozen=True)
+class OracleDeltaStats:
+    count: int
+    mean: float
+    std: float
+    min: float
+    max: float
+    abs_p95: float
+    clipped_count: int
+    clipped_ratio: float
+
+
 def _as_batched_losses(losses: Tensor) -> Tensor:
     if losses.ndim == 1:
         return losses.unsqueeze(0)
@@ -190,12 +202,65 @@ def utility_oracle_loss(
     )
 
 
+def summarize_oracle_delta_targets(
+    delta_targets: Tensor,
+    *,
+    raw_delta_targets: Tensor | None = None,
+    clamp_abs: float | None = None,
+) -> OracleDeltaStats:
+    """Summarize oracle delta-label distribution and clipping diagnostics."""
+    values = delta_targets.detach().to(dtype=torch.float32).reshape(-1)
+    if values.numel() == 0:
+        return OracleDeltaStats(
+            count=0,
+            mean=0.0,
+            std=0.0,
+            min=0.0,
+            max=0.0,
+            abs_p95=0.0,
+            clipped_count=0,
+            clipped_ratio=0.0,
+        )
+
+    abs_values = values.abs()
+    quantile = torch.quantile(abs_values, q=0.95).item()
+    std_value = values.std(unbiased=False).item()
+
+    clipped_count = 0
+    if clamp_abs is not None:
+        if clamp_abs <= 0.0:
+            raise ValueError("clamp_abs must be > 0 when provided")
+        raw = (
+            values
+            if raw_delta_targets is None
+            else raw_delta_targets.detach().to(dtype=torch.float32).reshape(-1)
+        )
+        if raw.shape != values.shape:
+            raise ValueError("raw_delta_targets must have the same flattened size as delta_targets")
+        clipped_count = int((raw.abs() > float(clamp_abs)).sum().item())
+
+    count = int(values.numel())
+    clipped_ratio = float(clipped_count / count) if count > 0 else 0.0
+    return OracleDeltaStats(
+        count=count,
+        mean=float(values.mean().item()),
+        std=float(std_value),
+        min=float(values.min().item()),
+        max=float(values.max().item()),
+        abs_p95=float(quantile),
+        clipped_count=clipped_count,
+        clipped_ratio=clipped_ratio,
+    )
+
+
 __all__ = [
     "RegressionLossType",
     "OracleDeltaTargets",
     "UtilityOracleLossOutput",
+    "OracleDeltaStats",
     "compute_oracle_delta_targets",
     "utility_regression_loss",
     "utility_ranking_loss",
     "utility_oracle_loss",
+    "summarize_oracle_delta_targets",
 ]

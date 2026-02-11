@@ -10,6 +10,53 @@ from typing import Any
 
 import torch
 
+CUDA_REASON_CUDA_UNAVAILABLE = "cuda_unavailable"
+CUDA_REASON_DEVICE_NOT_FOUND = "cuda_device_not_found"
+CUDA_REASON_DEVICE_INDEX_OUT_OF_RANGE = "cuda_device_index_out_of_range"
+CUDA_REASON_QUERY_FAILED = "cuda_query_failed"
+
+TRITON_REASON_NOT_INSTALLED = "triton_not_installed"
+
+TENSORRT_PYTHON_REASON_NOT_INSTALLED = "tensorrt_python_not_installed"
+TENSORRT_PYTHON_REASON_IMPORT_FAILED = "tensorrt_python_import_failed"
+TENSORRT_INT8_REASON_PYTHON_UNAVAILABLE = "tensorrt_python_unavailable"
+TENSORRT_INT8_REASON_CUDA_REQUIRED = "cuda_required_for_tensorrt_int8"
+TENSORRT_INT8_REASON_BUILDER_FLAG_MISSING = "tensorrt_int8_builder_flag_missing"
+
+FP8_REASON_TORCH_DTYPE_MISSING = "torch_build_missing_fp8_dtype"
+FP8_REASON_CUDA_REQUIRED = "fp8_requires_cuda"
+FP8_REASON_COMPUTE_CAPABILITY_UNKNOWN = "cuda_compute_capability_unknown"
+FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90 = "compute_capability_below_sm90"
+
+
+def runtime_reason_catalog() -> dict[str, tuple[str, ...]]:
+    """Return canonical reason-code sets for runtime capability reporting."""
+
+    return {
+        "cuda": (
+            CUDA_REASON_CUDA_UNAVAILABLE,
+            CUDA_REASON_DEVICE_NOT_FOUND,
+            CUDA_REASON_DEVICE_INDEX_OUT_OF_RANGE,
+            CUDA_REASON_QUERY_FAILED,
+        ),
+        "triton": (TRITON_REASON_NOT_INSTALLED,),
+        "tensorrt_python": (
+            TENSORRT_PYTHON_REASON_NOT_INSTALLED,
+            TENSORRT_PYTHON_REASON_IMPORT_FAILED,
+        ),
+        "tensorrt_int8": (
+            TENSORRT_INT8_REASON_PYTHON_UNAVAILABLE,
+            TENSORRT_INT8_REASON_CUDA_REQUIRED,
+            TENSORRT_INT8_REASON_BUILDER_FLAG_MISSING,
+        ),
+        "fp8": (
+            FP8_REASON_TORCH_DTYPE_MISSING,
+            FP8_REASON_CUDA_REQUIRED,
+            FP8_REASON_COMPUTE_CAPABILITY_UNKNOWN,
+            FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90,
+        ),
+    }
+
 
 def _find_spec(module_name: str) -> object | None:
     return importlib.util.find_spec(module_name)
@@ -130,7 +177,7 @@ def detect_cuda_caps(*, device_index: int | None = None) -> CudaCaps:
             device_count=0,
             device_name=None,
             compute_capability=None,
-            reason="cuda_unavailable",
+            reason=CUDA_REASON_CUDA_UNAVAILABLE,
         )
 
     count = int(torch.cuda.device_count())
@@ -140,7 +187,7 @@ def detect_cuda_caps(*, device_index: int | None = None) -> CudaCaps:
             device_count=0,
             device_name=None,
             compute_capability=None,
-            reason="cuda_device_not_found",
+            reason=CUDA_REASON_DEVICE_NOT_FOUND,
         )
 
     idx = int(torch.cuda.current_device() if device_index is None else device_index)
@@ -150,7 +197,7 @@ def detect_cuda_caps(*, device_index: int | None = None) -> CudaCaps:
             device_count=count,
             device_name=None,
             compute_capability=None,
-            reason=f"cuda_device_index_out_of_range:{idx}",
+            reason=CUDA_REASON_DEVICE_INDEX_OUT_OF_RANGE,
         )
 
     try:
@@ -164,19 +211,19 @@ def detect_cuda_caps(*, device_index: int | None = None) -> CudaCaps:
             compute_capability=cc,
             reason=None,
         )
-    except Exception as exc:  # pragma: no cover - defensive only
+    except Exception:  # pragma: no cover - defensive only
         return CudaCaps(
             available=False,
             device_count=count,
             device_name=None,
             compute_capability=None,
-            reason=f"cuda_query_failed:{type(exc).__name__}",
+            reason=CUDA_REASON_QUERY_FAILED,
         )
 
 
 def detect_triton_caps() -> TritonCaps:
     if _find_spec("triton") is None:
-        return TritonCaps(available=False, version=None, reason="triton_not_installed")
+        return TritonCaps(available=False, version=None, reason=TRITON_REASON_NOT_INSTALLED)
 
     version = _package_version("triton")
     if version is None:
@@ -259,9 +306,9 @@ def detect_tensorrt_caps(
             if isinstance(version_attr, str):
                 python_version = version_attr
     else:
-        python_reason = "tensorrt_python_not_installed"
+        python_reason = TENSORRT_PYTHON_REASON_NOT_INSTALLED
         if spec_found:
-            python_reason = "tensorrt_python_import_failed"
+            python_reason = TENSORRT_PYTHON_REASON_IMPORT_FAILED
 
     header_paths = None
     if header_search_paths is not None:
@@ -277,13 +324,13 @@ def detect_tensorrt_caps(
 
     if not python_available:
         int8_available = False
-        int8_reason = "tensorrt_python_unavailable"
+        int8_reason = TENSORRT_INT8_REASON_PYTHON_UNAVAILABLE
     elif not cuda.available:
         int8_available = False
-        int8_reason = "cuda_required_for_tensorrt_int8"
+        int8_reason = TENSORRT_INT8_REASON_CUDA_REQUIRED
     elif not has_int8_builder_flag:
         int8_available = False
-        int8_reason = "tensorrt_int8_builder_flag_missing"
+        int8_reason = TENSORRT_INT8_REASON_BUILDER_FLAG_MISSING
     else:
         int8_available = True
         int8_reason = None
@@ -307,21 +354,21 @@ def detect_fp8_caps(*, cuda: CudaCaps) -> FP8Caps:
             available=False,
             dtype_available=False,
             supported_dtypes=(),
-            reason="torch_build_missing_fp8_dtype",
+            reason=FP8_REASON_TORCH_DTYPE_MISSING,
         )
     if not cuda.available:
         return FP8Caps(
             available=False,
             dtype_available=True,
             supported_dtypes=dtype_names,
-            reason="fp8_requires_cuda",
+            reason=FP8_REASON_CUDA_REQUIRED,
         )
     if cuda.compute_capability is None:
         return FP8Caps(
             available=False,
             dtype_available=True,
             supported_dtypes=dtype_names,
-            reason="cuda_compute_capability_unknown",
+            reason=FP8_REASON_COMPUTE_CAPABILITY_UNKNOWN,
         )
     major, minor = cuda.compute_capability
     if major < 9:
@@ -329,7 +376,7 @@ def detect_fp8_caps(*, cuda: CudaCaps) -> FP8Caps:
             available=False,
             dtype_available=True,
             supported_dtypes=dtype_names,
-            reason=f"compute_capability_{major}_{minor}_below_sm90",
+            reason=FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90,
         )
     return FP8Caps(
         available=True,
@@ -362,4 +409,19 @@ __all__ = [
     "detect_tensorrt_caps",
     "detect_fp8_caps",
     "detect_runtime_caps",
+    "runtime_reason_catalog",
+    "CUDA_REASON_CUDA_UNAVAILABLE",
+    "CUDA_REASON_DEVICE_NOT_FOUND",
+    "CUDA_REASON_DEVICE_INDEX_OUT_OF_RANGE",
+    "CUDA_REASON_QUERY_FAILED",
+    "TRITON_REASON_NOT_INSTALLED",
+    "TENSORRT_PYTHON_REASON_NOT_INSTALLED",
+    "TENSORRT_PYTHON_REASON_IMPORT_FAILED",
+    "TENSORRT_INT8_REASON_PYTHON_UNAVAILABLE",
+    "TENSORRT_INT8_REASON_CUDA_REQUIRED",
+    "TENSORRT_INT8_REASON_BUILDER_FLAG_MISSING",
+    "FP8_REASON_TORCH_DTYPE_MISSING",
+    "FP8_REASON_CUDA_REQUIRED",
+    "FP8_REASON_COMPUTE_CAPABILITY_UNKNOWN",
+    "FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90",
 ]

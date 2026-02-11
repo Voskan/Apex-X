@@ -7,6 +7,13 @@ from typing import Any, Literal
 import torch
 from torch import Tensor
 
+from .autotune_registry import (
+    build_shape_bucket,
+    get_cached_triton_config,
+    record_triton_autotune_selection,
+    resolve_triton_launch_config,
+)
+
 BackendKind = Literal["reference", "triton"]
 TorchTileMeta = dict[str, Tensor]
 
@@ -116,6 +123,14 @@ def _build_meta(indices: Tensor, tile_size: int, height: int, width: int) -> Tor
     }
 
 
+def _tilepack_block_heuristic(tile_pixels: int) -> int:
+    if tile_pixels <= 64:
+        return 64
+    if tile_pixels <= 128:
+        return 128
+    return 256
+
+
 def tilepack_reference(
     feature_map: Tensor,
     indices: Tensor,
@@ -203,6 +218,7 @@ if triton is not None:
 
         out_offsets = (((b * kmax + k) * channels + c) * tile_size + local_y) * tile_size + local_x
         tl.store(out_ptr + out_offsets, values, mask=valid)
+
 else:
     _tilepack_kernel = None
 
@@ -226,6 +242,23 @@ def tilepack_triton(
     kmax = int(idx_i32.shape[1])
     grid_w = width // tile_size
     tile_pixels = tile_size * tile_size
+    shape_bucket = build_shape_bucket(
+        batch=batch,
+        channels=channels,
+        height=height,
+        width=width,
+        kmax=kmax,
+        tile_size=tile_size,
+        dtype=str(feature_contig.dtype).replace("torch.", ""),
+    )
+
+    selected_config = get_cached_triton_config(op_name="tilepack", shape_bucket=shape_bucket)
+    selection_source = "registry_cache"
+    if selected_config is None:
+        selected_config, selection_source = resolve_triton_launch_config(
+            kernel=_tilepack_kernel,
+            fallback_config={"BLOCK_PIX": _tilepack_block_heuristic(tile_pixels)},
+        )
 
     out = torch.empty(
         (batch, kmax, channels, tile_size, tile_size),
@@ -246,6 +279,14 @@ def tilepack_triton(
         tile_size,
         grid_w,
         tile_pixels,
+    )
+
+    record_triton_autotune_selection(
+        op_name="tilepack",
+        kernel_name="_tilepack_kernel",
+        shape_bucket=shape_bucket,
+        selected_config=selected_config,
+        selection_source=selection_source,
     )
     out = out.contiguous()
     meta = _build_meta(idx_i32, tile_size, height, width)

@@ -1,5 +1,52 @@
 {
-  "generated_at_utc": "2026-02-08T07:58:38.348385+00:00",
+  "generated_at_utc": "2026-02-11T07:58:50.121588+00:00",
+  "runtime": {
+    "execution_backend": "cpu",
+    "execution_fallback_reason": null,
+    "fallback_policy": "permissive",
+    "latency_ms": {
+      "backend_execute": 0.7048330007819459,
+      "backend_preflight": 0.0,
+      "total": 0.7104160031303763
+    },
+    "precision_profile": "balanced",
+    "requested_backend": "cpu",
+    "runtime_caps": {
+      "any_gpu_runtime": false,
+      "cuda": {
+        "available": false,
+        "compute_capability": null,
+        "device_count": 0,
+        "device_name": null,
+        "reason": "cuda_unavailable"
+      },
+      "fp8": {
+        "available": false,
+        "dtype_available": true,
+        "reason": "fp8_requires_cuda",
+        "supported_dtypes": [
+          "float8_e4m3fn",
+          "float8_e5m2"
+        ]
+      },
+      "tensorrt": {
+        "header_path": null,
+        "headers_available": false,
+        "int8_available": false,
+        "int8_reason": "tensorrt_python_unavailable",
+        "python_available": false,
+        "python_reason": "tensorrt_python_not_installed",
+        "python_version": null
+      },
+      "triton": {
+        "available": false,
+        "reason": "triton_not_installed",
+        "version": null
+      }
+    },
+    "selected_backend": "cpu",
+    "selection_fallback_reason": null
+  },
   "summary": {
     "det": {
       "ap50": 1.0,

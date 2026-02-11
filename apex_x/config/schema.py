@@ -111,13 +111,9 @@ class ModelConfig:
         w_ff = self.input_width // self.ff_primary_stride
         if h_ff % self.tile_size_l0 != 0 or w_ff % self.tile_size_l0 != 0:
             raise ValueError("FF map size must be divisible by model.tile_size_l0")
-        if nesting_depth >= 1 and (
-            h_ff % self.tile_size_l1 != 0 or w_ff % self.tile_size_l1 != 0
-        ):
+        if nesting_depth >= 1 and (h_ff % self.tile_size_l1 != 0 or w_ff % self.tile_size_l1 != 0):
             raise ValueError("FF map size must be divisible by model.tile_size_l1")
-        if nesting_depth >= 2 and (
-            h_ff % self.tile_size_l2 != 0 or w_ff % self.tile_size_l2 != 0
-        ):
+        if nesting_depth >= 2 and (h_ff % self.tile_size_l2 != 0 or w_ff % self.tile_size_l2 != 0):
             raise ValueError("FF map size must be divisible by model.tile_size_l2")
 
         if self.kmax_l0 <= 0:
@@ -195,6 +191,13 @@ class TrainConfig:
     mu_lr: float = 0.01
     mu_min: float = 0.0
     mu_max: float = 10.0
+    dual_adaptive_lr: bool = False
+    dual_lr_decay: float = 0.0
+    dual_delta_clip: float | None = None
+    dual_deadband_ratio: float = 0.0
+    dual_error_ema_beta: float = 0.9
+    dual_lr_min_scale: float = 0.5
+    dual_lr_max_scale: float = 3.0
 
     distill_weight: float = 1.0
     seg_boundary_weight: float = 1.0
@@ -202,6 +205,9 @@ class TrainConfig:
     use_pcgradpp: bool = True
     disable_distill: bool = False
     disable_pcgradpp: bool = False
+
+    output_dir: str = "artifacts/train_output"
+    save_interval: int = 1
 
     qat_enable: bool = False
     qat_int8: bool = False
@@ -219,9 +225,24 @@ class TrainConfig:
             raise ValueError("train.mu_min must be <= train.mu_max")
         if not (self.mu_min <= self.mu_init <= self.mu_max):
             raise ValueError("train.mu_init must be in [mu_min, mu_max]")
+        if self.dual_lr_decay < 0:
+            raise ValueError("train.dual_lr_decay must be >= 0")
+        if self.dual_delta_clip is not None and self.dual_delta_clip <= 0:
+            raise ValueError("train.dual_delta_clip must be > 0 when provided")
+        if not (0.0 <= self.dual_deadband_ratio < 1.0):
+            raise ValueError("train.dual_deadband_ratio must be in [0, 1)")
+        if not (0.0 <= self.dual_error_ema_beta < 1.0):
+            raise ValueError("train.dual_error_ema_beta must be in [0, 1)")
+        if self.dual_lr_min_scale <= 0:
+            raise ValueError("train.dual_lr_min_scale must be > 0")
+        if self.dual_lr_max_scale < self.dual_lr_min_scale:
+            raise ValueError("train.dual_lr_max_scale must be >= train.dual_lr_min_scale")
 
         if self.distill_weight < 0 or self.seg_boundary_weight < 0:
             raise ValueError("train distill and seg_boundary weights must be >= 0")
+
+        if self.save_interval <= 0:
+            raise ValueError("train.save_interval must be > 0")
 
         if (self.qat_int8 or self.qat_fp8) and not self.qat_enable:
             raise ValueError("train.qat_enable must be true when qat_int8 or qat_fp8 is enabled")
@@ -274,6 +295,8 @@ class DataConfig:
 
 @dataclass(slots=True)
 class RuntimeConfig:
+    backend: str = "cpu"
+    fallback_policy: str = "permissive"
     precision_profile: str = "balanced"
     enable_export: bool = True
     enable_runtime_plugins: bool = False
@@ -283,6 +306,10 @@ class RuntimeConfig:
     deterministic: bool = True
 
     def validate(self) -> None:
+        if self.backend not in {"cpu", "torch", "triton", "tensorrt"}:
+            raise ValueError("runtime.backend must be cpu, torch, triton, or tensorrt")
+        if self.fallback_policy not in {"strict", "permissive"}:
+            raise ValueError("runtime.fallback_policy must be strict or permissive")
         if self.precision_profile not in {"quality", "balanced", "edge"}:
             raise ValueError("runtime.precision_profile must be quality, balanced, or edge")
         if self.export_format not in {"onnx", "torchscript"}:
@@ -294,6 +321,10 @@ class RuntimeConfig:
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> RuntimeConfig:
         parsed = dict(data)
+        if "backend" in parsed:
+            parsed["backend"] = str(parsed["backend"]).lower()
+        if "fallback_policy" in parsed:
+            parsed["fallback_policy"] = str(parsed["fallback_policy"]).lower()
         if "precision_profile" in parsed:
             parsed["precision_profile"] = str(parsed["precision_profile"]).lower()
         if "export_format" in parsed:

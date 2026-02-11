@@ -116,6 +116,17 @@ func TestHTTPServerIntegrationPredictAndBatching(t *testing.T) {
 	if decoded.RequestID == "" || decoded.Backend == "" || decoded.BudgetProfile == "" {
 		t.Fatalf("predict response missing required structured fields: %+v", decoded)
 	}
+	if decoded.Runtime.ExecutionBackend != decoded.Backend {
+		t.Fatalf("runtime backend mismatch: %+v", decoded.Runtime)
+	}
+	if decoded.Runtime.FallbackPolicy != "strict" {
+		t.Fatalf("unexpected runtime fallback policy: %q", decoded.Runtime.FallbackPolicy)
+	}
+	if decoded.Runtime.LatencyMS.Total < 0.0 ||
+		decoded.Runtime.LatencyMS.BackendExecute < 0.0 ||
+		decoded.Runtime.LatencyMS.BackendPreflight < 0.0 {
+		t.Fatalf("runtime latency must be non-negative: %+v", decoded.Runtime.LatencyMS)
+	}
 
 	const parallelRequests = 32
 	start := make(chan struct{})
@@ -150,6 +161,15 @@ func TestHTTPServerIntegrationPredictAndBatching(t *testing.T) {
 			}
 			if out.RequestID == "" || out.Backend == "" {
 				errCh <- fmt.Errorf("invalid predict response: %+v", out)
+				return
+			}
+			if out.Runtime.ExecutionBackend != out.Backend {
+				errCh <- fmt.Errorf("runtime backend mismatch: %+v", out.Runtime)
+				return
+			}
+			if out.Runtime.FallbackPolicy == "" {
+				errCh <- fmt.Errorf("runtime fallback policy missing: %+v", out.Runtime)
+				return
 			}
 		}(idx)
 	}
@@ -185,6 +205,10 @@ func TestHTTPServerIntegrationPredictAndBatching(t *testing.T) {
 		"apexx_queue_latency_ms_avg",
 		"apexx_inference_latency_ms_avg",
 		"apexx_batch_errors_total",
+		"apexx_canary_samples_total",
+		"apexx_canary_compares_total",
+		"apexx_canary_mismatches_total",
+		"apexx_canary_errors_total",
 	}
 	for _, key := range requiredKeys {
 		if !strings.Contains(metricsText, key) {

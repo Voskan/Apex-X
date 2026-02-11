@@ -23,6 +23,8 @@ from .tiles import (
     TileUnpackerProtocol,
 )
 
+__version__ = "0.1.0"
+
 # Backward-compat alias for earlier baseline naming.
 ApexXCPU = ApexXModel
 

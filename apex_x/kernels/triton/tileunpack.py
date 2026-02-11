@@ -7,6 +7,13 @@ from typing import Any, Literal
 import torch
 from torch import Tensor
 
+from .autotune_registry import (
+    build_shape_bucket,
+    get_cached_triton_config,
+    record_triton_autotune_selection,
+    resolve_triton_launch_config,
+)
+
 BackendKind = Literal["reference", "triton"]
 OverlapMode = Literal["override", "blend"]
 TorchTileMeta = dict[str, Tensor]
@@ -247,10 +254,50 @@ def tileunpack_reference(
                 merged[b, :, y : y + tile_size, x : x + tile_size] = incoming_patch
             else:
                 merged[b, :, y : y + tile_size, x : x + tile_size] = (
-                    (1.0 - alpha) * current_patch + alpha * incoming_patch
-                )
+                    1.0 - alpha
+                ) * current_patch + alpha * incoming_patch
 
     return merged.contiguous()
+
+
+def _tileunpack_blend_ordered(
+    *,
+    base_map: Tensor,
+    packed_out: Tensor,
+    origins: Tensor,
+    keys: Tensor,
+    tile_size: int,
+    blend_alpha: float,
+) -> Tensor:
+    batch, _, height, width = base_map.shape
+    merged = base_map.contiguous().clone()
+    alpha = torch.tensor(blend_alpha, dtype=base_map.dtype, device=base_map.device)
+    one_minus_alpha = 1.0 - alpha
+
+    for b in range(batch):
+        order = torch.argsort(keys[b], dim=0, descending=False, stable=True)
+        for k_idx_t in order:
+            k_idx = int(k_idx_t.item())
+            y = int(origins[b, k_idx, 0].item())
+            x = int(origins[b, k_idx, 1].item())
+            if y < 0 or x < 0 or y + tile_size > height or x + tile_size > width:
+                raise ValueError("meta origins contain out-of-bounds tile coordinates")
+
+            current_patch = merged[b, :, y : y + tile_size, x : x + tile_size]
+            incoming_patch = packed_out[b, k_idx]
+            merged[b, :, y : y + tile_size, x : x + tile_size] = (
+                one_minus_alpha * current_patch + alpha * incoming_patch
+            )
+
+    return merged.contiguous()
+
+
+def _tileunpack_block_heuristic(tile_pixels: int) -> int:
+    if tile_pixels <= 64:
+        return 64
+    if tile_pixels <= 128:
+        return 128
+    return 256
 
 
 if triton is not None:
@@ -356,6 +403,7 @@ if triton is not None:
 
         out_offsets = ((b * channels + c) * height + y) * width + x
         tl.store(out_ptr + out_offsets, values, mask=write_mask)
+
 else:
     _tileunpack_priority_kernel = None
     _tileunpack_scatter_kernel = None
@@ -372,9 +420,6 @@ def tileunpack_triton(
     overlap_mode: OverlapMode = "override",
     blend_alpha: float = 0.5,
 ) -> Tensor:
-    if triton is None or _tileunpack_priority_kernel is None or _tileunpack_scatter_kernel is None:
-        raise RuntimeError("Triton is not available")
-
     batch, channels, height, width, kmax, tile_size = _validate_base_and_packed(
         base_map, packed_out
     )
@@ -384,8 +429,6 @@ def tileunpack_triton(
         raise ValueError("tileunpack_triton supports fp16/bf16 inputs only")
     if packed_out.dtype != base_map.dtype:
         raise ValueError("base_map and packed_out must use same dtype")
-    if overlap_mode == "blend":
-        raise NotImplementedError("blend mode is not implemented in Triton kernel path")
     if overlap_mode != "override":
         raise ValueError("overlap_mode must be 'override' or 'blend'")
     if not (0.0 <= blend_alpha <= 1.0):
@@ -405,15 +448,57 @@ def tileunpack_triton(
         assume_priority_sorted=assume_priority_sorted,
     ).contiguous()
     origins_i32 = (
-        normalized_meta["origins"]
-        .to(dtype=torch.int32, device=base_map.device)
-        .contiguous()
+        normalized_meta["origins"].to(dtype=torch.int32, device=base_map.device).contiguous()
     )
+
+    if overlap_mode == "blend":
+        return _tileunpack_blend_ordered(
+            base_map=base_map,
+            packed_out=packed_out,
+            origins=origins_i32.to(dtype=torch.int64),
+            keys=keys_i32.to(dtype=torch.int64),
+            tile_size=tile_size,
+            blend_alpha=blend_alpha,
+        )
+
+    if triton is None or _tileunpack_priority_kernel is None or _tileunpack_scatter_kernel is None:
+        raise RuntimeError("Triton is not available")
 
     out = base_map.contiguous().clone()
     packed_contig = packed_out.contiguous()
     tile_pixels = tile_size * tile_size
     pix_blocks = triton.cdiv(tile_pixels, 256)
+    shape_bucket = build_shape_bucket(
+        batch=batch,
+        channels=channels,
+        height=height,
+        width=width,
+        kmax=kmax,
+        tile_size=tile_size,
+        dtype=str(base_map.dtype).replace("torch.", ""),
+    )
+
+    priority_config = get_cached_triton_config(
+        op_name="tileunpack_priority",
+        shape_bucket=shape_bucket,
+    )
+    priority_source = "registry_cache"
+    if priority_config is None:
+        priority_config, priority_source = resolve_triton_launch_config(
+            kernel=_tileunpack_priority_kernel,
+            fallback_config={"BLOCK_PIX": _tileunpack_block_heuristic(tile_pixels)},
+        )
+
+    scatter_config = get_cached_triton_config(
+        op_name="tileunpack_scatter",
+        shape_bucket=shape_bucket,
+    )
+    scatter_source = "registry_cache"
+    if scatter_config is None:
+        scatter_config, scatter_source = resolve_triton_launch_config(
+            kernel=_tileunpack_scatter_kernel,
+            fallback_config={"BLOCK_PIX": _tileunpack_block_heuristic(tile_pixels)},
+        )
     winner = torch.full(
         (batch, height, width),
         fill_value=int(torch.iinfo(torch.int32).min),
@@ -433,6 +518,13 @@ def tileunpack_triton(
         tile_size,
         tile_pixels,
     )
+    record_triton_autotune_selection(
+        op_name="tileunpack_priority",
+        kernel_name="_tileunpack_priority_kernel",
+        shape_bucket=shape_bucket,
+        selected_config=priority_config,
+        selection_source=priority_source,
+    )
 
     grid_scatter = (batch * kmax, channels, pix_blocks)
     _tileunpack_scatter_kernel[grid_scatter](
@@ -448,6 +540,13 @@ def tileunpack_triton(
         kmax,
         tile_size,
         tile_pixels,
+    )
+    record_triton_autotune_selection(
+        op_name="tileunpack_scatter",
+        kernel_name="_tileunpack_scatter_kernel",
+        shape_bucket=shape_bucket,
+        selected_config=scatter_config,
+        selection_source=scatter_source,
     )
 
     return out.contiguous()
@@ -488,26 +587,6 @@ def tileunpack_dispatch(
             merged=merged,
             backend="reference",
             fallback_reason="autograd_not_supported_for_triton_tileunpack",
-        )
-
-    if overlap_mode == "blend":
-        if not allow_fallback:
-            raise NotImplementedError(
-                "blend mode is currently reference-only in tileunpack dispatch"
-            )
-        merged = tileunpack_reference(
-            base_map,
-            packed_out,
-            meta=normalized_meta,
-            levels=levels,
-            assume_priority_sorted=assume_priority_sorted,
-            overlap_mode=overlap_mode,
-            blend_alpha=blend_alpha,
-        )
-        return TileUnpackDispatchResult(
-            merged=merged,
-            backend="reference",
-            fallback_reason="blend_mode_uses_reference_path",
         )
 
     availability = get_triton_tileunpack_availability()

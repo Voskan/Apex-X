@@ -4,6 +4,7 @@ import torch
 
 from apex_x.routing import (
     compute_oracle_delta_targets,
+    summarize_oracle_delta_targets,
     utility_oracle_loss,
     utility_ranking_loss,
     utility_regression_loss,
@@ -70,3 +71,19 @@ def test_regression_loss_uses_sampled_indices_only() -> None:
 
     # Targets for selected tiles are [1.0, 2.0]; predictions are [1.0, 1.5]
     assert torch.allclose(reg, torch.tensor(0.125, dtype=torch.float32), atol=1e-7, rtol=1e-7)
+
+
+def test_oracle_delta_summary_reports_clipping_ratio() -> None:
+    raw = torch.tensor([[3.0, -0.5, -2.6, 0.0]], dtype=torch.float32)
+    clipped = raw.clamp(min=-2.0, max=2.0)
+
+    summary = summarize_oracle_delta_targets(
+        clipped,
+        raw_delta_targets=raw,
+        clamp_abs=2.0,
+    )
+
+    assert summary.count == 4
+    assert summary.clipped_count == 2
+    assert summary.clipped_ratio == 0.5
+    assert summary.abs_p95 >= 2.0

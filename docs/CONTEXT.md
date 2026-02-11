@@ -1,6 +1,7 @@
 # Apex-X Project Context (Persistent Memory)
 
 ## Authoritative Links (Mandatory)
+
 - PRD: `docs/PRD.md`
 - Engineering spec: `docs/ENGINEERING_SPEC.md`
 - Runtime plugin spec: `docs/runtime/PLUGIN_SPEC.md`
@@ -8,12 +9,317 @@
 - Active worklist: `docs/TODO.md`
 
 ## Project Identity
+
 - Name: `apex-x`
 - Version: `0.1.0`
 - License: `Apache-2.0`
 - Current baseline: CPU-only reference implementation
 
+## Recent Updates (2026-02-11)
+
+- Runtime capability contract was hardened:
+  - canonical reason-code catalog added in `apex_x/runtime/caps.py`
+  - dynamic reason strings were removed in favor of stable reason codes
+  - runtime reason catalog exposed via `runtime_reason_catalog()`
+- Capability docs/spec alignment updates:
+  - `docs/runtime/CAPS.md` now defines frozen backend capability matrix and reason-code contract
+  - `docs/ENGINEERING_SPEC.md` includes explicit runtime capability and parity contract section
+  - `docs/PRD.md` adds FR-14 for runtime capability transparency
+- Parity tolerance framework was extended:
+  - FP8 tolerance added to `ToleranceConfig`
+  - profile API added (`quality`, `balanced`, `edge`) with op/e2e tolerance bundles
+  - new tests added in `tests/test_runtime_parity.py`
+- Deterministic replay package was added:
+  - golden fixtures: `tests/fixtures/replay_golden_small.json`, `tests/fixtures/replay_golden_medium.json`
+  - replay hash utilities in `apex_x/utils/repro.py` (`build_replay_manifest`, JSON/file SHA256 helpers)
+  - replay validation test in `tests/test_replay_golden.py`
+- CLI backend selection contract was added:
+  - `--backend cpu|torch|triton|tensorrt`
+  - `--fallback-policy strict|permissive`
+  - strict mode returns actionable errors; permissive mode falls back deterministically
+  - backend selection metadata is emitted by `predict` and `eval`
+- TODO progression:
+  - completed tasks `P0-01`, `P0-02`, `P0-03`, and `P1-01` were removed from `docs/TODO.md`
+  - completed task `P2-04` was removed from active backlog and moved to completed history
+- CI/perf gate hardening updates:
+  - GPU perf workflow now has PR path trigger for GPU-critical code paths:
+    - `apex_x/kernels/**`
+    - `apex_x/runtime/**`
+    - `runtime/tensorrt/**`
+  - fork PRs are fail-closed for GPU workflow execution (`blocked-untrusted-pr`)
+  - CPU and GPU perf regression scripts now emit normalized trend artifacts:
+    - CPU: `--trend-output artifacts/perf_trend_cpu_ci.json`
+    - GPU: `--trend-output artifacts/perf_gpu_trend_ci.json`
+  - weekly trend workflow added:
+    - `.github/workflows/perf_trend_weekly.yml`
+    - CPU weekly trend always runs
+    - GPU weekly trend runs on self-hosted CUDA when `APEXX_ENABLE_GPU_WEEKLY=true`
+  - workflow policy contract test added:
+    - `tests/test_gpu_ci_workflow_contract.py`
+    - guards GPU-critical PR triggers + trusted self-hosted execution rules
+- Release checklist evidence automation was added:
+  - new generator script: `scripts/release_attestation.py`
+  - outputs JSON + Markdown attestation bundles with artifact SHA256/status fields
+  - CI workflows now auto-publish release evidence drafts:
+    - CPU CI: `artifacts/release/release_attestation_ci.{json,md}`
+    - GPU CI: `artifacts/release/release_attestation_gpu_ci.{json,md}`
+    - weekly trend CPU/GPU jobs publish corresponding weekly attestation bundles
+- Backward-compatibility migration documentation was finalized:
+  - migration guide: `docs/release/MIGRATION.md`
+  - project changelog baseline: `CHANGELOG.md`
+  - X-03 was removed from active queue after adding explicit deprecation timeline and migration actions.
+- Temporal hysteresis quality gates were expanded:
+  - new budget-aware update API: `hysteresis_update_with_budget(...)`
+  - `hysteresis_rollout(...)` now supports optional `max_active` frame cap
+  - new stability metrics:
+    - `tile_flip_rate(...)`
+    - `temporal_consistency(...)`
+    - `mean_active_ratio(...)`
+    - `summarize_temporal_stability(...)`
+  - model CPU baseline now applies budget-aware hysteresis using `kmax_l0`
+  - new sequence-level tests in `tests/test_temporal_hysteresis_metrics.py`
+- Quadtree recursion budgeting was extended to depth-2 deterministic selection:
+  - new API: `deterministic_three_stage_selection(...)` in `apex_x/routing/inference_budget.py`
+  - stage contracts:
+    - `L0` under `B1`
+    - `L0 -> L1` split under `B2`
+    - `L1 -> L2` split under `B3`
+  - deterministic parent tie-break at split stages: score desc, tile-id asc
+  - `Kmax_L1`/`Kmax_L2` capacity limits enforced during child expansion
+  - new tests: `tests/test_three_stage_selection.py`
+- Deterministic inference-budget stress coverage was expanded:
+  - new stress suite: `tests/test_inference_budget_stress.py`
+  - covers:
+    - equal-utility tie scaling
+    - zero/near-zero delta-cost stability
+    - saturated `Kmax` clipping
+    - adversarial close-score repeatability
+- Continuous dual-budget convergence controls were hardened:
+  - `BudgetDualController` now supports adaptive update schedule with:
+    - step decay
+    - EMA-scaled learning-rate modulation
+    - deadband near target budget
+    - optional delta clipping
+  - trainer/model wiring now passes dual schedule config fields from `TrainConfig`
+  - stage-3 trainer metrics now report dual dynamics:
+    - `dual_effective_lr_last`
+    - `dual_error_ema_last`
+    - `dual_update_count`
+  - new convergence test suite: `tests/test_dual_budget_convergence.py`
+- PCGrad++ monitoring was completed for shared-trunk training:
+  - `apply_pcgradpp(...)` diagnostics now include conflict metrics before/after projection
+  - trainer emits `train_summary["pcgrad"]` payload with:
+    - pair counts/rates (`before` vs `after`)
+    - shared/head parameter counts
+    - gradient norm snapshots
+  - head-gradient non-projection and conflict-rate behavior are covered in:
+    - `tests/test_pcgradpp.py`
+    - `tests/test_trainer_stages.py`
+- FP8 operational telemetry was extended:
+  - `precision.py` fallback reasons now align to canonical runtime reason-codes
+  - GPU benchmark now supports explicit FP8 request mode (`--dtype fp8`)
+  - benchmark report now includes requested-vs-effective precision fields:
+    - `requested_dtype`
+    - `effective_dtype`
+    - `fp8_requested`
+    - `fp8_enabled`
+    - `fp8_fallback_reason`
+  - FP8 telemetry coverage added in:
+    - `tests/test_precision_policy.py`
+    - `tests/test_gpu_bench_fp8.py`
+- Unified perf regression policy was extended to TensorRT shape-sweep:
+  - new script: `scripts/perf_regression_trt.py`
+  - new baseline: `scripts/perf_baseline_trt.json`
+  - trend artifacts:
+    - `artifacts/perf_trt_trend_ci.json`
+    - `artifacts/perf_trt_trend_weekly.json`
+  - GPU workflows now run optional TRT compare/trend when `TRT_ENGINE_PATH` is provided.
+- Oracle supervision pipeline was hardened:
+  - oracle sampler now supports a third component for long-tail tile selection
+  - stage-2 trainer now logs/reports oracle label diagnostics:
+    - sample composition (`random`, `uncertainty`, `long_tail`)
+    - delta distribution summary (`mean/std/min/max/abs_p95`)
+    - clipping diagnostics (`clipped_ratio`)
+  - new stats helper added: `summarize_oracle_delta_targets(...)`
+  - coverage expanded in:
+    - `tests/test_oracle_sampling.py`
+    - `tests/test_oracle_distill.py`
+    - `tests/test_trainer_stages.py`
+- Export and predict runtime paths reached active-queue completion status:
+  - `P1-02` closure validated by export contract tests:
+    - `tests/test_export.py`
+    - `tests/test_tensorrt_export_manifest.py`
+  - `P1-03` closure validated by runner/CLI backend execution tests:
+    - `tests/test_infer_runner.py`
+    - `tests/test_cli.py`
+  - deployment-host evidence for real TensorRT engines remains tracked in device-blocked queue.
+- Eval runtime path reached active-queue completion status:
+  - `P1-04` closure validated by eval + dataset execution contract tests:
+    - `tests/test_eval_metrics.py`
+    - `tests/test_infer_runner.py`
+    - `tests/test_cli.py`
+- TensorRT INT8 sensitive-layer precision enforcement was hardened:
+  - builder now emits per-layer precision evidence in `EngineBuildResult.layer_precision_status`
+  - strict precision-constraint mode now fails build when matched layers cannot be constrained
+  - new coverage added in `tests/test_tensorrt_precision_policy.py`
+- TensorRT plugin build-time contract validation was hardened:
+  - builder now validates plugin creator contracts for:
+    - presence
+    - version
+    - namespace
+    - plugin field-signature metadata
+  - strict mode emits actionable mismatch errors for required plugins
+  - `PluginContract` overrides are now supported in build config
+  - new non-CUDA unit coverage:
+    - `tests/test_tensorrt_plugin_contracts.py`
+- TensorRT INT8 calibration cache governance was completed:
+  - cache-key contract now binds calibration cache reuse to:
+    - model/export identity hash
+    - plugin version/namespace metadata
+    - precision profile
+    - calibration dataset version (explicit or auto-digest)
+  - calibrator cache blob now enforces key-aware stale-cache invalidation.
+  - legacy raw cache blobs are accepted only when key governance is disabled.
+  - new non-CUDA unit coverage:
+    - `tests/test_tensorrt_int8_cache.py`
+- TensorRT parity harness was expanded with backend matrix + sweep APIs:
+  - `ParityMatrixCase` and `run_parity_matrix_case(...)` compare:
+    - reference vs triton
+    - reference vs tensorrt
+    - triton vs tensorrt
+  - `run_parity_sweep(...)` provides shape/precision sweep aggregation with profile-aware tolerances.
+  - CPU-safe harness contract coverage added in:
+    - `tests/test_trt_parity_harness.py`
+- Triton TileSSM long-sequence behavior was hardened:
+  - Triton forward scan now streams long sequences in chunks when `K > 4096`.
+  - chunk execution carries recurrent state between launches to preserve recurrence semantics.
+  - CPU-safe chunking contract tests added in:
+    - `tests/test_triton_tilessm_parity_dispatch.py`
+- Triton TileUnpack overlap blend dispatch gap was reduced:
+  - `overlap_mode=\"blend\"` no longer has a forced reference-only dispatch branch.
+  - blend overlap path now executes through `tileunpack_triton(...)` entrypoint with
+    ordered composition parity semantics.
+  - overlap tests expanded:
+    - `tests/test_triton_tileunpack_overlap_dispatch.py`
+    - `tests/test_triton_tileunpack_overlap_gpu.py`
+- Triton Stage-1 fused selector was integrated into FF heavy-path inference:
+  - `FFHeavyPath` now routes to `fused_pack_op_unpack_dispatch(...)` only when strict
+    compatibility predicates hold (eval, identity refine, constant FiLM params, unique indices).
+  - non-compatible cases remain on deterministic decomposed `pack -> FiLM -> unpack` path.
+  - new coverage:
+    - `tests/test_ff_heavy_path_fused_stage1.py`
+- Triton autotune registry + benchmark telemetry were added:
+  - new module: `apex_x/kernels/triton/autotune_registry.py`
+  - registry records per-op/per-shape-bucket selected launch config and cache counters
+  - instrumented kernels:
+    - TilePack
+    - TileUnpack priority/scatter
+    - FusionGate alpha/fuse
+    - fused stage-1 pack/op/unpack
+  - GPU benchmark report now exports:
+    - `triton_autotune.summary`
+    - `triton_autotune.entries`
+  - CPU-safe contract coverage added in:
+    - `tests/test_triton_autotune_registry.py`
+- Runtime docs consistency sweep completed:
+  - synchronized current implementation status in:
+    - `docs/runtime/TRITON.md`
+    - `docs/runtime/TENSORRT.md`
+    - `docs/runtime/PLUGIN_SPEC.md`
+- Release readiness docs were strengthened:
+  - added `docs/release/CHECKLIST.md` with mandatory artifact attestation + rollback section
+  - linked checklist in `README.md`, docs index, and MkDocs navigation
+- Go runtime telemetry schema was aligned with Python CLI/runtime reports:
+  - `/predict` response now includes `runtime` payload with backend selection, fallback, precision, and latency breakdown
+  - latency keys aligned to `latency_ms.total`, `latency_ms.backend_execute`, `latency_ms.backend_preflight`
+  - service test coverage updated for runtime telemetry schema
+  - explicit SLA-oriented error policies added:
+    - queue saturation returns `429 Too Many Requests`
+    - predict timeout returns `504 Gateway Timeout`
+- Go runtime backend bridge execution path was added:
+  - ORT and TRT adapters now support optional Python bridge execution via:
+    - `APEXX_ORT_BRIDGE_CMD`
+    - `APEXX_TRT_BRIDGE_CMD`
+  - bridge protocol entrypoint implemented at `apex_x/runtime/service_bridge.py`
+  - Go service backend error classification now maps:
+    - backend unavailable -> `503 Service Unavailable`
+    - backend inference/protocol failure -> `502 Bad Gateway`
+  - synthetic score fallback was removed from ORT/TRT adapters (fail-closed behavior)
+  - native host limitation snapshot:
+    - Go `onnxruntime` native pkg-config package is unavailable on this host
+    - TensorRT Python module is unavailable on this host
+- Go runtime canary parity mode was added:
+  - optional shadow adapter execution with configurable sample rate
+  - mismatch telemetry counters (`samples`, `compares`, `mismatches`, `errors`, `mismatch_ratio`)
+  - canary behavior is asynchronous to avoid impacting primary response path
+  - configurable canary payload capture policy and storage controls were added:
+    - policy: `off|mismatch|error|all`
+    - JSONL sink: `APEXX_CANARY_CAPTURE_PATH`
+    - file size guard: `APEXX_CANARY_CAPTURE_MAX_BYTES`
+  - SLA gate test was added for timeout/overflow rates and canary overhead:
+    - `TestCanaryLoadGateThresholds` in `runtime/go/internal/service/sla_gate_test.go`
+    - CI wiring added in `.github/workflows/ci.yml` (`go-runtime` job)
+- Inference runner abstraction was added for CLI predict/eval:
+  - new module `apex_x/infer/runner.py` introduces:
+    - `run_model_inference(...)` with a common inference result schema
+    - `RuntimeMetadata` and `InferenceRunResult` dataclasses
+    - `extract_routing_diagnostics(...)` (replacing ad-hoc placeholder extraction)
+    - FFModule-based `torch` executor path for backend-specific execution
+    - triton execution branch with capability checks and deterministic fallback behavior
+  - `apex_x/cli.py` now uses the runner for both `predict` and `eval`
+  - `predict` now supports `--report-json` with runtime metadata + routing diagnostics payload
+  - TensorRT branch now performs preflight validation:
+    - capability gate (`cuda` + TensorRT Python)
+    - env-driven artifact checks (`APEXX_EXPORT_MANIFEST_PATH`, `APEXX_TRT_ENGINE_PATH`)
+    - deterministic fallback/error reasons when runtime execution is unavailable
+  - TensorRT runtime execution path is now implemented:
+    - new `TensorRTEngineExecutor` in `apex_x/runtime/tensorrt/executor.py`
+    - runner executes real TensorRT serialized engine inference when `APEXX_TRT_ENGINE_PATH` is set
+    - optional runtime env controls:
+      - `APEXX_TRT_PLUGIN_LIB` for plugin shared libraries
+      - `APEXX_TRT_INPUT_NAME` for explicit input tensor selection
+      - `APEXX_TRT_PRIMARY_OUTPUT_NAME` for primary output mapping in CLI result schema
+      - `APEXX_TRT_EXTRA_INPUTS_NPZ` for named auxiliary tensors in multi-input TRT engines
+      - `APEXX_TRT_DET_BOXES_NAME`, `APEXX_TRT_DET_SCORES_NAME`,
+        `APEXX_TRT_DET_CLASS_IDS_NAME`, `APEXX_TRT_DET_VALID_NAME`
+        for explicit DET output binding into CLI det schema
+  - TensorRT deployment shape-sweep harness was added:
+    - `apex_x/bench/trt_engine_sweep.py`
+    - supports repeated shape cases for single/multi-input engines
+    - emits JSON + Markdown sweep summary for per-shape TRT runtime evidence
+  - runtime metadata now explicitly includes:
+    - requested backend
+    - selected backend
+    - actual execution backend
+    - precision profile
+    - selection/execution fallback reasons
+    - latency breakdown (`total`, `backend_execute`, `backend_preflight`)
+    - runtime capability snapshot
+- Eval dataset adapter path was added:
+  - `apex_x/infer/runner.py` now includes:
+    - `load_eval_images_npz(...)`
+    - `load_eval_dataset_npz(...)`
+    - `evaluate_model_dataset(...)`
+    - `ModelDatasetEvalSummary`
+  - `apex_x/cli.py eval` now accepts:
+    - `--dataset-npz` for `.npz/.npy` image arrays
+    - `--max-samples` for deterministic subset evaluation
+  - when dataset eval is enabled, reports include `model_eval` aggregates in JSON/Markdown
+  - optional dataset target contract:
+    - `.npz` key `det_score_target` (or compat alias `det_scores_target`)
+    - `.npz` key `selected_tiles_target` (or compat alias `selected_tiles_targets`)
+    - model-eval report now includes target regression metrics:
+      - `det_score_target`: `mae`, `rmse`, `bias`, `r2`, `pearson_corr`
+      - `selected_tiles_target`: `mae`, `rmse`, `bias`, `exact_match_rate`
+  - eval JSON reports now always include `runtime` metadata for backend/precision/fallback traceability
+- Export/TRT handoff integration was added:
+  - `apex_x/runtime/tensorrt/builder.py` now provides:
+    - `load_export_manifest(...)`
+    - `TensorRTEngineBuilder.build_from_export_manifest(...)`
+  - manifest loader validates ONNX path and optional SHA256 integrity before build handoff
+
 ## Current Architecture Snapshot
+
 - Dual-stream concept established in docs (PV dense + FF sparse)
 - Utility-based router contracts defined
 - Continuous and deterministic budgeting contracts defined
@@ -22,6 +328,7 @@
 - Tile-SSM placeholder behavior defined
 
 ## What Exists Right Now (2026-02-07)
+
 - Repository scaffold created:
   - `apex_x/`, `tests/`, `docs/`, `docs/runtime/`, `examples/`, `scripts/`, `runtime/`, `.github/workflows/`
 - Governance/Open-source files added:
@@ -374,7 +681,7 @@
     - uncertainty-biased distribution check across many seeds
     - validation/error checks for fraction bounds and invalid uncertainty values
   - Verification status:
-    - `python -m pytest -q` passed
+    - `python -m pytest -q` passedprodoljai
     - `ruff check .` passed
     - `mypy` passed
 - Stable tie-breaking helper for selections implemented:
@@ -2240,17 +2547,20 @@
     - `.venv/bin/mkdocs build --strict` passed
 
 ## Invariants to Preserve
+
 - Deterministic inference tile selection under fixed config
 - Fixed `Kmax`-buffer shape contract for runtime compatibility
 - No Python-side dynamic control flow in future export graph path
 - CPU baseline must remain runnable at all times
 
 ## Open Risks
+
 - Tile-SSM is currently a placeholder scan, not final kernel-equivalent behavior
 - Detection/segmentation heads are minimal baseline stubs
 - Runtime plugins are currently specification-only, not implemented
 
 ## Immediate Next Steps
+
 1. Expand baseline heads to full DET + INST-SEG proto path per spec.
 2. Add explicit continuous-budget training loop example with dual `mu` update.
 3. Add deterministic quadtree `L1/L2` split implementation and tests.
@@ -2319,6 +2629,7 @@
 66. Add dataset/profile-specific perf baselines (e.g., quality/balanced/edge configs) and split tolerances by CPU model class for stricter regression gates.
 
 ## Latest Update (2026-02-08): Triton Fused Stage-1 Pipeline
+
 - Added a new practical fused Triton fast path module:
   - `apex_x/kernels/triton/fused_pack_op_unpack.py`
   - Implements `gather -> pointwise affine + ReGLU-like gate -> scatter` in one Triton kernel launch sequence.
@@ -2348,6 +2659,7 @@
     - `mkdocs.yml`
 
 ### Run Commands
+
 - Tests:
   - `python -m pytest -q tests/test_triton_fused_stage1_dispatch.py tests/test_triton_fused_stage1_gpu.py`
 - Microbenchmark:
@@ -2357,6 +2669,7 @@
   - `python -m mypy --cache-dir=/dev/null apex_x/kernels/triton/fused_pack_op_unpack.py apex_x/bench/triton_fused_stage1_bench.py`
 
 ### Remaining Work
+
 - Wire Stage-1 fused kernel into legacy runtime entrypoint:
   - `apex_x/runtime/triton_fused.py::gather_gate_scatter(...)`
 - Extend fused kernel beyond Stage-1 local transform:
@@ -2365,6 +2678,7 @@
 - Add GPU CI perf threshold gates for `speedup_separate_over_fused`.
 
 ## Latest Update (2026-02-08): Triton TileSSM Scan Baseline
+
 - Added Triton TileSSM scan module:
   - `apex_x/kernels/triton/tilessm_scan.py`
   - Forward-only recurrence scan over tokens `tokens[B,K,C]` with stable sanitization/clamping.
@@ -2401,6 +2715,7 @@
     - `mkdocs.yml`
 
 ### Run Commands
+
 - Tests:
   - `python -m pytest -q tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py tests/test_ff_heavy_path_tilessm_dispatch.py tests/test_ff_heavy_path.py`
 - Benchmark:
@@ -2412,6 +2727,7 @@
   - `.venv/bin/mkdocs build --strict`
 
 ### Validation Status
+
 - `ruff`: passed on changed TileSSM files.
 - `mypy`: passed on changed TileSSM files.
 - `pytest`: passed for new parity/integration tests (GPU tests auto-skipped on CPU-only environment).
@@ -2419,11 +2735,13 @@
 - docs build: passed with strict mode.
 
 ### Remaining Work
+
 - Add multi-direction scan execution mode in Triton TileSSM path (current kernel is forward-only baseline).
 - Add a fused TileSSM + tile-local refine path after this baseline.
 - Add GPU CI lane for TileSSM parity/perf thresholds when CUDA runners are available.
 
 ## Latest Update (2026-02-08): Triton TileSSM Multi-Direction
+
 - Extended `apex_x/kernels/triton/tilessm_scan.py` to support directional scanning:
   - `direction`: `forward`, `backward`, `bidirectional`
   - `merge_mode` for bidirectional: `sum`, `avg`, `gated`
@@ -2457,6 +2775,7 @@
   - `docs/runtime/TRITON.md`
 
 ### Run Commands
+
 - Tests:
   - `python -m pytest -q tests/test_triton_tilessm_parity_dispatch.py tests/test_triton_tilessm_parity_gpu.py tests/test_ff_heavy_path_tilessm_dispatch.py tests/test_ff_heavy_path.py`
 - Benchmark:
@@ -2468,6 +2787,7 @@
   - `.venv/bin/mkdocs build --strict`
 
 ### Validation Status
+
 - `ruff`: passed
 - `mypy`: passed
 - `pytest`: passed (GPU tests skipped on CPU-only environment)
@@ -2475,6 +2795,7 @@
 - docs build (`mkdocs --strict`): passed
 
 ## Latest Update (2026-02-08): TensorRT Build Hardening + Harness
+
 - Read runtime specs from:
   - `docs/runtime/PLUGIN_SPEC.md` (canonical)
   - `docs/runtime/TENSORRT.md`
@@ -2521,6 +2842,7 @@
   - `docs/runtime/TENSORRT.md`
 
 ### Exact Build Commands
+
 - Auto-detect build:
   - `cd runtime/tensorrt`
   - `cmake -S . -B build`
@@ -2541,17 +2863,20 @@
   - `./build/apexx_trt_plugin_harness`
 
 ### Environment Variables
+
 - `TENSORRT_ROOT`: TensorRT install root (optional)
 - `CUDA_HOME`: CUDA root (optional)
 - `CMAKE_PREFIX_PATH`: dependency discovery override (optional)
 - `APEXX_TRT_PLUGIN_LIB`: path to shared plugin library for harness runtime loading
 
 ### Validation Status
+
 - `mkdocs build --strict`: passed
 - `pytest tests/test_import_smoke.py`: passed
 - Local CMake configure/build execution could not be run in this environment because `cmake` binary is not installed (`command not found`).
 
 ## Latest Update (2026-02-08): TensorRT TilePack Plugin (Real Implementation)
+
 - Read and aligned implementation to:
   - `docs/runtime/PLUGIN_SPEC.md`
   - `docs/runtime/PLUGIN_SPECS.md` (alias page)
@@ -2597,6 +2922,7 @@
   - `docs/runtime/TENSORRT.md`
 
 ### Run Commands
+
 - Python-level checks:
   - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py`
 - TensorRT C++ build/test (when `cmake`, TensorRT, CUDA available):
@@ -2609,17 +2935,20 @@
   - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py`
 
 ### Validation Status
+
 - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py`:
   - passed
   - TRT parity test skipped on CPU-only environment (expected).
 - Local CMake build/test for TensorRT plugin could not be executed in this environment because `cmake` is unavailable.
 
 ### Remaining Work
+
 - Add INT8 support path for TilePack plugin (currently FP16-only).
 - Add stronger shape/stride guard coverage for dynamic-shape edge cases in C++ tests.
 - Add CI GPU lane for TensorRT plugin parity/perf once CUDA runners are available.
 
 ## Latest Update (2026-02-08): TensorRT TileUnpackFusion Plugin (Priority + Alpha)
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/runtime/PLUGIN_SPEC.md`
@@ -2667,6 +2996,7 @@
   - `docs/runtime/TENSORRT_BUILD.md`
 
 ### Run Commands
+
 - Python checks (CPU env will skip CUDA-dependent TRT tests):
   - `python -m ruff check tests/test_tensorrt_tileunpackfusion_parity.py`
   - `python -m pytest -q tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_import_smoke.py`
@@ -2680,6 +3010,7 @@
   - `python -m pytest -q tests/test_tensorrt_tileunpackfusion_parity.py`
 
 ### Validation Status
+
 - `ruff` on new parity test: passed.
 - `pytest` targeted run:
   - passed for non-TRT tests
@@ -2687,11 +3018,13 @@
 - Local TensorRT C++ compile/run for the new plugin was not executed here because `cmake` is unavailable in this environment.
 
 ### Remaining Work
+
 - Add native blend-mode merge path inside TensorRT plugin (currently overwrite + optional alpha fusion path).
 - Add stricter input-range safeguards for very large/negative `levels` to prevent key-overflow edge cases.
 - Add GPU CI lane that builds `apexx_trt_tileunpackfusion_test` and runs Python TRT parity.
 
 ## Latest Update (2026-02-08): TensorRT TileSSMScan Plugin (Forward + Backward Flag)
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/runtime/PLUGIN_SPEC.md`
@@ -2743,6 +3076,7 @@
   - `docs/runtime/TENSORRT_BUILD.md`
 
 ### Run Commands
+
 - Python checks (CPU env will skip CUDA-dependent TRT tests):
   - `python -m ruff check tests/test_tensorrt_tilessm_parity.py`
   - `python -m pytest -q tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_import_smoke.py`
@@ -2756,6 +3090,7 @@
   - `python -m pytest -q tests/test_tensorrt_tilessm_parity.py`
 
 ### Validation Status
+
 - `ruff` on new TRT TileSSM parity test: passed.
 - `pytest` targeted run:
   - passed for non-TRT tests
@@ -2763,11 +3098,13 @@
 - Local TensorRT C++ compile/run for new TileSSM plugin was not executed here because `cmake` is unavailable in this environment.
 
 ### Remaining Work
+
 - Add TensorRT-side multi-direction merge modes (`sum/avg/gated`) beyond single-direction plugin field.
 - Add broader dtype support (`fp32`/`bf16`) if needed for debugging and parity triage.
 - Add GPU CI lane that builds and runs `apexx_trt_tilessm_test` and Python TRT parity tests.
 
 ## Latest Update (2026-02-08): TensorRT Decode+NMS Plugin (DET Postprocessing In-Engine)
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/runtime/PLUGIN_SPEC.md`
@@ -2837,6 +3174,7 @@
     - `mkdocs.yml`
 
 ### Run Commands
+
 - Python checks (CPU env will skip CUDA/TRT tests):
   - `python -m ruff check tests/test_tensorrt_nms_decode_parity.py tests/test_tensorrt_tilepack_parity.py`
   - `python -m pytest -q tests/test_tensorrt_nms_decode_parity.py tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_det_decode_nms.py tests/test_import_smoke.py`
@@ -2850,6 +3188,7 @@
   - `python -m pytest -q tests/test_tensorrt_nms_decode_parity.py`
 
 ### Validation Status
+
 - `ruff` on changed TensorRT parity tests: passed.
 - `pytest` targeted suite:
   - passed for CPU-safe tests
@@ -2858,11 +3197,13 @@
 - Local TensorRT C++ compile/run for new Decode+NMS plugin was not executed here because `cmake` is unavailable in this environment.
 
 ### Remaining Work
+
 - Optional backend integration path to TensorRT EfficientNMS (when exact deterministic parity requirements are satisfied).
 - Performance optimization of CUDA kernel (current implementation prioritizes correctness/determinism over throughput).
 - GPU CI lane to compile/run `apexx_trt_nms_decode_test` and Python TRT decode+NMS parity tests.
 
 ## Latest Update (2026-02-08): TensorRT Python Engine Builder + INT8 Calibrator
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/ENGINEERING_SPEC.md`
@@ -2919,6 +3260,7 @@
     - INT8 tiny-network + calibration smoke build (skip with capability guards)
 
 ### Engine Build Commands
+
 - FP16 direct-network smoke:
   - `python -m pytest -q tests/test_tensorrt_builder_smoke.py -k fp16`
 - INT8 direct-network smoke:
@@ -2930,6 +3272,7 @@
     - calibration caches: `artifacts/trt/*.cache`
 
 ### Artifact Locations
+
 - Engine outputs:
   - path passed to `engine_path` (recommended: `artifacts/trt/`)
 - INT8 calibration cache:
@@ -2937,6 +3280,7 @@
   - recommended: `artifacts/trt/int8.cache`
 
 ### Validation Status
+
 - `ruff` on changed runtime TRT builder/calibrator files: passed.
 - `mypy` on changed runtime TRT builder/calibrator files: passed.
 - `pytest` targeted run:
@@ -2945,11 +3289,13 @@
 - `mkdocs build --strict` could not run in this environment because `mkdocs` is not installed.
 
 ### Remaining Work
+
 - Add CLI wrapper command for Python TRT builder workflow (currently programmatic API only).
 - Add ONNX custom-op placeholder integration example with concrete node/plugin mapping.
 - Add GPU CI lane executing TRT builder smoke tests with plugin library loading.
 
 ## Latest Update (2026-02-08): Unified GPU Benchmark Suite (Torch/Triton/TRT)
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/PRD.md`
@@ -2981,6 +3327,7 @@
   - `mkdocs.yml`
 
 ### Run Commands
+
 - Default fixed-profile GPU benchmark:
   - `python -m apex_x.bench.gpu_bench --output-json artifacts/perf_gpu.json --output-md artifacts/perf_gpu.md`
 - Faster smoke-like run:
@@ -2992,23 +3339,27 @@
   - `python -m apex_x.bench.gpu_bench --trt-engine-path artifacts/trt/apex_x.engine --trt-input-shape input=1x3x128x128`
 
 ### Artifact Locations
+
 - JSON report:
   - `artifacts/perf_gpu.json` (or `--output-json`)
 - Markdown summary:
   - `artifacts/perf_gpu.md` (or `--output-md`)
 
 ### Validation Status
+
 - Local run in this environment:
   - suite executes with capability guards
   - when CUDA is unavailable, output is `status=skipped` with explicit reason.
 - Static checks and mypy/test status are tracked per current session commands.
 
 ### Remaining Work
+
 - Add GPU CI lane to run `apex_x/bench/gpu_bench.py` on fixed CUDA runners and compare against a committed GPU baseline.
 - Add optional CSV/time-series exporter for long-run perf trend tracking.
 - Add explicit TRT engine profile presets for common deployed input signatures.
 
 ## Latest Update (2026-02-08): GPU Perf Regression CI Workflow + Baseline Compare
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/PRD.md`
@@ -3032,6 +3383,7 @@
   - updated docs nav in `docs/index.md` and `mkdocs.yml`
 
 ### Run Commands
+
 - Local GPU regression compare:
   - `python scripts/perf_regression_gpu.py --compare --baseline scripts/perf_baseline_gpu.json --output artifacts/perf_gpu_current_local.json --summary artifacts/perf_gpu_compare_local.json`
 - Regenerate baseline template on target GPU runner:
@@ -3040,6 +3392,7 @@
   - dispatch `GPU Perf Regression` with `run_mode=self-hosted-gpu`
 
 ### Artifact Locations
+
 - GPU current run report:
   - `artifacts/perf_gpu_current_ci.json`
 - GPU compare summary:
@@ -3048,6 +3401,7 @@
   - `perf-gpu-regression-artifacts`
 
 ### Validation Status
+
 - Local validation in this environment:
   - `python scripts/perf_regression_gpu.py --help`: passed
   - `python scripts/perf_regression_gpu.py --compare ...`: executed and failed as expected (`status=skipped` on CPU-only host)
@@ -3056,11 +3410,13 @@
   - `ruff check .github/workflows/perf_gpu.yml`: not applicable (YAML)
 
 ### Remaining Work
+
 - Calibrate `scripts/perf_baseline_gpu.json` on the real self-hosted GPU runner and tighten tolerances.
 - Add optional GPU matrix (per GPU class) with separate baselines when heterogeneous runners are used.
 - Add GPU docs build validation on the same self-hosted environment if needed.
 
 ## Latest Update (2026-02-08): Go Runtime Hardening (Loaders, Batching Metrics, Logging, Integration)
+
 - Read and aligned implementation to:
   - `docs/CONTEXT.md`
   - `docs/PRD.md`
@@ -3110,6 +3466,7 @@
     - `mkdocs.yml`
 
 ### Run Commands
+
 - Go unit + integration tests:
   - `cd runtime/go && go test ./...`
 - Go tests with TensorRT build tags and CGO:
@@ -3124,16 +3481,19 @@
   - `CGO_ENABLED=1 go run -tags tensorrt ./cmd/apexx-runtime -adapter tensorrt -engine-path models/apex-x.plan`
 
 ### Validation Status
+
 - `go test ./...`: passed
 - `CGO_ENABLED=1 go test -tags tensorrt ./...`: passed
 - YAML parse check for docs nav (`mkdocs.yml`): passed
 
 ### Remaining Work
+
 - Replace TensorRT adapter mock inference path with actual engine execution and tensor bindings.
 - Add optional native OpenTelemetry implementation module (tracer/meter exporters) wired to current telemetry hooks.
 - Add TLS/auth/rate-limit hardening around external-facing runtime service deployments.
 
 ## Update Protocol (Every Significant Change)
+
 - Update this file with:
   - what changed
   - why it changed

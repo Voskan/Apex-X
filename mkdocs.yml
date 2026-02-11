@@ -1,36 +1,81 @@
-site_name: Apex-X Docs
-site_description: Apex-X v4 engineering and runtime documentation
+site_name: Apex-X
+site_description: Universal Vision Dynamic Compute Graph
 site_url: https://example.com/apex-x
 repo_name: apex-x
 repo_url: https://example.com/apex-x
 
 theme:
-  name: mkdocs
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
 
 nav:
   - Home: index.md
-  - PRD: PRD.md
-  - Engineering Spec: ENGINEERING_SPEC.md
-  - QAT Policy: QAT.md
-  - FP8 Policy: FP8.md
-  - Performance Regression: PERF.md
-  - GPU Performance Benchmark: PERF_GPU.md
-  - GPU CI Setup: CI_GPU.md
-  - Runtime Plugin Spec: runtime/PLUGIN_SPEC.md
-  - Runtime Plugin Specs Alias: runtime/PLUGIN_SPECS.md
-  - Runtime Capability Detection: runtime/CAPS.md
-  - Runtime Parity Framework: runtime/PARITY.md
-  - TensorRT Runtime Notes: runtime/TENSORRT.md
-  - TensorRT Build Guide: runtime/TENSORRT_BUILD.md
-  - TensorRT INT8 Builder: runtime/TENSORRT_INT8.md
-  - TensorRT Postprocessing: runtime/TENSORRT_POST.md
-  - Go Runtime Service: runtime/GO_SERVICE.md
-  - Triton Runtime Notes: runtime/TRITON.md
-  - Triton TilePack: runtime/TRITON_TILEPACK.md
-  - Triton TileUnpack: runtime/TRITON_TILEUNPACK.md
-  - Triton FusionGate: runtime/TRITON_FUSION.md
-  - Triton TileSSM Scan: runtime/TRITON_SSM.md
-  - Triton Fused Stage-1: runtime/TRITON_FUSED_STAGE1.md
-  - Context: CONTEXT.md
-  - Decisions: DECISIONS.md
-  - TODO: TODO.md
+  - Overview:
+    - Benchmarks: benchmarks.md
+    - Algorithms: algorithms.md
+    - Context: CONTEXT.md
+    - Decisions: DECISIONS.md
+  - Specs:
+    - PRD: PRD.md
+    - Engineering Spec: ENGINEERING_SPEC.md
+    - QAT Policy: QAT.md
+    - FP8 Policy: FP8.md
+  - Performance:
+    - Regression: PERF.md
+    - GPU Bench: PERF_GPU.md
+    - GPU CI: CI_GPU.md
+  - Runtime:
+    - Plugin Spec: runtime/PLUGIN_SPEC.md
+    - Capabilities: runtime/CAPS.md
+    - TensorRT:
+      - Overview: runtime/TENSORRT.md
+      - Building: runtime/TENSORRT_BUILD.md
+      - INT8: runtime/TENSORRT_INT8.md
+      - Postprocessing: runtime/TENSORRT_POST.md
+    - Go Service: runtime/GO_SERVICE.md
+    - Triton:
+      - Overview: runtime/TRITON.md
+      - TilePack: runtime/TRITON_TILEPACK.md
+      - TileUnpack: runtime/TRITON_TILEUNPACK.md
+      - Fusion: runtime/TRITON_FUSION.md
+      - SSM: runtime/TRITON_SSM.md
+      - Stage 1: runtime/TRITON_FUSED_STAGE1.md
+  - Release:
+    - Checklist: release/CHECKLIST.md
+    - Migration: release/MIGRATION.md
+  - Activity:
+    - TODO: TODO.md

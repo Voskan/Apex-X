@@ -6,8 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
+)
+
+var (
+	ErrQueueFull      = errors.New("request queue is full")
+	ErrBatcherStopped = errors.New("batcher is stopped")
 )
 
 type batchItem struct {
@@ -96,11 +102,17 @@ func (b *Batcher) Submit(ctx context.Context, req PredictRequest) (PredictRespon
 	}
 
 	select {
-	case b.queue <- item:
 	case <-ctx.Done():
 		return PredictResponse{}, ctx.Err()
 	case <-b.stop:
-		return PredictResponse{}, errors.New("batcher is stopped")
+		return PredictResponse{}, ErrBatcherStopped
+	default:
+	}
+
+	select {
+	case b.queue <- item:
+	default:
+		return PredictResponse{}, ErrQueueFull
 	}
 
 	select {
@@ -109,7 +121,7 @@ func (b *Batcher) Submit(ctx context.Context, req PredictRequest) (PredictRespon
 	case <-ctx.Done():
 		return PredictResponse{}, ctx.Err()
 	case <-b.stop:
-		return PredictResponse{}, errors.New("batcher is stopped")
+		return PredictResponse{}, ErrBatcherStopped
 	}
 }
 
@@ -133,7 +145,7 @@ collectLoop:
 	for len(batch) < b.cfg.MaxBatchSize {
 		select {
 		case <-b.stop:
-			b.failAll(batch, errors.New("batcher is stopped"))
+			b.failAll(batch, ErrBatcherStopped)
 			return
 		case next := <-b.queue:
 			batch = append(batch, next)
@@ -206,7 +218,39 @@ collectLoop:
 		"inference_ms", inferenceTime.Seconds()*1000.0,
 	)
 	for idx := range batch {
-		batch[idx].result <- batchResult{response: responses[idx]}
+		queueWait := batchStart.Sub(batch[idx].enqueued)
+		if queueWait < 0 {
+			queueWait = 0
+		}
+		response := responses[idx]
+		req := batch[idx].req
+		executionBackend := strings.TrimSpace(response.Backend)
+		if executionBackend == "" {
+			executionBackend = b.adapter.Name()
+			response.Backend = executionBackend
+		}
+		if strings.TrimSpace(response.BudgetProfile) == "" {
+			profile, profileErr := normalizeBudgetProfile(req.BudgetProfile, BudgetProfileBalanced)
+			if profileErr != nil {
+				profile = BudgetProfileBalanced
+			}
+			response.BudgetProfile = profile
+		}
+		response.Runtime = RuntimeMetadata{
+			RequestedBackend:        requestedBackendFromMetadata(req, executionBackend),
+			SelectedBackend:         executionBackend,
+			ExecutionBackend:        executionBackend,
+			FallbackPolicy:          fallbackPolicyFromMetadata(req),
+			PrecisionProfile:        precisionProfileForBudget(response.BudgetProfile),
+			SelectionFallbackReason: optionalMetadataValue(req, "selection_fallback_reason"),
+			ExecutionFallbackReason: optionalMetadataValue(req, "execution_fallback_reason"),
+			LatencyMS: RuntimeLatencyMillis{
+				Total:            durationMillis(queueWait + inferenceTime),
+				BackendExecute:   durationMillis(inferenceTime),
+				BackendPreflight: durationMillis(queueWait),
+			},
+		}
+		batch[idx].result <- batchResult{response: response}
 	}
 }
 
@@ -214,4 +258,54 @@ func (b *Batcher) failAll(batch []batchItem, err error) {
 	for _, item := range batch {
 		item.result <- batchResult{err: err}
 	}
+}
+
+func durationMillis(value time.Duration) float64 {
+	if value < 0 {
+		return 0.0
+	}
+	return float64(value) / float64(time.Millisecond)
+}
+
+func metadataValue(req PredictRequest, key string) string {
+	if req.Metadata == nil {
+		return ""
+	}
+	return strings.TrimSpace(req.Metadata[key])
+}
+
+func optionalMetadataValue(req PredictRequest, key string) *string {
+	value := metadataValue(req, key)
+	if value == "" || strings.EqualFold(value, "none") {
+		return nil
+	}
+	cleaned := value
+	return &cleaned
+}
+
+func requestedBackendFromMetadata(req PredictRequest, executionBackend string) string {
+	requested := metadataValue(req, "requested_backend")
+	if requested == "" {
+		requested = metadataValue(req, "backend")
+	}
+	if requested == "" {
+		return strings.ToLower(strings.TrimSpace(executionBackend))
+	}
+	return strings.ToLower(requested)
+}
+
+func fallbackPolicyFromMetadata(req PredictRequest) string {
+	policy := strings.ToLower(metadataValue(req, "fallback_policy"))
+	if policy == "strict" || policy == "permissive" {
+		return policy
+	}
+	return "strict"
+}
+
+func precisionProfileForBudget(profile string) string {
+	normalized := strings.ToLower(strings.TrimSpace(profile))
+	if _, ok := budgetProfiles[normalized]; ok {
+		return normalized
+	}
+	return BudgetProfileBalanced
 }

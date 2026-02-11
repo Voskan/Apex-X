@@ -61,7 +61,10 @@ Current integration:
 - kernel is still forward recurrence only; backward and bidirectional are built from directional composition
 - no custom backward kernel (training path remains torch/reference)
 - compile specialization by `K` (sequence length)
-- conservative cap in Triton path: `K <= 4096`
+- long-sequence policy:
+  - Triton forward scan uses chunked launches when `K > 4096`
+  - chunk state is streamed between launches (`final_state` -> next chunk `init_state`)
+  - preserves directional semantics while avoiding oversized single-launch specialization
 
 ## Tests
 - `tests/test_triton_tilessm_parity_dispatch.py`
@@ -73,6 +76,7 @@ Coverage:
 - parity for backward and bidirectional merge modes (`sum/avg/gated`)
 - deterministic CPU fallback behavior
 - autograd-safe fallback in inference-only mode
+- long-sequence chunking contract for Triton forward helper
 - integration check: eval uses dispatch; train uses torch path
 
 ## Benchmark

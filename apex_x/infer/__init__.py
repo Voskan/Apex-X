@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from .detection import (
     DetectionBatch,
     DetectionCandidates,
@@ -21,6 +19,17 @@ from .eval_metrics import (
 )
 from .panoptic import PanopticOutput, PanopticSegmentInfo, generate_panoptic_output
 from .pq_eval import OfficialPQPaths, PQClassMetrics, PQMetrics, evaluate_panoptic_quality
+from .runner import (
+    EvalDataset,
+    InferenceRunResult,
+    ModelDatasetEvalSummary,
+    RuntimeMetadata,
+    evaluate_model_dataset,
+    extract_routing_diagnostics,
+    load_eval_dataset_npz,
+    load_eval_images_npz,
+    run_model_inference,
+)
 from .tracking import (
     AssociationProtocol,
     AssociationResult,
@@ -32,14 +41,7 @@ from .tracking import (
     hungarian_assignment,
 )
 
-
-def infer_placeholder(model_output: dict[str, Any] | None = None) -> dict[str, Any]:
-    if model_output is None:
-        return {}
-    diagnostics = model_output.get("routing_diagnostics", {})
-    if not isinstance(diagnostics, dict):
-        return {}
-    return diagnostics
+infer_placeholder = extract_routing_diagnostics
 
 
 __all__ = [
@@ -61,6 +63,15 @@ __all__ = [
     "PQMetrics",
     "OfficialPQPaths",
     "evaluate_panoptic_quality",
+    "RuntimeMetadata",
+    "InferenceRunResult",
+    "ModelDatasetEvalSummary",
+    "EvalDataset",
+    "extract_routing_diagnostics",
+    "run_model_inference",
+    "load_eval_dataset_npz",
+    "load_eval_images_npz",
+    "evaluate_model_dataset",
     "TrackState",
     "AssociationResult",
     "AssociationProtocol",

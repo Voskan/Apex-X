@@ -24,10 +24,10 @@ def test_detect_tensorrt_caps_import_failure(
     caps = caps_module.detect_tensorrt_caps(cuda=cuda, header_search_paths=[tmp_path])
 
     assert caps.python_available is False
-    assert caps.python_reason == "tensorrt_python_import_failed"
+    assert caps.python_reason == caps_module.TENSORRT_PYTHON_REASON_IMPORT_FAILED
     assert caps.headers_available is False
     assert caps.int8_available is False
-    assert caps.int8_reason == "tensorrt_python_unavailable"
+    assert caps.int8_reason == caps_module.TENSORRT_INT8_REASON_PYTHON_UNAVAILABLE
 
 
 def test_detect_fp8_caps_below_sm90(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,7 +43,7 @@ def test_detect_fp8_caps_below_sm90(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert caps.available is False
     assert caps.dtype_available is True
-    assert caps.reason == "compute_capability_8_9_below_sm90"
+    assert caps.reason == caps_module.FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90
 
 
 def test_detect_tensorrt_headers_found(tmp_path: Path) -> None:
@@ -63,4 +63,7 @@ def test_detect_tensorrt_headers_found(tmp_path: Path) -> None:
     assert caps.headers_available is True
     assert caps.header_path is not None
     assert caps.int8_available is False
-    assert caps.int8_reason in {"tensorrt_python_unavailable", "cuda_required_for_tensorrt_int8"}
+    assert caps.int8_reason in {
+        caps_module.TENSORRT_INT8_REASON_PYTHON_UNAVAILABLE,
+        caps_module.TENSORRT_INT8_REASON_CUDA_REQUIRED,
+    }

@@ -7,6 +7,12 @@ from typing import Any, Literal
 import torch
 from torch import Tensor
 
+from .autotune_registry import (
+    build_shape_bucket,
+    get_cached_triton_config,
+    record_triton_autotune_selection,
+    resolve_triton_launch_config,
+)
 from .tilepack import TorchTileMeta, tilepack_reference
 from .tileunpack import tileunpack_reference
 
@@ -139,6 +145,14 @@ def apply_pointwise_affine_reglu(
     value = tensor * float(value_scale) + float(value_bias)
     gate = tensor * float(gate_scale) + float(gate_bias)
     return value * torch.relu(gate)
+
+
+def _fused_stage1_block_heuristic(tile_pixels: int) -> int:
+    if tile_pixels <= 64:
+        return 64
+    if tile_pixels <= 128:
+        return 128
+    return 256
 
 
 def separate_pack_op_unpack_reference(
@@ -288,6 +302,26 @@ def fused_pack_op_unpack_triton(
     grid_w = width // tile_size
     tile_pixels = tile_size * tile_size
     pix_blocks = triton.cdiv(tile_pixels, 256)
+    shape_bucket = build_shape_bucket(
+        batch=batch,
+        channels=channels,
+        height=height,
+        width=width,
+        kmax=kmax,
+        tile_size=tile_size,
+        dtype=str(feature_contig.dtype).replace("torch.", ""),
+    )
+
+    selected_config = get_cached_triton_config(
+        op_name="fused_pack_op_unpack",
+        shape_bucket=shape_bucket,
+    )
+    selection_source = "registry_cache"
+    if selected_config is None:
+        selected_config, selection_source = resolve_triton_launch_config(
+            kernel=_fused_pack_op_unpack_kernel,
+            fallback_config={"BLOCK_PIX": _fused_stage1_block_heuristic(tile_pixels)},
+        )
 
     grid = (batch * kmax, channels, pix_blocks)
     _fused_pack_op_unpack_kernel[grid](
@@ -306,6 +340,13 @@ def fused_pack_op_unpack_triton(
         tile_size,
         grid_w,
         tile_pixels,
+    )
+    record_triton_autotune_selection(
+        op_name="fused_pack_op_unpack",
+        kernel_name="_fused_pack_op_unpack_kernel",
+        shape_bucket=shape_bucket,
+        selected_config=selected_config,
+        selection_source=selection_source,
     )
     out = out.contiguous()
     meta = _build_meta(idx_i32, tile_size, height, width)

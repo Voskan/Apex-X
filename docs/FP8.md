@@ -34,6 +34,9 @@ Policy object (`PrecisionPolicy`) exposes:
 - `fp8_enabled`
 - `fallback_reason`
 
+Fallback reasons are canonical reason-codes aligned with runtime capability catalog
+(for example `fp8_requires_cuda`, `compute_capability_below_sm90`).
+
 ## Trainer Integration
 `ApexXTrainer` resolves precision policy at init and reports it in:
 - `train_summary["precision"]`
@@ -53,3 +56,20 @@ Covered by `tests/test_precision_policy.py`:
 - CPU fallback smoke
 - mocked supported CUDA FP8 path
 - trainer summary precision diagnostics
+- fallback reason-code catalog compliance
+
+Covered by `tests/test_gpu_bench_fp8.py`:
+- GPU bench FP8 request telemetry on non-CUDA hosts
+- Markdown summary visibility of FP8 fallback/enabled state
+
+## GPU Benchmark Notes
+`apex_x.bench.gpu_bench` now accepts `--dtype fp8`.
+
+Report telemetry includes:
+- `requested_dtype`
+- `effective_dtype`
+- `fp8_requested`
+- `fp8_enabled`
+- `fp8_fallback_reason`
+
+On hosts without FP8 capability, benchmark falls back to FP16 and records fallback reason.

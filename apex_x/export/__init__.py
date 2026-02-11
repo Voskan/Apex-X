@@ -1,4 +1,4 @@
 from .interfaces import Exporter
-from .noop import NoopExporter
+from .pipeline import ApexXExporter, NoopExporter, ShapeMode
 
-__all__ = ["Exporter", "NoopExporter"]
+__all__ = ["Exporter", "ShapeMode", "ApexXExporter", "NoopExporter"]

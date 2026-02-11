@@ -71,6 +71,11 @@ L = L_{main} + \mu(\mathbb{E}[C] - B),\quad \mu \ge 0
 Dual update concept:
 - if `E[C] > B`, increase `mu`
 - if `E[C] < B`, decrease `mu`
+- if adaptive schedule is enabled, effective update rate must be:
+  - step-decayed
+  - scaled by EMA of normalized budget error
+  - bounded by configured min/max scale
+- optional deadband near target and delta clipping must be supported to avoid oscillation.
 
 ### FR-5 Deterministic Inference Budgeting
 System shall select FF tiles deterministically by utility-per-cost:
@@ -82,11 +87,13 @@ sorted descending with selection until budget or `Kmax` is reached.
 ### FR-6 Quadtree Nesting
 System shall support two-level and optional three-level nesting:
 - `L0` under budget `B1`
-- `L1/L2` split under budget `B2`
+- `L1` split under budget `B2`
+- optional `L2` split under budget `B3`
 Split score:
 \[
 score^{split}_i = \frac{S_i}{O_{split}}
 \]
+Split parent ordering must be deterministic (score desc, tile-id asc tie-break).
 
 ### FR-7 Tile Tensor Contracts
 System shall support deterministic tile gather/scatter:
@@ -108,6 +115,14 @@ z_i(t)=\mathbf{1}[U_i(t)>\theta_{on}\;\lor\;(U_i(t)>\theta_{off}\land z_i(t-1)=1
 \]
 with `theta_on > theta_off`.
 
+For deployment routing, system shall support budget-aware hysteresis carryover:
+- temporal state reuse must not violate per-frame active-tile budget
+- when clipping is required, selection must be deterministic
+
+Temporal quality reporting shall include:
+- tile flip rate
+- temporal consistency (`1 - flip_rate`)
+
 ### FR-11 Runtime Plugin Contracts
 System shall define plugin interfaces for TensorRT/ORT:
 - `TilePack`
@@ -115,16 +130,76 @@ System shall define plugin interfaces for TensorRT/ORT:
 - `TileUnpackFusion`
 - optional `MaskedConv`
 - fused `DecodeNMS`
+TensorRT build path shall validate plugin creator contract metadata at build time:
+- presence
+- version
+- namespace
+- expected plugin field signature
 
 ### FR-12 QAT/Precision Policy
 System shall define deployment profiles:
 - Quality: FP16-heavy
 - Balanced: FP16/FP8 mixed
 - Edge: INT8 (router FP16)
+For INT8 deployment builds, sensitive routing layers (router/KAN-like) must be enforced to FP16
+and reported in per-layer precision diagnostics.
+For INT8 calibration-cache reuse, cache governance must be deterministic and bind to:
+- model/export identity hash
+- plugin version/namespace contract metadata
+- precision profile
+- calibration dataset version (explicit version or deterministic dataset digest)
 INT4 allowed only with guaranteed kernels and quality gate.
 
 ### FR-13 Perf Regression Requirements
 System shall include repeatable latency and memory regressions with thresholds and fail criteria.
+System shall apply one regression compare formula across CPU, GPU, and TensorRT shape-sweep reports.
+System shall include backend parity sweep harnesses that validate:
+- reference vs triton
+- reference vs tensorrt
+- triton vs tensorrt
+across representative shape and precision cases under profile-specific tolerances.
+System shall support optional dataset-level target regression diagnostics in eval reports
+when benchmark/eval datasets provide explicit scalar targets
+(`det_score_target`, `selected_tiles_target`).
+
+### FR-14 Runtime Capability Transparency Contract
+System shall expose deterministic runtime capability diagnostics for backend selection:
+- canonical capability matrix for `cpu`, `torch_cuda`, `triton`, `tensorrt`
+- required vs optional capabilities per backend
+- stable reason-code catalog for non-available paths
+- strict vs permissive fallback behavior described in runtime docs
+- runtime report fields include:
+  - `requested_backend`
+  - `selected_backend`
+  - `execution_backend`
+  - `selection_fallback_reason`
+  - `execution_fallback_reason`
+  - `requested_dtype`
+  - `effective_dtype`
+  - `fp8_requested`
+  - `fp8_enabled`
+  - `fp8_fallback_reason`
+  - `latency_ms.total`
+  - `latency_ms.backend_execute`
+  - `latency_ms.backend_preflight`
+These runtime telemetry fields must be exposed consistently in CLI reports and service API responses.
+Service runtime shall classify overload/timeout failures deterministically:
+- queue saturation -> HTTP `429`
+- predict timeout -> HTTP `504`
+Service runtime shall classify backend execution failures deterministically:
+- backend unavailable -> HTTP `503`
+- backend inference/protocol failures -> HTTP `502`
+Service runtime shall support optional canary shadow-compare mode with mismatch telemetry counters.
+Canary payload capture (when enabled) shall use explicit policy modes (`off|mismatch|error|all`)
+and bounded storage settings.
+Triton TileSSM runtime path shall support long-sequence execution using chunked scan launches
+with deterministic recurrent state carry-over between chunks.
+Triton TileUnpack dispatch shall support both overlap modes (`override`, `blend`) without
+hardcoded forced reference fallback branches when accelerated path is selected.
+Stage-1 Triton fused route in FF heavy-path inference shall be compatibility-gated and must
+fall back deterministically to decomposed path when compatibility predicates are not satisfied.
+Triton GPU benchmark reporting shall expose per-op shape-bucket autotune telemetry with cached
+selected launch configuration metadata and cache hit/miss counters.
 
 ## 6. Non-Functional Requirements
 - Determinism: same input + same config -> same active tile set
@@ -136,12 +211,15 @@ System shall include repeatable latency and memory regressions with thresholds a
 ### 7.1 Utility Oracle Labeling
 ```text
 for each minibatch:
-  sample oracle tile subset S (random + high teacher uncertainty)
+  sample oracle tile subset S (random + high teacher uncertainty + long-tail)
   for i in S:
     y0 = forward_with_tile(i, enabled=0)
     y1 = forward_with_tile(i, enabled=1)
     Delta_i = L_distill(y0, y_teacher) - L_distill(y1, y_teacher)
+    Delta_i = clamp(Delta_i, -tau, tau)
   train router utility head to predict Delta_i (L1 or ranking loss)
+  log oracle diagnostics:
+    sample composition + delta distribution + clipping ratio
 ```
 
 ### 7.2 Continuous Budget Training
@@ -154,7 +232,14 @@ L_main = task_losses(y, target)
 E_cost = sum_i(p_i * C_h + (1-p_i) * C_c)
 L = L_main + mu * (E_cost - B)
 backprop(L)
-mu = max(0, mu + eta_mu * (E_cost - B))
+e = (E_cost - B) / B
+ema_e = beta*ema_e + (1-beta)*e
+eta_eff = (eta_mu / (1 + decay*step)) * clip(1 + abs(ema_e), lr_min, lr_max)
+delta = eta_eff * (E_cost - B)
+if abs(e) <= deadband_ratio:
+  delta = 0
+delta = clip(delta, -delta_clip, delta_clip)  # optional
+mu = clip(mu + delta, mu_min, mu_max)
 ```
 
 ### 7.3 Deterministic Inference Budgeting
@@ -204,6 +289,9 @@ F_merged = TileUnpackFusion(F_base, P_mix, meta, gate)
 - DET: focal/quality focal + IoU-family box loss (optional DFL)
 - INST-SEG: BCE + Dice + boundary loss
 - Multi-task conflict handling: PCGrad++ on shared trunk only
+- PCGrad++ diagnostics must report conflict metrics before/after projection:
+  - `conflicting_pairs`, `conflicting_pairs_after`
+  - `total_pairs`, `conflict_rate_before`, `conflict_rate_after`
 
 PCGrad projection when cosine similarity < 0:
 \[
@@ -218,6 +306,9 @@ Release is accepted only if all are true:
 - CPU baseline runs via `examples/run_cpu_baseline.py`
 - CI passes lint and tests
 - runtime plugin contracts and precision profiles are documented
+- runtime capability matrix and reason-code contract are documented and test-backed
+- parity tolerance profiles (`quality`, `balanced`, `edge`) are documented and test-backed
+- PCGrad++ projection is restricted to shared-trunk params and conflict-rate metrics are visible in training reports
 
 ## 11. Dependencies and Interfaces
 - reference implementation: Python + NumPy (CPU-only baseline)

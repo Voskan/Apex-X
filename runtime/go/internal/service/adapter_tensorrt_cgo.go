@@ -77,15 +77,17 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"unsafe"
 )
 
 type TensorRTAdapter struct {
-	enginePath string
-	engineSize int64
-	handle     *C.apexx_trt_engine_handle_t
-	closeOnce  sync.Once
+	enginePath    string
+	engineSize    int64
+	handle        *C.apexx_trt_engine_handle_t
+	closeOnce     sync.Once
+	bridgeCommand []string
 }
 
 func NewTensorRTAdapter(enginePath string) (InferenceAdapter, error) {
@@ -117,11 +119,17 @@ func NewTensorRTAdapter(enginePath string) (InferenceAdapter, error) {
 	if handle == nil {
 		return nil, fmt.Errorf("failed to load TensorRT engine: nil handle")
 	}
+	bridgeCommand, bridgeErr := parseBridgeCommand(os.Getenv("APEXX_TRT_BRIDGE_CMD"))
+	if bridgeErr != nil {
+		C.apexx_trt_engine_free(handle)
+		return nil, fmt.Errorf("invalid APEXX_TRT_BRIDGE_CMD: %w", bridgeErr)
+	}
 
 	return &TensorRTAdapter{
-		enginePath: resolvedPath,
-		engineSize: int64(C.apexx_trt_engine_size(handle)),
-		handle:     handle,
+		enginePath:    resolvedPath,
+		engineSize:    int64(C.apexx_trt_engine_size(handle)),
+		handle:        handle,
+		bridgeCommand: bridgeCommand,
 	}, nil
 }
 
@@ -136,24 +144,26 @@ func (a *TensorRTAdapter) PredictBatch(
 	if a.handle == nil {
 		return nil, fmt.Errorf("TensorRT adapter is closed")
 	}
-	out := make([]PredictResponse, len(reqs))
-	for idx, req := range reqs {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		profile, err := normalizeBudgetProfile(req.BudgetProfile, BudgetProfileBalanced)
-		if err != nil {
-			return nil, err
-		}
-		out[idx] = PredictResponse{
-			RequestID:     req.RequestID,
-			BudgetProfile: profile,
-			SelectedTiles: selectedTilesForProfile(profile),
-			Scores:        []float32{mean(req.Input)},
-			Backend:       a.Name(),
-		}
+	if len(a.bridgeCommand) == 0 {
+		return nil, fmt.Errorf(
+			"%w: tensorrt bridge command is not configured; set APEXX_TRT_BRIDGE_CMD",
+			ErrBackendUnavailable,
+		)
 	}
-	return out, nil
+	bridgeResponses, bridgeErr := runBridgePredictBatch(
+		ctx,
+		a.bridgeCommand,
+		bridgePredictRequest{
+			Backend:      "tensorrt",
+			ArtifactPath: a.enginePath,
+			Requests:     reqs,
+		},
+		a.Name(),
+	)
+	if bridgeErr != nil {
+		return nil, fmt.Errorf("tensorrt bridge predict failed: %w", bridgeErr)
+	}
+	return bridgeResponses, nil
 }
 
 func (a *TensorRTAdapter) Close() error {

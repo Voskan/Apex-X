@@ -118,3 +118,61 @@ def test_triton_tileunpack_overlap_priority_parity_fp16(
         tolerances=ToleranceConfig(),
     )
     assert report.passed is True
+
+
+def test_triton_tileunpack_overlap_blend_parity_fp16() -> None:
+    availability = get_triton_tileunpack_availability()
+    if not availability.available:
+        pytest.skip(f"Triton tileunpack unavailable: {availability.reason}")
+
+    seed_all(229, deterministic=True)
+    shape = (1, 16, 64, 64)
+    batch, channels, height, width = shape
+    tile_size = 8
+    kmax = 10
+    blend_alpha = 0.25
+
+    base = torch.randn(shape, dtype=torch.float16, device="cuda").contiguous()
+    packed = torch.randn(
+        (batch, kmax, channels, tile_size, tile_size),
+        dtype=torch.float16,
+        device="cuda",
+    )
+    meta, levels = _build_overlap_meta(
+        batch=batch,
+        kmax=kmax,
+        height=height,
+        width=width,
+        tile_size=tile_size,
+        device=base.device,
+    )
+
+    ref = tileunpack_dispatch(
+        base_map=base,
+        packed_out=packed,
+        meta=meta,
+        levels=levels,
+        overlap_mode="blend",
+        blend_alpha=blend_alpha,
+        prefer_triton=False,
+    )
+    tri = tileunpack_dispatch(
+        base_map=base,
+        packed_out=packed,
+        meta=meta,
+        levels=levels,
+        overlap_mode="blend",
+        blend_alpha=blend_alpha,
+        prefer_triton=True,
+        allow_fallback=False,
+    )
+    assert tri.backend == "triton"
+    report = evaluate_parity_outputs(
+        case_name="tileunpack-overlap-blend-fp16",
+        reference_backend="reference",
+        candidate_backend="triton",
+        reference_output=ref.merged,
+        candidate_output=tri.merged,
+        tolerances=ToleranceConfig(),
+    )
+    assert report.passed is True

@@ -16,6 +16,8 @@ The builder supports:
 - `TensorRTEngineBuildConfig`
 - `TensorRTEntropyCalibrator`
 - `CalibratorConfig`
+- `build_calibration_cache_key(...)`
+- `build_calibration_dataset_digest(...)`
 
 ## Plugin Registration
 Builder checks plugin registry for:
@@ -97,6 +99,7 @@ result = builder.build_from_network(
         enable_fp16=True,
         enable_int8=True,
         calibration_cache_path=Path("artifacts/trt/int8.cache"),
+        calibration_dataset_version="calib-v2026-02-11",
         strict_plugin_check=False,
         expected_plugins=(),
     ),
@@ -112,19 +115,46 @@ Per Apex-X spec, numerically sensitive routing components stay FP16 in INT8 buil
 Builder behavior:
 - when `enable_int8=True`, builder applies FP16 precision constraints to layers whose names
   match `router_fp16_layer_keywords` (default: `("router", "kan")`).
+- `strict_precision_constraints=True` (default) fails build when a matched layer does not expose
+  TensorRT precision/output-type APIs required to enforce FP16 constraints.
 
 This keeps router and gating logic in FP16 while heavy tensor paths can use INT8.
 
-## Calibration Cache
-`TensorRTEntropyCalibrator`:
-- reads cache from `calibration_cache_path` when present
-- writes generated cache after calibration
+Per-layer enforcement evidence is returned in build result:
+- `EngineBuildResult.layer_precision_status`
+  - `layer_name`
+  - `matched_keyword`
+  - `precision_applied`
+  - `output_constraints_applied`
 
-Artifacts:
-- engine file: user-selected path
-- cache file: `calibration_cache_path`
+## Calibration Cache Governance
+For `enable_int8=True` with `calibration_cache_path`:
+- cache reuse is guarded by a deterministic cache key.
+- default key contract binds to:
+  - ONNX model hash (or network-definition signature)
+  - plugin registry contract metadata (name/version/namespace)
+  - precision profile
+  - calibration dataset version
 
-Recommended location:
+Dataset version source:
+- explicit:
+  - `TensorRTEngineBuildConfig.calibration_dataset_version`
+- automatic fallback:
+  - `build_calibration_dataset_digest(calibration_batches)`
+
+Calibrator cache behavior:
+- when key governance is enabled:
+  - calibrator stores cache as structured blob with metadata header (`cache_key`).
+  - stale or mismatched keys are invalidated automatically (cache ignored).
+- when key governance is disabled:
+  - legacy raw cache blobs are accepted for backward compatibility.
+
+Build result evidence:
+- `EngineBuildResult.calibration_cache_key`
+- `EngineBuildResult.calibration_dataset_version`
+- `EngineBuildResult.calibration_cache_path`
+
+Recommended artifact location:
 - `artifacts/trt/`
 
 ## Capability Guards

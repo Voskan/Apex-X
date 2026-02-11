@@ -26,8 +26,20 @@ class BudgetDualController:
     mu_lr: float = 0.01
     mu_min: float = 0.0
     mu_max: float = 10.0
+    adaptive_lr: bool = False
+    lr_decay: float = 0.0
+    delta_clip: float | None = None
+    deadband_ratio: float = 0.0
+    error_ema_beta: float = 0.9
+    adaptive_lr_min_scale: float = 0.5
+    adaptive_lr_max_scale: float = 3.0
     logger_name: str = "routing.dual"
     mu: float = field(init=False)
+    update_count: int = field(init=False, default=0)
+    error_ema: float = field(init=False, default=0.0)
+    last_effective_lr: float = field(init=False, default=0.0)
+    last_raw_delta: float = field(init=False, default=0.0)
+    last_applied_delta: float = field(init=False, default=0.0)
     _logger: Logger = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -41,8 +53,26 @@ class BudgetDualController:
             raise ValueError("mu_max must be finite and >= mu_min")
         if not math.isfinite(self.mu_init) or not (self.mu_min <= self.mu_init <= self.mu_max):
             raise ValueError("mu_init must be finite and within [mu_min, mu_max]")
+        if not math.isfinite(self.lr_decay) or self.lr_decay < 0.0:
+            raise ValueError("lr_decay must be finite and >= 0")
+        if self.delta_clip is not None and (
+            not math.isfinite(self.delta_clip) or self.delta_clip <= 0.0
+        ):
+            raise ValueError("delta_clip must be finite and > 0 when provided")
+        if not math.isfinite(self.deadband_ratio) or not (0.0 <= self.deadband_ratio < 1.0):
+            raise ValueError("deadband_ratio must be finite and in [0, 1)")
+        if not math.isfinite(self.error_ema_beta) or not (0.0 <= self.error_ema_beta < 1.0):
+            raise ValueError("error_ema_beta must be finite and in [0, 1)")
+        if not math.isfinite(self.adaptive_lr_min_scale) or self.adaptive_lr_min_scale <= 0.0:
+            raise ValueError("adaptive_lr_min_scale must be finite and > 0")
+        if (
+            not math.isfinite(self.adaptive_lr_max_scale)
+            or self.adaptive_lr_max_scale < self.adaptive_lr_min_scale
+        ):
+            raise ValueError("adaptive_lr_max_scale must be finite and >= adaptive_lr_min_scale")
 
         self.mu = float(self.mu_init)
+        self.last_effective_lr = float(self.mu_lr)
         self._logger = get_logger(self.logger_name)
 
     def expected_cost(
@@ -84,10 +114,40 @@ class BudgetDualController:
 
         budget_target = self._resolve_budget(budget)
         mu_prev = self.mu
-        delta = self.mu_lr * (expected_cost - budget_target)
-        mu_next = min(self.mu_max, max(self.mu_min, mu_prev + delta))
-        clamped = mu_next != mu_prev + delta
+        budget_error = float(expected_cost - budget_target)
+        normalized_error = float(budget_error / budget_target)
+
+        self.error_ema = (
+            self.error_ema_beta * self.error_ema + (1.0 - self.error_ema_beta) * normalized_error
+        )
+
+        base_lr = self.mu_lr / (1.0 + self.lr_decay * self.update_count)
+        adaptive_scale = 1.0
+        if self.adaptive_lr:
+            adaptive_scale = max(
+                self.adaptive_lr_min_scale,
+                min(self.adaptive_lr_max_scale, 1.0 + abs(self.error_ema)),
+            )
+        effective_lr = float(base_lr * adaptive_scale)
+
+        raw_delta = 0.0
+        if abs(normalized_error) > self.deadband_ratio:
+            raw_delta = float(effective_lr * budget_error)
+
+        applied_delta = raw_delta
+        if self.delta_clip is not None:
+            clip = float(self.delta_clip)
+            applied_delta = float(max(-clip, min(clip, raw_delta)))
+
+        mu_candidate = mu_prev + applied_delta
+        mu_next = min(self.mu_max, max(self.mu_min, mu_candidate))
+        clamped = mu_next != mu_candidate
+
         self.mu = float(mu_next)
+        self.update_count += 1
+        self.last_effective_lr = effective_lr
+        self.last_raw_delta = float(raw_delta)
+        self.last_applied_delta = float(applied_delta)
 
         log_event(
             self._logger,
@@ -96,7 +156,16 @@ class BudgetDualController:
             fields={
                 "budget": budget_target,
                 "expected_cost": float(expected_cost),
-                "delta": float(delta),
+                "budget_error": budget_error,
+                "normalized_error": normalized_error,
+                "error_ema": float(self.error_ema),
+                "effective_lr": effective_lr,
+                "delta_raw": float(raw_delta),
+                "delta_applied": float(applied_delta),
+                "adaptive_lr": bool(self.adaptive_lr),
+                "delta_clip": self.delta_clip,
+                "deadband_ratio": self.deadband_ratio,
+                "update_count": int(self.update_count),
                 "mu_prev": float(mu_prev),
                 "mu_next": float(self.mu),
                 "clamped": clamped,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -8,6 +8,19 @@ import torch
 from torch import Tensor
 
 from apex_x.utils.repro import seed_all
+
+
+def _fp8_dtype_candidates() -> tuple[torch.dtype, ...]:
+    dtypes: list[torch.dtype] = []
+    for attr_name in ("float8_e4m3fn", "float8_e5m2", "float8_e4m3fnuz", "float8_e5m2fnuz"):
+        dtype = getattr(torch, attr_name, None)
+        if isinstance(dtype, torch.dtype):
+            dtypes.append(dtype)
+    return tuple(dtypes)
+
+
+def _is_fp8_dtype(dtype: torch.dtype) -> bool:
+    return any(dtype is fp8_dtype for fp8_dtype in _fp8_dtype_candidates())
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +40,7 @@ class ToleranceConfig:
     fp16: NumericTolerance = NumericTolerance(atol=1e-3, rtol=1e-2)
     bf16: NumericTolerance = NumericTolerance(atol=2e-3, rtol=2e-2)
     int8: NumericTolerance = NumericTolerance(atol=0.0, rtol=0.0)
+    fp8: NumericTolerance = NumericTolerance(atol=3e-3, rtol=3e-2)
 
     def for_dtype(self, dtype: torch.dtype) -> NumericTolerance:
         if dtype is torch.float16:
@@ -35,7 +49,94 @@ class ToleranceConfig:
             return self.bf16
         if dtype is torch.int8:
             return self.int8
+        if _is_fp8_dtype(dtype):
+            return self.fp8
         return self.default
+
+
+@dataclass(frozen=True, slots=True)
+class ParityToleranceProfile:
+    name: str
+    op_tolerances: ToleranceConfig
+    e2e_tolerances: ToleranceConfig
+    mismatch_ratio_limit: float = 0.0
+
+    def __post_init__(self) -> None:
+        if self.mismatch_ratio_limit < 0.0 or self.mismatch_ratio_limit > 1.0:
+            raise ValueError("mismatch_ratio_limit must be in [0, 1]")
+
+
+_PARITY_TOLERANCE_PROFILES: dict[str, ParityToleranceProfile] = {
+    "quality": ParityToleranceProfile(
+        name="quality",
+        op_tolerances=ToleranceConfig(
+            default=NumericTolerance(atol=1e-6, rtol=1e-5),
+            fp16=NumericTolerance(atol=1e-3, rtol=1e-2),
+            bf16=NumericTolerance(atol=2e-3, rtol=2e-2),
+            int8=NumericTolerance(atol=0.0, rtol=0.0),
+            fp8=NumericTolerance(atol=3e-3, rtol=3e-2),
+        ),
+        e2e_tolerances=ToleranceConfig(
+            default=NumericTolerance(atol=2e-5, rtol=2e-4),
+            fp16=NumericTolerance(atol=2e-3, rtol=2e-2),
+            bf16=NumericTolerance(atol=3e-3, rtol=3e-2),
+            int8=NumericTolerance(atol=0.0, rtol=0.0),
+            fp8=NumericTolerance(atol=4e-3, rtol=4e-2),
+        ),
+        mismatch_ratio_limit=0.0,
+    ),
+    "balanced": ParityToleranceProfile(
+        name="balanced",
+        op_tolerances=ToleranceConfig(
+            default=NumericTolerance(atol=5e-6, rtol=5e-5),
+            fp16=NumericTolerance(atol=2e-3, rtol=2e-2),
+            bf16=NumericTolerance(atol=3e-3, rtol=3e-2),
+            int8=NumericTolerance(atol=0.0, rtol=0.0),
+            fp8=NumericTolerance(atol=5e-3, rtol=5e-2),
+        ),
+        e2e_tolerances=ToleranceConfig(
+            default=NumericTolerance(atol=5e-5, rtol=5e-4),
+            fp16=NumericTolerance(atol=3e-3, rtol=3e-2),
+            bf16=NumericTolerance(atol=4e-3, rtol=4e-2),
+            int8=NumericTolerance(atol=0.0, rtol=0.0),
+            fp8=NumericTolerance(atol=6e-3, rtol=6e-2),
+        ),
+        mismatch_ratio_limit=1e-4,
+    ),
+    "edge": ParityToleranceProfile(
+        name="edge",
+        op_tolerances=ToleranceConfig(
+            default=NumericTolerance(atol=1e-5, rtol=1e-4),
+            fp16=NumericTolerance(atol=3e-3, rtol=3e-2),
+            bf16=NumericTolerance(atol=4e-3, rtol=4e-2),
+            int8=NumericTolerance(atol=0.0, rtol=0.0),
+            fp8=NumericTolerance(atol=6e-3, rtol=6e-2),
+        ),
+        e2e_tolerances=ToleranceConfig(
+            default=NumericTolerance(atol=8e-5, rtol=8e-4),
+            fp16=NumericTolerance(atol=4e-3, rtol=4e-2),
+            bf16=NumericTolerance(atol=6e-3, rtol=6e-2),
+            int8=NumericTolerance(atol=0.0, rtol=0.0),
+            fp8=NumericTolerance(atol=8e-3, rtol=8e-2),
+        ),
+        mismatch_ratio_limit=5e-4,
+    ),
+}
+
+
+def list_parity_tolerance_profiles() -> tuple[str, ...]:
+    return tuple(sorted(_PARITY_TOLERANCE_PROFILES))
+
+
+def get_parity_tolerance_profile(profile_name: str) -> ParityToleranceProfile:
+    key = profile_name.strip().lower()
+    profile = _PARITY_TOLERANCE_PROFILES.get(key)
+    if profile is None:
+        supported = ", ".join(list_parity_tolerance_profiles())
+        raise ValueError(
+            f"Unsupported parity tolerance profile: {profile_name!r}. Supported: {supported}"
+        )
+    return profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +240,43 @@ class ParityCase:
     candidate_fn: Callable[[Any], Any]
     reference_backend: str = "pytorch_ref"
     candidate_backend: str = "candidate"
+
+
+@dataclass(frozen=True, slots=True)
+class ParityMatrixCase:
+    name: str
+    input_factory: Callable[[], Any]
+    backend_fns: Mapping[str, Callable[[Any], Any]]
+    backend_pairs: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        if len(self.backend_fns) < 2:
+            raise ValueError("ParityMatrixCase requires at least two backends")
+
+
+@dataclass(frozen=True, slots=True)
+class ParitySweepReport:
+    sweep_name: str
+    profile_name: str
+    reports: tuple[ParityReport, ...]
+
+    @property
+    def passed(self) -> bool:
+        return all(report.passed for report in self.reports)
+
+    @property
+    def case_count(self) -> int:
+        return len({report.case_name for report in self.reports})
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sweep_name": self.sweep_name,
+            "profile_name": self.profile_name,
+            "passed": self.passed,
+            "case_count": self.case_count,
+            "report_count": len(self.reports),
+            "reports": [report.to_dict() for report in self.reports],
+        }
 
 
 def _clone_tree(value: Any) -> Any:
@@ -311,6 +449,109 @@ def run_parity_case(
     )
 
 
+def _resolve_backend_pairs(
+    *,
+    backend_names: tuple[str, ...],
+    requested_pairs: Sequence[tuple[str, str]],
+) -> tuple[tuple[str, str], ...]:
+    known = set(backend_names)
+    if requested_pairs:
+        resolved: list[tuple[str, str]] = []
+        for reference_backend, candidate_backend in requested_pairs:
+            if reference_backend == candidate_backend:
+                raise ValueError("backend pairs must compare different backend names")
+            if reference_backend not in known:
+                raise ValueError(
+                    f"Unknown backend in pair: {reference_backend!r}. Known: {sorted(known)!r}"
+                )
+            if candidate_backend not in known:
+                raise ValueError(
+                    f"Unknown backend in pair: {candidate_backend!r}. Known: {sorted(known)!r}"
+                )
+            resolved.append((reference_backend, candidate_backend))
+        return tuple(resolved)
+
+    auto_pairs: list[tuple[str, str]] = []
+    for left_idx in range(len(backend_names)):
+        for right_idx in range(left_idx + 1, len(backend_names)):
+            auto_pairs.append((backend_names[left_idx], backend_names[right_idx]))
+    return tuple(auto_pairs)
+
+
+def run_parity_matrix_case(
+    case: ParityMatrixCase,
+    *,
+    seed: int = 0,
+    deterministic: bool = True,
+    tolerances: ToleranceConfig | None = None,
+    mismatch_ratio_limit: float = 0.0,
+) -> tuple[ParityReport, ...]:
+    backend_names = tuple(case.backend_fns.keys())
+    backend_pairs = _resolve_backend_pairs(
+        backend_names=backend_names,
+        requested_pairs=case.backend_pairs,
+    )
+
+    seed_all(seed=seed, deterministic=deterministic)
+    inputs = case.input_factory()
+    backend_outputs: dict[str, Any] = {}
+    for backend_name in backend_names:
+        backend_outputs[backend_name] = case.backend_fns[backend_name](_clone_tree(inputs))
+
+    reports: list[ParityReport] = []
+    for reference_backend, candidate_backend in backend_pairs:
+        reports.append(
+            evaluate_parity_outputs(
+                case_name=case.name,
+                reference_backend=reference_backend,
+                candidate_backend=candidate_backend,
+                reference_output=backend_outputs[reference_backend],
+                candidate_output=backend_outputs[candidate_backend],
+                seed=seed,
+                deterministic=deterministic,
+                tolerances=tolerances,
+                mismatch_ratio_limit=mismatch_ratio_limit,
+            )
+        )
+    return tuple(reports)
+
+
+def run_parity_sweep(
+    *,
+    sweep_name: str,
+    cases: Sequence[ParityMatrixCase],
+    profile_name: str = "balanced",
+    use_e2e_tolerances: bool = True,
+    seed: int = 0,
+    deterministic: bool = True,
+) -> ParitySweepReport:
+    if not cases:
+        raise ValueError("cases must be non-empty")
+
+    profile = get_parity_tolerance_profile(profile_name)
+    tolerances = profile.e2e_tolerances if use_e2e_tolerances else profile.op_tolerances
+    mismatch_ratio_limit = profile.mismatch_ratio_limit
+
+    reports: list[ParityReport] = []
+    for case_idx, case in enumerate(cases):
+        case_seed = seed + case_idx
+        reports.extend(
+            run_parity_matrix_case(
+                case,
+                seed=case_seed,
+                deterministic=deterministic,
+                tolerances=tolerances,
+                mismatch_ratio_limit=mismatch_ratio_limit,
+            )
+        )
+
+    return ParitySweepReport(
+        sweep_name=sweep_name,
+        profile_name=profile.name,
+        reports=tuple(reports),
+    )
+
+
 def format_parity_report(report: ParityReport) -> str:
     lines = [
         (
@@ -331,13 +572,33 @@ def format_parity_report(report: ParityReport) -> str:
     return "\n".join(lines)
 
 
+def format_parity_sweep_report(report: ParitySweepReport) -> str:
+    lines = [
+        (
+            f"sweep={report.sweep_name} profile={report.profile_name} "
+            f"pass={report.passed} cases={report.case_count} reports={len(report.reports)}"
+        ),
+    ]
+    for item in report.reports:
+        lines.append(format_parity_report(item))
+    return "\n".join(lines)
+
+
 __all__ = [
     "NumericTolerance",
     "ToleranceConfig",
+    "ParityToleranceProfile",
+    "list_parity_tolerance_profiles",
+    "get_parity_tolerance_profile",
     "TensorParityStats",
     "ParityReport",
     "ParityCase",
+    "ParityMatrixCase",
+    "ParitySweepReport",
     "evaluate_parity_outputs",
     "run_parity_case",
+    "run_parity_matrix_case",
+    "run_parity_sweep",
     "format_parity_report",
+    "format_parity_sweep_report",
 ]

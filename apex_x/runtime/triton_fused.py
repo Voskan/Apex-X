@@ -179,12 +179,6 @@ def gather_gate_scatter_reference(
     )
 
 
-def _triton_fused_kernel_stub(**_: object) -> FusedTileScatterResult:
-    raise NotImplementedError(
-        "Triton fused gather+gate+scatter kernel is not available in this environment."
-    )
-
-
 def gather_gate_scatter(
     *,
     base_map: Tensor,
@@ -205,51 +199,7 @@ def gather_gate_scatter(
     allow_fallback: bool = True,
 ) -> FusedTileScatterResult:
     availability = get_triton_availability()
-    if prefer_triton and availability.available:
-        try:
-            return _triton_fused_kernel_stub(
-                base_map=base_map,
-                heavy_map=heavy_map,
-                indices=indices,
-                tile_size=tile_size,
-                boundary_proxy=boundary_proxy,
-                uncertainty_proxy=uncertainty_proxy,
-                level_priority=level_priority,
-                priority_map=priority_map,
-                overlap_mode=overlap_mode,
-                blend_alpha=blend_alpha,
-                order_mode=order_mode,
-                boundary_weight=boundary_weight,
-                uncertainty_weight=uncertainty_weight,
-                gate_bias=gate_bias,
-            )
-        except NotImplementedError as exc:
-            if not allow_fallback:
-                raise
-            ref = gather_gate_scatter_reference(
-                base_map=base_map,
-                heavy_map=heavy_map,
-                indices=indices,
-                tile_size=tile_size,
-                boundary_proxy=boundary_proxy,
-                uncertainty_proxy=uncertainty_proxy,
-                level_priority=level_priority,
-                priority_map=priority_map,
-                overlap_mode=overlap_mode,
-                blend_alpha=blend_alpha,
-                order_mode=order_mode,
-                boundary_weight=boundary_weight,
-                uncertainty_weight=uncertainty_weight,
-                gate_bias=gate_bias,
-            )
-            return FusedTileScatterResult(
-                merged=ref.merged,
-                priority_map=ref.priority_map,
-                alpha_map=ref.alpha_map,
-                backend="reference",
-                meta=ref.meta,
-                fallback_reason=str(exc),
-            )
+    _ = allow_fallback  # Kept for backward compatibility with prior API.
 
     ref = gather_gate_scatter_reference(
         base_map=base_map,
@@ -269,7 +219,10 @@ def gather_gate_scatter(
     )
     fallback_reason = None
     if prefer_triton:
-        fallback_reason = availability.reason or "triton_path_not_selected"
+        if availability.available:
+            fallback_reason = "legacy_triton_entrypoint_deprecated_reference_only"
+        else:
+            fallback_reason = availability.reason or "triton_path_not_selected"
     return FusedTileScatterResult(
         merged=ref.merged,
         priority_map=ref.priority_map,

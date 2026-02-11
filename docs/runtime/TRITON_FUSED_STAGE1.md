@@ -45,6 +45,18 @@ Dispatch behavior:
 - falls back to reference on unsupported environments
 - falls back to reference when `requires_grad` and `inference_only=True`
 
+FF heavy-path selector integration:
+- `FFHeavyPath` now includes a compatibility-gated Stage-1 fused selector for inference.
+- Selector is enabled only when conditions hold:
+  - eval mode
+  - `use_triton_fused_stage1=True`
+  - refine block is identity (`use_refine=False`)
+  - FiLM parameters are effectively global constants (within tolerance)
+  - selected tile indices are unique
+- When compatible, heavy-map update is executed via:
+  - `fused_pack_op_unpack_dispatch(...)`
+- When not compatible, path deterministically falls back to decomposed `pack -> FiLM -> unpack`.
+
 ## Parity and Correctness
 Tests:
 - `tests/test_triton_fused_stage1_dispatch.py`
@@ -55,6 +67,8 @@ Coverage:
 - deterministic duplicate-index guard
 - GPU parity (fp16) when Triton/CUDA is available
 - autograd-safe fallback behavior
+- FF heavy-path fused selector compatibility tests:
+  - `tests/test_ff_heavy_path_fused_stage1.py`
 
 ## Benchmark
 Microbenchmark:

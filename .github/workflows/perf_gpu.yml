@@ -1,6 +1,14 @@
 name: GPU Perf Regression
 
 on:
+  pull_request:
+    paths:
+      - "apex_x/kernels/**"
+      - "apex_x/runtime/**"
+      - "runtime/tensorrt/**"
+      - "scripts/perf_regression_gpu.py"
+      - "scripts/perf_regression_trt.py"
+      - ".github/workflows/perf_gpu.yml"
   workflow_dispatch:
     inputs:
       run_mode:
@@ -42,6 +50,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  blocked-untrusted-pr:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block untrusted GPU workflow execution
+        run: |
+          echo "GPU regression workflow requires a trusted self-hosted runner."
+          echo "This pull_request originates from a fork and cannot execute on self-hosted GPU runners."
+          echo "Mirror the branch into the main repository and rerun the GPU workflow there."
+          exit 1
+
   skipped:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_mode != 'self-hosted-gpu' }}
     runs-on: ubuntu-latest
@@ -54,6 +73,7 @@ jobs:
   gpu-perf-regression:
     if: >-
       ${{
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
         (github.event_name == 'workflow_dispatch' && github.event.inputs.run_mode == 'self-hosted-gpu') ||
         (github.event_name == 'schedule' && vars.APEXX_ENABLE_GPU_NIGHTLY == 'true')
       }}
@@ -100,10 +120,55 @@ jobs:
             --baseline "${BASELINE_PATH}" \
             --output artifacts/perf_gpu_current_ci.json \
             --summary artifacts/perf_gpu_compare_ci.json \
+            --trend-output artifacts/perf_gpu_trend_ci.json \
             --warmup 5 \
             --iters 20 \
             --trt-engine-path "${TRT_ENGINE_PATH}" \
             --trt-plugin-lib "${TRT_PLUGIN_LIB}"
+      - name: Run TensorRT shape-sweep regression compare (optional)
+        run: |
+          if [ -z "${TRT_ENGINE_PATH}" ]; then
+            echo "TRT_ENGINE_PATH is empty; skipping TensorRT shape-sweep regression compare."
+            exit 0
+          fi
+          python scripts/perf_regression_trt.py \
+            --compare \
+            --baseline scripts/perf_baseline_trt.json \
+            --output artifacts/perf_trt_current_ci.json \
+            --summary artifacts/perf_trt_compare_ci.json \
+            --trend-output artifacts/perf_trt_trend_ci.json \
+            --trt-engine-path "${TRT_ENGINE_PATH}" \
+            --warmup 3 \
+            --iters 10
+      - name: Capture runtime capability snapshot (GPU CI)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from apex_x.runtime import detect_runtime_caps
+
+          payload = detect_runtime_caps().to_dict()
+          output = Path("artifacts/runtime/caps_gpu_ci.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(f"runtime_caps output={output}")
+          PY
+
+      - name: Generate release evidence draft (GPU CI)
+        run: |
+          python scripts/release_attestation.py \
+            --runtime-target torch \
+            --artifact-path performance_report=artifacts/perf_gpu_compare_ci.json \
+            --artifact-path runtime_capability_snapshot=artifacts/runtime/caps_gpu_ci.json \
+            --gate-status lint_type_tests=PENDING \
+            --gate-status cpu_perf_regression=N/A \
+            --gate-status gpu_perf_regression=PASS \
+            --gate-status runtime_backend_parity=PENDING \
+            --gate-status runtime_capability_transparency=PASS \
+            --gate-status security_review=PENDING \
+            --gate-status documentation_sync=PENDING \
+            --output-json artifacts/release/release_attestation_gpu_ci.json \
+            --output-md artifacts/release/release_attestation_gpu_ci.md
 
       - name: Upload GPU perf artifacts
         if: always()
@@ -113,3 +178,10 @@ jobs:
           path: |
             artifacts/perf_gpu_current_ci.json
             artifacts/perf_gpu_compare_ci.json
+            artifacts/perf_gpu_trend_ci.json
+            artifacts/perf_trt_current_ci.json
+            artifacts/perf_trt_compare_ci.json
+            artifacts/perf_trt_trend_ci.json
+            artifacts/runtime/caps_gpu_ci.json
+            artifacts/release/release_attestation_gpu_ci.json
+            artifacts/release/release_attestation_gpu_ci.md

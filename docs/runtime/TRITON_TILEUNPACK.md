@@ -7,7 +7,7 @@ This document describes the Triton TileUnpack scatter kernel implemented in:
 Current scope:
 - L0 tile scatter with overlap handling
 - deterministic priority overwrite semantics
-- optional blend mode (currently routed through reference path)
+- optional blend mode with ordered composition semantics
 
 ## Tensor Contract
 - Input base map: `F_base [B, C, H, W]`, contiguous `NCHW`
@@ -38,7 +38,8 @@ Behavior:
 - falls back to reference path when Triton is unavailable
 - falls back to reference when autograd is requested (`requires_grad` and `inference_only=True`)
 - defaults to `overlap_mode="override"` (priority overwrite)
-- `overlap_mode="blend"` is supported via reference fallback in this stage
+- `overlap_mode="blend"` is supported in dispatch without forced reference-only branch
+  when Triton path is selected
 
 ## API
 - `get_triton_tileunpack_availability()`
@@ -54,6 +55,7 @@ Parity tests:
 Coverage:
 - CPU fallback parity with `TileUnpackTorch` and reference overlap semantics
 - GPU parity with `TileUnpackTorch` on representative shapes (auto-skip without CUDA+Triton)
+- blend-overlap parity contract in dispatch and GPU suites
 - gradient-safe fallback behavior
 - synthetic overlap fixtures with explicit overwrite expectations
 

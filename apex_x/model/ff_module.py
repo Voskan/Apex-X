@@ -77,6 +77,7 @@ class FFModule(nn.Module):
         self.config.validate()
         self.channels = int(channels)
         use_triton_inference_scan = bool(self.config.runtime.enable_runtime_plugins)
+        use_triton_fused_stage1 = bool(self.config.runtime.enable_runtime_plugins)
 
         self.l0_path = FFHeavyPath(
             channels=self.channels,
@@ -85,6 +86,7 @@ class FFModule(nn.Module):
             overlap_mode=overlap_mode,
             scan_mode=scan_mode,
             use_triton_inference_scan=use_triton_inference_scan,
+            use_triton_fused_stage1=use_triton_fused_stage1,
         )
         self.l1_path = FFHeavyPath(
             channels=self.channels,
@@ -93,6 +95,7 @@ class FFModule(nn.Module):
             overlap_mode=overlap_mode,
             scan_mode=scan_mode,
             use_triton_inference_scan=use_triton_inference_scan,
+            use_triton_fused_stage1=use_triton_fused_stage1,
         )
 
         self.dual_controller = BudgetDualController(
@@ -101,6 +104,13 @@ class FFModule(nn.Module):
             mu_lr=self.config.train.mu_lr,
             mu_min=self.config.train.mu_min,
             mu_max=self.config.train.mu_max,
+            adaptive_lr=self.config.train.dual_adaptive_lr,
+            lr_decay=self.config.train.dual_lr_decay,
+            delta_clip=self.config.train.dual_delta_clip,
+            deadband_ratio=self.config.train.dual_deadband_ratio,
+            error_ema_beta=self.config.train.dual_error_ema_beta,
+            adaptive_lr_min_scale=self.config.train.dual_lr_min_scale,
+            adaptive_lr_max_scale=self.config.train.dual_lr_max_scale,
             logger_name="model.ff_module.dual",
         )
         self.mu_history: list[float] = [self.dual_controller.mu]

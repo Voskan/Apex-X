@@ -1,225 +1,3425 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
-        
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Universal Vision Dynamic Compute Graph">
+      
+      
+      
         <link rel="canonical" href="https://example.com/apex-x/ENGINEERING_SPEC/">
-        <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Engineering Spec - Apex-X Docs</title>
-        <link href="../css/bootstrap.min.css" rel="stylesheet">
-        <link href="../css/fontawesome.min.css" rel="stylesheet">
-        <link href="../css/brands.min.css" rel="stylesheet">
-        <link href="../css/solid.min.css" rel="stylesheet">
-        <link href="../css/v4-font-face.min.css" rel="stylesheet">
-        <link href="../css/base.css" rel="stylesheet">
-        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
-        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
-    </head>
+      
+      
+        <link rel="prev" href="../PRD/">
+      
+      
+        <link rel="next" href="../QAT/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Engineering Spec - Apex-X</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
 
-    <body>
-        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
-            <div class="container">
-                <a class="navbar-brand" href="..">Apex-X Docs</a>
-                <!-- Expander button -->
-                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <!-- Expanded navigation -->
-                <div id="navbar-collapse" class="navbar-collapse collapse">
-                        <!-- Main navigation -->
-                        <ul class="nav navbar-nav">
-                            <li class="nav-item">
-                                <a href=".." class="nav-link">Home</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../PRD/" class="nav-link">PRD</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="./" class="nav-link active" aria-current="page">Engineering Spec</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../QAT/" class="nav-link">QAT Policy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../FP8/" class="nav-link">FP8 Policy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../PERF/" class="nav-link">Performance Regression</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PLUGIN_SPEC/" class="nav-link">Runtime Plugin Spec</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PLUGIN_SPECS/" class="nav-link">Runtime Plugin Specs Alias</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/CAPS/" class="nav-link">Runtime Capability Detection</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/PARITY/" class="nav-link">Runtime Parity Framework</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TENSORRT/" class="nav-link">TensorRT Runtime Notes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TENSORRT_BUILD/" class="nav-link">TensorRT Build Guide</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON/" class="nav-link">Triton Runtime Notes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_TILEPACK/" class="nav-link">Triton TilePack</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_TILEUNPACK/" class="nav-link">Triton TileUnpack</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_FUSION/" class="nav-link">Triton FusionGate</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_SSM/" class="nav-link">Triton TileSSM Scan</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../runtime/TRITON_FUSED_STAGE1/" class="nav-link">Triton Fused Stage-1</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../CONTEXT/" class="nav-link">Context</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../DECISIONS/" class="nav-link">Decisions</a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="../TODO/" class="nav-link">TODO</a>
-                            </li>
-                        </ul>
-
-                    <ul class="nav navbar-nav ms-md-auto">
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
-                                <i class="fa fa-search"></i> Search
-                            </a>
-                        </li>
-                            <li class="nav-item">
-                                <a rel="prev" href="../PRD/" class="nav-link">
-                                    <i class="fa fa-arrow-left"></i> Previous
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a rel="next" href="../QAT/" class="nav-link">
-                                    Next <i class="fa fa-arrow-right"></i>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="https://example.com/apex-x" class="nav-link">apex-x</a>
-                            </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="row">
-                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
-    <div class="navbar-header">
-        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
-            <span class="fa fa-angle-down"></span>
-        </button>
-    </div>
 
     
-    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
-        <ul class="nav flex-column">
-            
-            <li class="nav-item" data-bs-level="1"><a href="#apex-x-v4-engineering-specification" class="nav-link">Apex-X v4 Engineering Specification</a>
-              <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#1-authority-and-scope" class="nav-link">1. Authority and Scope</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#2-system-overview" class="nav-link">2. System Overview</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#3-tensor-and-shape-contracts" class="nav-link">3. Tensor and Shape Contracts</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#4-router-specification" class="nav-link">4. Router Specification</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#5-continuous-budgeting-training" class="nav-link">5. Continuous Budgeting (Training)</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#6-deterministic-inference-budgeting" class="nav-link">6. Deterministic Inference Budgeting</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#7-quadtree-nesting-l0l1l2" class="nav-link">7. Quadtree Nesting L0/L1/L2</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#8-ordering-and-sequence-geometry" class="nav-link">8. Ordering and Sequence Geometry</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#9-tile-ssm-and-local-refine" class="nav-link">9. Tile-SSM and Local Refine</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#10-losses-and-multi-task-gradient-handling" class="nav-link">10. Losses and Multi-task Gradient Handling</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#11-temporal-hysteresis-and-state-reuse" class="nav-link">11. Temporal Hysteresis and State Reuse</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#12-runtime-plugin-specifications" class="nav-link">12. Runtime Plugin Specifications</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#13-qat-and-precision-policy" class="nav-link">13. QAT and Precision Policy</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#14-performance-regression-testing" class="nav-link">14. Performance Regression Testing</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#15-export-contracts-trtort" class="nav-link">15. Export Contracts (TRT/ORT)</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#16-cpu-baseline-requirements" class="nav-link">16. CPU Baseline Requirements</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#17-validation-matrix" class="nav-link">17. Validation Matrix</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#18-file-ownership-map" class="nav-link">18. File Ownership Map</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#19-change-management" class="nav-link">19. Change Management</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-              </ul>
-            </li>
-        </ul>
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#apex-x-v4-engineering-specification" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
-</div></div>
-                    <div class="col-md-9" role="main">
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Apex-X" class="md-header__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Apex-X
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Engineering Spec
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../benchmarks/" class="md-tabs__link">
+          
+  
+  
+  Overview
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../PRD/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PERF/" class="md-tabs__link">
+          
+  
+  
+  Performance
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runtime/PLUGIN_SPEC/" class="md-tabs__link">
+          
+  
+  
+  Runtime
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../release/CHECKLIST/" class="md-tabs__link">
+          
+  
+  
+  Release
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TODO/" class="md-tabs__link">
+          
+  
+  
+  Activity
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Apex-X" class="md-nav__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Apex-X
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overview
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DECISIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PRD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Spec
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-authority-and-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Authority and Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. System Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tensor-and-shape-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tensor and Shape Contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tensor and Shape Contracts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-core-feature-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Core Feature Maps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-tile-packunpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Tile Pack/Unpack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-router-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Router Specification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Router Specification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-router-inputs-per-tile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Router Inputs per Tile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-router-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Router Outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-utility-oracle-deltaloss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Utility Oracle (DeltaLoss)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-continuous-budgeting-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Continuous Budgeting (Training)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Continuous Budgeting (Training)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-gating" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Gating
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-expected-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Expected Cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-dual-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Dual Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-deterministic-inference-budgeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Deterministic Inference Budgeting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Deterministic Inference Budgeting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-greedy-utility-per-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Greedy Utility-per-Cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-kmax-buffer-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Kmax Buffer Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-temporal-hysteresis-with-budget-aware-carryover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Temporal Hysteresis with Budget-Aware Carryover
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-quadtree-nesting-l0l1l2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Quadtree Nesting L0/L1/L2
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Quadtree Nesting L0/L1/L2">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-tile-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Tile Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-budget-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Budget Split
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-split-utility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Split Utility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-ordering-and-sequence-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Ordering and Sequence Geometry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Ordering and Sequence Geometry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-required-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Required Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-determinism-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Determinism Rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-tile-ssm-and-local-refine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Tile-SSM and Local Refine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Tile-SSM and Local Refine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-tokenization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Tokenization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-mamba-like-placeholder-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Mamba-like Placeholder Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-fusion-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Fusion Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-losses-and-multi-task-gradient-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Losses and Multi-task Gradient Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Losses and Multi-task Gradient Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-task-losses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Task Losses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-pcgrad-for-shared-trunk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 PCGrad++ for Shared Trunk
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-temporal-hysteresis-and-state-reuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Temporal Hysteresis and State Reuse
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Temporal Hysteresis and State Reuse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-update-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Update Rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-runtime-plugin-specifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Runtime Plugin Specifications
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Runtime Plugin Specifications">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-tilepack-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 TilePack Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-tilessmscan-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 TileSSMScan Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-tileunpackfusion-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 TileUnpackFusion Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#124-optional-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.4 Optional Plugins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#125-build-time-plugin-contract-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.5 Build-Time Plugin Contract Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-qat-and-precision-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. QAT and Precision Policy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. QAT and Precision Policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#131-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 Profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#132-qat-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.2 QAT Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#133-acceptance-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.3 Acceptance Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#134-fp8-telemetry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.4 FP8 Telemetry Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#135-int8-sensitive-layer-precision-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.5 INT8 Sensitive-Layer Precision Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#136-int8-calibration-cache-governance-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.6 INT8 Calibration Cache Governance Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-performance-regression-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Performance Regression Testing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Performance Regression Testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-required-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Required Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-regression-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Regression Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143-baseline-tooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 Baseline Tooling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-export-contracts-trtort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Export Contracts (TRT/ORT)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-cpu-baseline-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. CPU Baseline Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-validation-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Validation Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Validation Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#171-correctness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 Correctness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#172-training-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 Training Stability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#173-export-parity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 Export Parity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#174-eval-dataset-contract-cli-model-eval-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.4 Eval Dataset Contract (CLI Model Eval Path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-runtime-capability-and-parity-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Runtime Capability and Parity Contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Runtime Capability and Parity Contracts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#181-backend-capability-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.1 Backend Capability Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#182-reason-code-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.2 Reason-Code Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#183-tensorrt-cli-runtime-execution-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.3 TensorRT CLI Runtime Execution Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#184-parity-tolerance-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.4 Parity Tolerance Profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#185-triton-autotune-registry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.5 Triton Autotune Registry Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#186-unified-perf-regression-policy-cpugputrt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.6 Unified Perf Regression Policy (CPU/GPU/TRT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-file-ownership-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. File Ownership Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-change-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Change Management
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../QAT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QAT Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FP8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FP8 Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Performance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU Bench
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CI_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runtime
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/PLUGIN_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/CAPS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TensorRT
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    TensorRT
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_BUILD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_INT8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    INT8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_POST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Postprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/GO_SERVICE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Triton
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Triton
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TilePack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEUNPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TileUnpack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fusion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_SSM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SSM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSED_STAGE1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/CHECKLIST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/MIGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Activity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Activity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TODO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-authority-and-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Authority and Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. System Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tensor-and-shape-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tensor and Shape Contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tensor and Shape Contracts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-core-feature-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Core Feature Maps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-tile-packunpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Tile Pack/Unpack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-router-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Router Specification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Router Specification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-router-inputs-per-tile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Router Inputs per Tile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-router-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Router Outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-utility-oracle-deltaloss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Utility Oracle (DeltaLoss)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-continuous-budgeting-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Continuous Budgeting (Training)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Continuous Budgeting (Training)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-gating" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Gating
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-expected-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Expected Cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-dual-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Dual Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-deterministic-inference-budgeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Deterministic Inference Budgeting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Deterministic Inference Budgeting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-greedy-utility-per-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Greedy Utility-per-Cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-kmax-buffer-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Kmax Buffer Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-temporal-hysteresis-with-budget-aware-carryover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Temporal Hysteresis with Budget-Aware Carryover
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-quadtree-nesting-l0l1l2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Quadtree Nesting L0/L1/L2
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Quadtree Nesting L0/L1/L2">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-tile-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Tile Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-budget-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Budget Split
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-split-utility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Split Utility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-ordering-and-sequence-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Ordering and Sequence Geometry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Ordering and Sequence Geometry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-required-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Required Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-determinism-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Determinism Rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-tile-ssm-and-local-refine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Tile-SSM and Local Refine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Tile-SSM and Local Refine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-tokenization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Tokenization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-mamba-like-placeholder-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Mamba-like Placeholder Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-fusion-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Fusion Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-losses-and-multi-task-gradient-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Losses and Multi-task Gradient Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Losses and Multi-task Gradient Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-task-losses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Task Losses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-pcgrad-for-shared-trunk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 PCGrad++ for Shared Trunk
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-temporal-hysteresis-and-state-reuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Temporal Hysteresis and State Reuse
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Temporal Hysteresis and State Reuse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-update-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Update Rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-runtime-plugin-specifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Runtime Plugin Specifications
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Runtime Plugin Specifications">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-tilepack-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 TilePack Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-tilessmscan-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 TileSSMScan Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-tileunpackfusion-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 TileUnpackFusion Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#124-optional-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.4 Optional Plugins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#125-build-time-plugin-contract-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.5 Build-Time Plugin Contract Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-qat-and-precision-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. QAT and Precision Policy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. QAT and Precision Policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#131-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 Profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#132-qat-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.2 QAT Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#133-acceptance-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.3 Acceptance Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#134-fp8-telemetry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.4 FP8 Telemetry Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#135-int8-sensitive-layer-precision-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.5 INT8 Sensitive-Layer Precision Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#136-int8-calibration-cache-governance-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.6 INT8 Calibration Cache Governance Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-performance-regression-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Performance Regression Testing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Performance Regression Testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-required-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Required Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-regression-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Regression Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143-baseline-tooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 Baseline Tooling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-export-contracts-trtort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Export Contracts (TRT/ORT)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-cpu-baseline-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. CPU Baseline Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-validation-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Validation Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Validation Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#171-correctness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 Correctness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#172-training-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 Training Stability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#173-export-parity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 Export Parity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#174-eval-dataset-contract-cli-model-eval-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.4 Eval Dataset Contract (CLI Model Eval Path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-runtime-capability-and-parity-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Runtime Capability and Parity Contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Runtime Capability and Parity Contracts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#181-backend-capability-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.1 Backend Capability Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#182-reason-code-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.2 Reason-Code Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#183-tensorrt-cli-runtime-execution-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.3 TensorRT CLI Runtime Execution Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#184-parity-tolerance-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.4 Parity Tolerance Profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#185-triton-autotune-registry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.5 Triton Autotune Registry Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#186-unified-perf-regression-policy-cpugputrt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.6 Unified Perf Regression Policy (CPU/GPU/TRT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-file-ownership-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. File Ownership Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-change-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Change Management
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
 
 <h1 id="apex-x-v4-engineering-specification">Apex-X v4 Engineering Specification</h1>
 <h2 id="1-authority-and-scope">1. Authority and Scope</h2>
@@ -295,14 +3495,20 @@ Clamp outliers:
 [
 \Delta_i \leftarrow clamp(\Delta_i, -\tau, \tau)
 ]</p>
-<p>Pseudo-code:</p>
-<pre><code class="language-text">S = random_subset(tiles, rate=0.1..0.2) U high_uncertainty_tiles
-for i in S:
-  loss_off = L_distill(run(tile_i=off), y_teacher)
-  loss_on  = L_distill(run(tile_i=on),  y_teacher)
-  Delta_i = clamp(loss_off - loss_on, -tau, tau)
-L_util = regression_or_ranking(U_i, Delta_i)
-</code></pre>
+<p>Pseudo-code:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>S = random_subset(tiles, rate=0.1..0.2)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    U uncertainty_weighted_subset
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    U long_tail_subset
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>for i in S:
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  loss_off = L_distill(run(tile_i=off), y_teacher)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  loss_on  = L_distill(run(tile_i=on),  y_teacher)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  Delta_i = clamp(loss_off - loss_on, -tau, tau)
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>L_util = regression_or_ranking(U_i, Delta_i)
+</code></pre></div>
+Required training diagnostics per step/epoch:
+- sampling composition (<code>random</code>, <code>uncertainty</code>, <code>long_tail</code>)
+- delta label distribution (<code>mean</code>, <code>std</code>, <code>abs_p95</code>, <code>min</code>, <code>max</code>)
+- clipping diagnostics (<code>clipped_count</code>, <code>clipped_ratio</code>)</p>
 <h2 id="5-continuous-budgeting-training">5. Continuous Budgeting (Training)</h2>
 <h3 id="51-gating">5.1 Gating</h3>
 <p>[
@@ -319,21 +3525,37 @@ where <code>C_h</code> and <code>C_c</code> are heavy and cheap path costs.</p>
 [
 L = L_{main} + \mu(\mathbb{E}[C]-B),\quad \mu\ge0
 ]
-Projected dual ascent:
+Projected dual ascent with optional adaptive schedule:
 [
-\mu \leftarrow max(0, \mu + \eta_\mu (\mathbb{E}[C]-B))
-]</p>
-<p>Pseudo-code:</p>
-<pre><code class="language-text">U = Router(x)
-p = sigmoid(U)
-g = STE(p)
-y = Forward(g)
-L_main = L_det + lambda_seg*L_seg + ...
-E = sum(p_i*C_h + (1-p_i)*C_c)
-L = L_main + mu*(E - B)
-opt_theta.step(grad(L, theta))
-mu = max(0, mu + eta_mu*(E - B))
-</code></pre>
+\eta_{eff}(t)=\frac{\eta_\mu}{1+\lambda t}\cdot
+\text{clip}(1+|\text{EMA}(e_t)|,\;s_{min},\;s_{max}),\quad
+e_t=\frac{\mathbb{E}[C]-B}{B}
+]
+[
+\Delta\mu=\eta_{eff}(t)\cdot(\mathbb{E}[C]-B),\quad
+\mu \leftarrow \text{clip}(\mu+\Delta\mu,\;[\mu_{min},\mu_{max}])
+]
+Optional stabilizers:
+- deadband: skip updates when <code>|e_t| &lt;= deadband_ratio</code>
+- delta clip: clip <code>Delta mu</code> into <code>[-delta_clip, delta_clip]</code></p>
+<p>Pseudo-code:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>U = Router(x)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>p = sigmoid(U)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>g = STE(p)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>y = Forward(g)
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>L_main = L_det + lambda_seg*L_seg + ...
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>E = sum(p_i*C_h + (1-p_i)*C_c)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>L = L_main + mu*(E - B)
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>opt_theta.step(grad(L, theta))
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>e = (E - B) / B
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>ema_e = beta*ema_e + (1-beta)*e
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>eta_eff = (eta_mu / (1 + decay*step)) * clip(1 + abs(ema_e), lr_min, lr_max)
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>delta = eta_eff * (E - B)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>if abs(e) &lt;= deadband_ratio:
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>  delta = 0
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>delta = clip(delta, -delta_clip, delta_clip)  # optional
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>mu = clip(mu + delta, mu_min, mu_max)
+</code></pre></div></p>
 <h2 id="6-deterministic-inference-budgeting">6. Deterministic Inference Budgeting</h2>
 <h3 id="61-greedy-utility-per-cost">6.1 Greedy Utility-per-Cost</h3>
 <p>Given <code>U_i</code>, <code>DeltaC_i</code>, budget <code>B</code>, and fixed <code>Kmax</code>:
@@ -349,17 +3571,37 @@ Sort descending; accept while both constraints hold:
 <li>actual selected tile count is <code>K &lt;= Kmax</code></li>
 <li>unused entries are ignored via valid-count metadata</li>
 </ul>
-<p>Pseudo-code:</p>
-<pre><code class="language-text">scores = [U_i / DeltaC_i for i in tiles]
-order = argsort(scores, descending=True)
-active, spent = [], 0
-for i in order:
-  if len(active) &gt;= Kmax: break
-  if spent + DeltaC_i &lt;= B:
-    active.append(i)
-    spent += DeltaC_i
-write_to_kmax_buffer(active)
-</code></pre>
+<h3 id="63-temporal-hysteresis-with-budget-aware-carryover">6.3 Temporal Hysteresis with Budget-Aware Carryover</h3>
+<p>Temporal anti-flicker rule:
+[
+z_i(t)=\mathbf{1}[U_i(t)&gt;\theta_{on}\;\lor\;(U_i(t)&gt;\theta_{off}\land z_i(t-1)=1)]
+]
+with <code>theta_on &gt; theta_off</code>.</p>
+<p>Budget-aware enforcement:
+- hysteresis state update is computed first
+- if active count exceeds per-frame limit (<code>max_active</code>), deterministic clipping is applied:
+  1. keep tiles that were already active in previous frame
+  2. then sort by utility descending
+  3. tie-break by tile id ascending</p>
+<p>This preserves temporal state reuse while preventing budget overflow in frame-level routing masks.</p>
+<p>Temporal stability metrics:
+- <code>tile_flip_rate</code>:
+[
+\frac{\text{total state transitions}}{(T-1)\cdot N_{tiles}}
+]
+- <code>temporal_consistency = 1 - tile_flip_rate</code>
+- <code>mean_active_ratio</code>: average active fraction across all frames</p>
+<p>Pseudo-code:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scores = [U_i / DeltaC_i for i in tiles]
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>order = argsort(scores, descending=True)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>active, spent = [], 0
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>for i in order:
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  if len(active) &gt;= Kmax: break
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  if spent + DeltaC_i &lt;= B:
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    active.append(i)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    spent += DeltaC_i
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>write_to_kmax_buffer(active)
+</code></pre></div></p>
 <h2 id="7-quadtree-nesting-l0l1l2">7. Quadtree Nesting L0/L1/L2</h2>
 <h3 id="71-tile-hierarchy">7.1 Tile Hierarchy</h3>
 <ul>
@@ -378,15 +3620,23 @@ write_to_kmax_buffer(active)
 score_i^{split} = \frac{S_i}{O_{split,i}}
 ]
 Select split candidates under <code>B2</code>.</p>
-<p>Pseudo-code:</p>
-<pre><code class="language-text">L0 = select_tiles(U_L0, cost_L0, B1, Kmax_L0)
-split_candidates = []
-for i in L0:
-  split_candidates.append((i, S_i / O_split_i))
-L1 = select_tiles(split_candidates, split_cost, B2, Kmax_L1)
-if nesting_depth &gt;= 2:
-  L2 = recursive_split(L1, B3, Kmax_L2)
-</code></pre>
+<p>Recursive depth-2 contract:
+- stage <code>L0 -&gt; L1</code> uses <code>B2</code>
+- stage <code>L1 -&gt; L2</code> uses <code>B3</code>
+- both stages enforce deterministic parent ranking:
+  1. split score descending
+  2. tile id ascending tie-break
+- each accepted parent expands to exactly 4 children
+- expansion is capacity-constrained by <code>Kmax_L1</code> / <code>Kmax_L2</code></p>
+<p>Pseudo-code:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>L0 = select_tiles(U_L0, cost_L0, B1, Kmax_L0)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>split_candidates = []
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>for i in L0:
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  split_candidates.append((i, S_i / O_split_i))
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>L1 = select_tiles(split_candidates, split_cost, B2, Kmax_L1)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>if nesting_depth &gt;= 2:
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  L2 = recursive_split(L1, B3, Kmax_L2)
+</code></pre></div></p>
 <h2 id="8-ordering-and-sequence-geometry">8. Ordering and Sequence Geometry</h2>
 <h3 id="81-required-modes">8.1 Required Modes</h3>
 <ul>
@@ -432,7 +3682,17 @@ where <code>g_fuse in [0,1]</code> may be scalar, channel-wise, or spatial.</p>
 [
 g_a \leftarrow g_a - \frac{g_a\cdot g_b}{||g_b||^2}g_b
 ]
-Do not project head-specific gradients.</p>
+Do not project head-specific gradients.
+Diagnostics contract:
+- compute conflict pairs before projection over ordered task-group pairs
+- compute conflict pairs after projection over the projected gradient set
+- expose:
+  - <code>conflicting_pairs</code>
+  - <code>conflicting_pairs_after</code>
+  - <code>total_pairs</code>
+  - <code>conflict_rate_before</code>
+  - <code>conflict_rate_after</code>
+- trainer logs must include the above metrics when PCGrad++ is enabled.</p>
 <h2 id="11-temporal-hysteresis-and-state-reuse">11. Temporal Hysteresis and State Reuse</h2>
 <h3 id="111-state">11.1 State</h3>
 <ul>
@@ -478,6 +3738,13 @@ Requirements:
 <li><code>MaskedConv</code></li>
 <li>fused DET decode + NMS</li>
 </ul>
+<h3 id="125-build-time-plugin-contract-checks">12.5 Build-Time Plugin Contract Checks</h3>
+<p>TensorRT builder must validate plugin creator contracts before engine build:
+- required creators are present in registry
+- creator version matches expected contract version
+- creator namespace matches expected contract namespace
+- creator field-signature metadata covers expected fields for each plugin</p>
+<p>Strict mode is default and must fail fast with actionable mismatch diagnostics.</p>
 <h2 id="13-qat-and-precision-policy">13. QAT and Precision Policy</h2>
 <h3 id="131-profiles">13.1 Profiles</h3>
 <ul>
@@ -495,6 +3762,40 @@ Requirements:
 <ul>
 <li>mAP/mIoU degradation must stay within agreed profile thresholds</li>
 </ul>
+<h3 id="134-fp8-telemetry-contract">13.4 FP8 Telemetry Contract</h3>
+<p>When FP8 is requested, runtime/benchmark reports must expose:
+- <code>requested_dtype</code>
+- <code>effective_dtype</code>
+- <code>fp8_requested</code>
+- <code>fp8_enabled</code>
+- <code>fp8_fallback_reason</code></p>
+<p><code>fp8_fallback_reason</code> must be a canonical reason-code from the runtime capability catalog.</p>
+<h3 id="135-int8-sensitive-layer-precision-contract">13.5 INT8 Sensitive-Layer Precision Contract</h3>
+<p>In TensorRT INT8 builds:
+- layers matching sensitive keywords (<code>router</code>, <code>kan</code> by default) must be constrained to FP16.
+- strict mode must fail build when a matched layer cannot be constrained via TensorRT precision APIs.
+- build results must expose per-layer precision constraint evidence:
+  - <code>layer_name</code>
+  - <code>matched_keyword</code>
+  - <code>precision_applied</code>
+  - <code>output_constraints_applied</code></p>
+<h3 id="136-int8-calibration-cache-governance-contract">13.6 INT8 Calibration Cache Governance Contract</h3>
+<p>In TensorRT INT8 builds with calibration cache enabled:
+- calibration cache keys must be deterministic and include:
+  - model/export identity hash
+  - plugin contract metadata (version + namespace)
+  - precision profile
+  - calibration dataset version
+- calibration dataset version may be:
+  - explicitly configured (<code>calibration_dataset_version</code>)
+  - auto-derived from calibration batch digest
+- cache governance rules:
+  - unchanged key must reuse existing cache
+  - changed key must invalidate cache automatically
+  - legacy raw cache blobs are accepted only when key governance is disabled
+- build results must expose:
+  - <code>calibration_cache_key</code>
+  - <code>calibration_dataset_version</code></p>
 <h2 id="14-performance-regression-testing">14. Performance Regression Testing</h2>
 <h3 id="141-required-metrics">14.1 Required Metrics</h3>
 <ul>
@@ -541,94 +3842,237 @@ Requirements:
 <ul>
 <li>bounded quality drop between PyTorch and TRT/ORT profiles</li>
 </ul>
-<h2 id="18-file-ownership-map">18. File Ownership Map</h2>
+<h3 id="174-eval-dataset-contract-cli-model-eval-path">17.4 Eval Dataset Contract (CLI Model Eval Path)</h3>
+<p>For <code>apex_x cli eval --dataset-npz</code>:
+- required:
+  - <code>.npy</code> or <code>.npz</code> input with <code>images</code> tensor shape <code>[N,3,H,W]</code>
+- optional:
+  - <code>.npz</code> key <code>det_score_target</code> (compat alias <code>det_scores_target</code>) with shape <code>[N]</code> or <code>[N,1]</code>
+  - <code>.npz</code> key <code>selected_tiles_target</code> (compat alias <code>selected_tiles_targets</code>) with shape <code>[N]</code> or <code>[N,1]</code>
+- report contract:
+  - <code>model_eval.det_score</code> aggregate stats (<code>mean/std/min/max</code>)
+  - <code>model_eval.selected_tiles</code> aggregate stats (<code>mean/p95</code>)
+  - when <code>det_score_target</code> is provided, <code>model_eval.det_score_target</code> includes:
+    - <code>mae</code>
+    - <code>rmse</code>
+    - <code>bias</code>
+    - <code>r2</code> (nullable when target variance is zero)
+    - <code>pearson_corr</code> (nullable when variance is zero)
+  - when <code>selected_tiles_target</code> is provided, <code>model_eval.selected_tiles_target</code> includes:
+    - <code>mae</code>
+    - <code>rmse</code>
+    - <code>bias</code>
+    - <code>exact_match_rate</code></p>
+<h2 id="18-runtime-capability-and-parity-contracts">18. Runtime Capability and Parity Contracts</h2>
+<h3 id="181-backend-capability-matrix">18.1 Backend Capability Matrix</h3>
+<p>Canonical backend matrix:
+- <code>cpu</code>:
+  - required: CPU torch execution
+  - optional: none
+- <code>torch_cuda</code>:
+  - required: <code>cuda.available = true</code>
+  - optional: none
+- <code>triton</code>:
+  - required: <code>cuda.available = true</code>, <code>triton.available = true</code>
+  - optional: Triton version metadata
+  - TileSSM long-sequence contract:
+    - when sequence length exceeds single-launch bound, runtime must use chunked scan launches
+      with recurrent state carry-over across chunks
+  - TileUnpack overlap-mode contract:
+    - dispatch supports <code>override</code> and <code>blend</code> modes
+    - blend mode must not rely on hardcoded forced-reference dispatch branches
+  - Stage-1 fused selector contract:
+    - FF heavy-path inference may use fused stage-1 route only under explicit compatibility gates
+    - non-compatible cases must fall back to decomposed path with deterministic behavior
+- <code>tensorrt</code>:
+  - required: <code>cuda.available = true</code>, <code>tensorrt.python_available = true</code>
+  - optional: local header availability for build workflows</p>
+<p>Precision overlays:
+- TensorRT INT8 requires:
+  - TensorRT Python module
+  - CUDA
+  - <code>BuilderFlag.INT8</code>
+- FP8 requires:
+  - FP8 torch dtype exposure
+  - CUDA
+  - compute capability policy gate (<code>sm90+</code>)</p>
+<h3 id="182-reason-code-contract">18.2 Reason-Code Contract</h3>
+<p>Runtime capability probes must emit deterministic reason codes only from the catalog:
+- CUDA: <code>cuda_unavailable</code>, <code>cuda_device_not_found</code>, <code>cuda_device_index_out_of_range</code>, <code>cuda_query_failed</code>
+- Triton: <code>triton_not_installed</code>
+- TensorRT Python: <code>tensorrt_python_not_installed</code>, <code>tensorrt_python_import_failed</code>
+- TensorRT INT8: <code>tensorrt_python_unavailable</code>, <code>cuda_required_for_tensorrt_int8</code>, <code>tensorrt_int8_builder_flag_missing</code>
+- FP8: <code>torch_build_missing_fp8_dtype</code>, <code>fp8_requires_cuda</code>, <code>cuda_compute_capability_unknown</code>, <code>compute_capability_below_sm90</code></p>
+<p>Hardware metadata (for example compute capability values) must be exposed in dedicated fields, not dynamic reason strings.</p>
+<h3 id="183-tensorrt-cli-runtime-execution-contract">18.3 TensorRT CLI Runtime Execution Contract</h3>
+<p>For CLI/inference-runner TensorRT execution:
+- required runtime artifact:
+  - <code>APEXX_TRT_ENGINE_PATH</code> (serialized engine file)
+- optional artifacts and controls:
+  - <code>APEXX_EXPORT_MANIFEST_PATH</code> for manifest/ONNX hash preflight
+  - <code>APEXX_TRT_VERIFY_MANIFEST_HASH</code> (<code>true</code> by default)
+  - <code>APEXX_TRT_PLUGIN_LIB</code> (<code>os.pathsep</code>-separated plugin <code>.so/.dylib</code> paths)
+  - <code>APEXX_TRT_INPUT_NAME</code> for explicit input tensor binding when engine has multiple inputs
+  - <code>APEXX_TRT_EXTRA_INPUTS_NPZ</code> for named auxiliary inputs (<code>.npz</code>)
+  - <code>APEXX_TRT_PRIMARY_OUTPUT_NAME</code> for explicit primary output mapping into CLI result schema
+  - <code>APEXX_TRT_DET_BOXES_NAME</code>, <code>APEXX_TRT_DET_SCORES_NAME</code>,
+    <code>APEXX_TRT_DET_CLASS_IDS_NAME</code>, <code>APEXX_TRT_DET_VALID_NAME</code>
+    for explicit DET output mapping
+- strict/permissive policy:
+  - strict mode must fail on preflight/runtime execution errors
+  - permissive mode must fall back deterministically and emit execution fallback reason
+- runtime telemetry:
+  - <code>runtime.latency_ms.total</code> for full inference-call wall time
+  - <code>runtime.latency_ms.backend_execute</code> for backend execution segment
+  - <code>runtime.latency_ms.backend_preflight</code> for backend preflight/handshake segment
+  - schema applies to both Python CLI reports and Go service <code>/predict</code> response payloads
+- Go runtime bridge execution contract:
+  - ORT bridge env controls:
+    - <code>APEXX_ORT_BRIDGE_CMD</code>
+  - TRT bridge env controls:
+    - <code>APEXX_TRT_BRIDGE_CMD</code>
+  - bridge payload protocol:
+    - request JSON stdin: <code>{backend, artifact_path, requests[]}</code>
+    - response JSON stdout: <code>{results[], error?}</code>
+  - adapters must fail closed when bridge/native backend execution is unavailable
+    (no synthetic score fallback in production path)
+- service error mapping (Go runtime):
+  - queue saturation must return HTTP <code>429</code>
+  - predict timeout must return HTTP <code>504</code>
+  - backend unavailable must return HTTP <code>503</code>
+  - backend inference/protocol failures must return HTTP <code>502</code>
+- service canary mode (Go runtime):
+  - optional secondary adapter compares sampled requests asynchronously
+  - mismatch telemetry counters must be exported in service metrics
+  - capture policy controls:
+    - <code>canary-capture-policy</code> / <code>APEXX_CANARY_CAPTURE_POLICY</code> (<code>off|mismatch|error|all</code>)
+    - <code>canary-capture-path</code> / <code>APEXX_CANARY_CAPTURE_PATH</code> (JSONL sink)
+    - <code>canary-capture-max-bytes</code> / <code>APEXX_CANARY_CAPTURE_MAX_BYTES</code> (size guard)
+  - CI SLA gate:
+    - <code>TestCanaryLoadGateThresholds</code> validates timeout/queue-overflow rates and canary overhead thresholds</p>
+<h3 id="184-parity-tolerance-profiles">18.4 Parity Tolerance Profiles</h3>
+<p>Parity tolerance presets must be versioned and testable:
+- <code>quality</code>
+- <code>balanced</code>
+- <code>edge</code></p>
+<p>Each preset defines:
+- op-level tolerances
+- end-to-end tolerances
+- mismatch ratio limit</p>
+<p>Profile selection must be explicit in parity tests.</p>
+<p>TensorRT parity harness requirements:
+- backend pair matrix must cover:
+  - <code>reference</code> vs <code>triton</code>
+  - <code>reference</code> vs <code>tensorrt</code>
+  - <code>triton</code> vs <code>tensorrt</code>
+- sweep dimensions must include:
+  - shape cases (at least small/medium representative inputs)
+  - precision cases (at least FP16 + FP32 candidate envelopes on CPU-safe tests;
+    INT8/FP8 where runtime support exists)</p>
+<h3 id="185-triton-autotune-registry-contract">18.5 Triton Autotune Registry Contract</h3>
+<p>Triton perf runs must expose deterministic autotune telemetry:
+- registry key:
+  - <code>op_name + shape_bucket</code>
+- registry value:
+  - <code>selected_config</code> (<code>BLOCK_*</code>, <code>num_warps</code>, <code>num_stages</code>, when available)
+  - <code>selection_source</code> (<code>triton_best_config</code>, <code>heuristic</code>, <code>registry_cache</code>)
+  - cache counters (<code>launches</code>, <code>cache_hits</code>, <code>cache_misses</code>)
+- benchmark report requirements:
+  - JSON includes <code>triton_autotune.summary</code> and <code>triton_autotune.entries</code>
+  - Markdown includes a readable autotune registry section for regression review
+  - <code>summary</code> must include <code>cache_entries</code> and <code>cache_hit_rate</code></p>
+<h3 id="186-unified-perf-regression-policy-cpugputrt">18.6 Unified Perf Regression Policy (CPU/GPU/TRT)</h3>
+<p>Perf regression wrappers must share one pass/fail formula:
+- fail when:
+  - <code>current_ms &gt; baseline_ms * (1 + max_regression_ratio) + max_regression_abs_ms</code></p>
+<p>Regression wrappers:
+- CPU: <code>scripts/perf_regression.py</code>
+- GPU: <code>scripts/perf_regression_gpu.py</code>
+- TensorRT shape-sweep: <code>scripts/perf_regression_trt.py</code></p>
+<p>All wrappers must support:
+- baseline template generation mode
+- compare mode with explicit baseline
+- normalized trend artifact output with shared schema keys:
+  - <code>schema_version</code>
+  - <code>suite</code>
+  - <code>timestamp_utc</code>
+  - <code>overall_status</code>
+  - <code>total_metrics</code>
+  - <code>failed_metrics</code>
+  - <code>metrics[]</code></p>
+<h2 id="19-file-ownership-map">19. File Ownership Map</h2>
 <ul>
 <li><code>apex_x/</code>: reference implementation</li>
 <li><code>tests/</code>: correctness checks</li>
 <li><code>docs/runtime/</code>: runtime plugin details</li>
 <li><code>scripts/</code>: repeatable perf checks</li>
 </ul>
-<h2 id="19-change-management">19. Change Management</h2>
+<h2 id="20-change-management">20. Change Management</h2>
 <p>Any changes to equations, contracts, ordering, or precision policy require synchronized updates across:
 - <code>docs/PRD.md</code>
 - <code>docs/ENGINEERING_SPEC.md</code>
 - <code>docs/DECISIONS.md</code>
-- <code>docs/CONTEXT.md</code></p></div>
-            </div>
-        </div>
+- <code>docs/CONTEXT.md</code></p>
 
-        <footer class="col-md-12">
-            <hr>
-            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
-        </footer>
-        <script src="../js/bootstrap.bundle.min.js"></script>
-        <script>
-            var base_url = "..",
-                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
-        </script>
-        <script src="../js/base.js"></script>
-        <script src="../search/main.js"></script>
 
-        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="searchModalLabel">Search</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
             </div>
-            <div class="modal-body">
-                <p>From here you can search these documents. Enter your search terms below.</p>
-                <form>
-                    <div class="form-group">
-                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
-                    </div>
-                </form>
-                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
-            </div>
-            <div class="modal-footer">
-            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-    </div>
-</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th style="width: 20%;">Keys</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="help shortcut"><kbd>?</kbd></td>
-                    <td>Open this help</td>
-                  </tr>
-                  <tr>
-                    <td class="next shortcut"><kbd>n</kbd></td>
-                    <td>Next page</td>
-                  </tr>
-                  <tr>
-                    <td class="prev shortcut"><kbd>p</kbd></td>
-                    <td>Previous page</td>
-                  </tr>
-                  <tr>
-                    <td class="search shortcut"><kbd>s</kbd></td>
-                    <td>Search</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="modal-footer">
-            </div>
-        </div>
-    </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
 </div>
-
-    </body>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
 </html>

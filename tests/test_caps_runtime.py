@@ -17,14 +17,14 @@ def test_detect_runtime_caps_cpu_only(monkeypatch: pytest.MonkeyPatch, tmp_path:
     caps = caps_module.detect_runtime_caps(header_search_paths=[tmp_path])
 
     assert caps.cuda.available is False
-    assert caps.cuda.reason == "cuda_unavailable"
+    assert caps.cuda.reason == caps_module.CUDA_REASON_CUDA_UNAVAILABLE
     assert caps.triton.available is False
-    assert caps.triton.reason == "triton_not_installed"
+    assert caps.triton.reason == caps_module.TRITON_REASON_NOT_INSTALLED
     assert caps.tensorrt.python_available is False
     assert caps.tensorrt.headers_available is False
     assert caps.tensorrt.int8_available is False
     assert caps.fp8.available is False
-    assert caps.fp8.reason == "fp8_requires_cuda"
+    assert caps.fp8.reason == caps_module.FP8_REASON_CUDA_REQUIRED
     assert caps.any_gpu_runtime is False
 
     as_dict = caps.to_dict()
@@ -83,3 +83,21 @@ def test_detect_runtime_caps_mocked_full_stack(
     assert caps.fp8.available is True
     assert caps.any_gpu_runtime is True
 
+
+def test_detect_cuda_caps_out_of_range_uses_contract_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(caps_module.torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(caps_module.torch.cuda, "device_count", lambda: 1)
+
+    caps = caps_module.detect_cuda_caps(device_index=5)
+    assert caps.available is False
+    assert caps.reason == caps_module.CUDA_REASON_DEVICE_INDEX_OUT_OF_RANGE
+
+
+def test_runtime_reason_catalog_is_stable() -> None:
+    catalog = caps_module.runtime_reason_catalog()
+    assert set(catalog) == {"cuda", "triton", "tensorrt_python", "tensorrt_int8", "fp8"}
+    assert caps_module.CUDA_REASON_QUERY_FAILED in catalog["cuda"]
+    assert caps_module.TENSORRT_INT8_REASON_CUDA_REQUIRED in catalog["tensorrt_int8"]
+    assert caps_module.FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90 in catalog["fp8"]

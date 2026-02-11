@@ -81,6 +81,9 @@ def test_pcgradpp_projects_conflicts_only_for_shared_params() -> None:
     assert diag.group_names == ("det_cls", "det_box", "seg_mask", "seg_boundary")
     assert diag.conflicting_pairs > 0
     assert diag.projected_pairs > 0
+    assert diag.total_pairs > 0
+    assert diag.conflicting_pairs_after <= diag.conflicting_pairs
+    assert 0.0 <= diag.conflict_rate_after <= diag.conflict_rate_before <= 1.0
 
     assert net.shared.weight.grad is not None
     assert abs(float(naive_shared_grad.item())) > 1e-6
@@ -89,3 +92,17 @@ def test_pcgradpp_projects_conflicts_only_for_shared_params() -> None:
     for parameter, expected in zip(head_params, expected_head_grads, strict=True):
         assert parameter.grad is not None
         assert torch.allclose(parameter.grad, expected, atol=1e-6, rtol=1e-6)
+
+
+def test_pcgradpp_with_no_shared_params_returns_zero_conflict_rates() -> None:
+    x = torch.tensor(1.0, dtype=torch.float32, requires_grad=True)
+    losses = {"det_cls": x.square()}
+
+    diag = apply_pcgradpp(loss_terms=losses, shared_params=(), head_params=())
+
+    assert diag.shared_param_count == 0
+    assert diag.total_pairs == 0
+    assert diag.conflicting_pairs == 0
+    assert diag.conflicting_pairs_after == 0
+    assert diag.conflict_rate_before == 0.0
+    assert diag.conflict_rate_after == 0.0

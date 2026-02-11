@@ -19,6 +19,10 @@ type Metrics struct {
 	queueLatencyMax   atomic.Int64
 	inferenceNanos    atomic.Int64
 	inferenceNanosMax atomic.Int64
+	canarySamples     atomic.Int64
+	canaryCompared    atomic.Int64
+	canaryMismatches  atomic.Int64
+	canaryErrors      atomic.Int64
 }
 
 type MetricsSnapshot struct {
@@ -34,6 +38,10 @@ type MetricsSnapshot struct {
 	MaxQueueMillis     float64
 	AvgInferenceMillis float64
 	MaxInferenceMillis float64
+	CanarySamples      int64
+	CanaryCompared     int64
+	CanaryMismatches   int64
+	CanaryErrors       int64
 }
 
 func (m *Metrics) RecordRequestStart() {
@@ -51,6 +59,21 @@ func (m *Metrics) RecordRequestDone(latency time.Duration, success bool) {
 
 func (m *Metrics) RecordBatch() {
 	m.batchesTotal.Add(1)
+}
+
+func (m *Metrics) RecordCanarySample() {
+	m.canarySamples.Add(1)
+}
+
+func (m *Metrics) RecordCanaryCompared(mismatch bool) {
+	m.canaryCompared.Add(1)
+	if mismatch {
+		m.canaryMismatches.Add(1)
+	}
+}
+
+func (m *Metrics) RecordCanaryError() {
+	m.canaryErrors.Add(1)
 }
 
 func (m *Metrics) RecordBatchStats(
@@ -112,6 +135,10 @@ func (m *Metrics) Snapshot() MetricsSnapshot {
 		MaxQueueMillis:     float64(m.queueLatencyMax.Load()) / float64(time.Millisecond),
 		AvgInferenceMillis: avgInference,
 		MaxInferenceMillis: float64(m.inferenceNanosMax.Load()) / float64(time.Millisecond),
+		CanarySamples:      m.canarySamples.Load(),
+		CanaryCompared:     m.canaryCompared.Load(),
+		CanaryMismatches:   m.canaryMismatches.Load(),
+		CanaryErrors:       m.canaryErrors.Load(),
 	}
 }
 
@@ -119,6 +146,10 @@ func (s MetricsSnapshot) PrometheusText() string {
 	avgBatchSize := 0.0
 	if s.BatchesTotal > 0 {
 		avgBatchSize = float64(s.BatchItemsTotal) / float64(s.BatchesTotal)
+	}
+	canaryMismatchRatio := 0.0
+	if s.CanaryCompared > 0 {
+		canaryMismatchRatio = float64(s.CanaryMismatches) / float64(s.CanaryCompared)
 	}
 	return fmt.Sprintf(
 		"apexx_requests_total %d\n"+
@@ -132,7 +163,12 @@ func (s MetricsSnapshot) PrometheusText() string {
 			"apexx_queue_latency_ms_avg %.6f\n"+
 			"apexx_queue_latency_ms_max %.6f\n"+
 			"apexx_inference_latency_ms_avg %.6f\n"+
-			"apexx_inference_latency_ms_max %.6f\n",
+			"apexx_inference_latency_ms_max %.6f\n"+
+			"apexx_canary_samples_total %d\n"+
+			"apexx_canary_compares_total %d\n"+
+			"apexx_canary_mismatches_total %d\n"+
+			"apexx_canary_errors_total %d\n"+
+			"apexx_canary_mismatch_ratio %.6f\n",
 		s.RequestsTotal,
 		s.RequestsFailed,
 		s.BatchesTotal,
@@ -145,6 +181,11 @@ func (s MetricsSnapshot) PrometheusText() string {
 		s.MaxQueueMillis,
 		s.AvgInferenceMillis,
 		s.MaxInferenceMillis,
+		s.CanarySamples,
+		s.CanaryCompared,
+		s.CanaryMismatches,
+		s.CanaryErrors,
+		canaryMismatchRatio,
 	)
 }
 

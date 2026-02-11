@@ -41,6 +41,7 @@ def test_oracle_sampler_count_and_no_duplicates() -> None:
     assert len(out.indices) == 10
     assert len(set(out.indices)) == len(out.indices)
     assert set(out.random_indices).isdisjoint(out.uncertainty_indices)
+    assert out.long_tail_indices == []
 
 
 def test_oracle_sampler_uncertainty_bias_distribution() -> None:
@@ -69,3 +70,49 @@ def test_oracle_sampler_validation_errors() -> None:
         sample_oracle_set([0.1, 0.2], random_fraction=0.1, uncertainty_fraction=1.1)
     with pytest.raises(ValueError, match="weights must be finite"):
         sample_oracle_set([0.1, float("nan"), 0.2], random_fraction=0.0, uncertainty_fraction=0.5)
+    with pytest.raises(ValueError, match="fractions must be within"):
+        sample_oracle_set(
+            [0.1, 0.2],
+            random_fraction=0.1,
+            uncertainty_fraction=0.1,
+            long_tail_fraction=1.2,
+        )
+    with pytest.raises(ValueError, match="length must match"):
+        sample_oracle_set(
+            [0.1, 0.2, 0.3],
+            random_fraction=0.1,
+            uncertainty_fraction=0.1,
+            long_tail_fraction=0.1,
+            long_tail_scores=[0.1, 0.2],
+        )
+    with pytest.raises(ValueError, match="long_tail_scores must be finite"):
+        sample_oracle_set(
+            [0.1, 0.2, 0.3],
+            random_fraction=0.1,
+            uncertainty_fraction=0.1,
+            long_tail_fraction=0.2,
+            long_tail_scores=[0.1, float("nan"), 0.3],
+        )
+
+
+def test_oracle_sampler_long_tail_component_selects_top_remaining_scores() -> None:
+    u_hat = [0.1] * 8
+    long_tail_scores = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+
+    out = sample_oracle_set(
+        u_hat=u_hat,
+        random_fraction=0.25,
+        uncertainty_fraction=0.25,
+        long_tail_fraction=0.25,
+        long_tail_scores=long_tail_scores,
+        seed=11,
+    )
+
+    assert len(out.long_tail_indices) == 2
+    assert set(out.long_tail_indices).isdisjoint(out.random_indices)
+    assert set(out.long_tail_indices).isdisjoint(out.uncertainty_indices)
+
+    selected_seed = set(out.random_indices) | set(out.uncertainty_indices)
+    remaining = [idx for idx in range(len(u_hat)) if idx not in selected_seed]
+    expected = sorted(sorted(remaining, key=lambda idx: (-long_tail_scores[idx], idx))[:2])
+    assert out.long_tail_indices == expected

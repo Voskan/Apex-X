@@ -4,7 +4,13 @@ import math
 from dataclasses import dataclass
 from typing import Final
 
-from apex_x.tiles import l0_to_l1_children_indices, l1_grid_shape_from_l0, order_tile_indices
+from apex_x.tiles import (
+    l0_to_l1_children_indices,
+    l1_grid_shape_from_l0,
+    l1_to_l2_children_indices,
+    l2_grid_shape_from_l1,
+    order_tile_indices,
+)
 
 _EPS: Final[float] = 1e-9
 
@@ -35,6 +41,22 @@ class TwoStageSelectionResult:
     l1_grid_w: int
     l1_kmax_buffer: list[int]
     l1_valid_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class ThreeStageSelectionResult:
+    """Result bundle for deterministic three-stage (L0->L1->L2) selection."""
+
+    two_stage: TwoStageSelectionResult
+    split_l1_parent_indices: list[int]
+    split_l1_parent_order: list[int]
+    split_l1_spent_budget: float
+    l2_indices: list[int]
+    l2_ordered_indices: list[int]
+    l2_grid_h: int
+    l2_grid_w: int
+    l2_kmax_buffer: list[int]
+    l2_valid_count: int
 
 
 def build_kmax_buffer(selected_indices: list[int], kmax: int, pad_value: int = -1) -> list[int]:
@@ -205,4 +227,125 @@ def deterministic_two_stage_selection(
         l1_grid_w=l1_grid_w,
         l1_kmax_buffer=l1_kmax_buffer,
         l1_valid_count=len(l1_ordered_indices),
+    )
+
+
+def deterministic_three_stage_selection(
+    l0_utilities: list[float],
+    l0_delta_costs: list[float],
+    split_utilities_l0: list[float],
+    split_overheads_l0: list[float],
+    split_utilities_l1: list[float],
+    split_overheads_l1: list[float],
+    *,
+    budget_b1: float,
+    budget_b2: float,
+    budget_b3: float,
+    kmax_l0: int,
+    kmax_l1: int,
+    kmax_l2: int,
+    l0_grid_h: int,
+    l0_grid_w: int,
+    l1_order_mode: str = "hilbert",
+    l2_order_mode: str = "hilbert",
+) -> ThreeStageSelectionResult:
+    """Deterministic three-stage selection for nesting depth=2.
+
+    Stage 1:
+    - select L0 tiles by `U / delta_cost` under `budget_b1` and `kmax_l0`
+
+    Stage 2:
+    - among selected L0 tiles, score split candidates by `S / O_split` under `budget_b2`
+    - expand selected L0 parents into L1 child indices
+
+    Stage 3:
+    - among selected L1 tiles, score split candidates by `S / O_split` under `budget_b3`
+    - expand selected L1 parents into L2 child indices
+    """
+    if budget_b3 < 0.0 or not math.isfinite(budget_b3):
+        raise ValueError("budget_b3 must be finite and >= 0")
+    if kmax_l2 < 0:
+        raise ValueError("kmax_l2 must be >= 0")
+
+    two_stage = deterministic_two_stage_selection(
+        l0_utilities=l0_utilities,
+        l0_delta_costs=l0_delta_costs,
+        split_utilities=split_utilities_l0,
+        split_overheads=split_overheads_l0,
+        budget_b1=budget_b1,
+        budget_b2=budget_b2,
+        kmax_l0=kmax_l0,
+        kmax_l1=kmax_l1,
+        l0_grid_h=l0_grid_h,
+        l0_grid_w=l0_grid_w,
+        l1_order_mode=l1_order_mode,
+    )
+
+    l1_grid_h, l1_grid_w = two_stage.l1_grid_h, two_stage.l1_grid_w
+    l2_grid_h, l2_grid_w = l2_grid_shape_from_l1(l1_grid_h, l1_grid_w)
+    expected_l1_size = l1_grid_h * l1_grid_w
+    if len(split_utilities_l1) != len(split_overheads_l1):
+        raise ValueError("split_utilities_l1 and split_overheads_l1 must have the same length")
+    if len(split_utilities_l1) != expected_l1_size:
+        raise ValueError("split_utilities_l1/split_overheads_l1 must match full L1 grid size")
+
+    selected_l1 = two_stage.l1_ordered_indices
+    if not selected_l1 or kmax_l2 == 0 or budget_b3 == 0.0:
+        return ThreeStageSelectionResult(
+            two_stage=two_stage,
+            split_l1_parent_indices=[],
+            split_l1_parent_order=[],
+            split_l1_spent_budget=0.0,
+            l2_indices=[],
+            l2_ordered_indices=[],
+            l2_grid_h=l2_grid_h,
+            l2_grid_w=l2_grid_w,
+            l2_kmax_buffer=build_kmax_buffer([], kmax=kmax_l2),
+            l2_valid_count=0,
+        )
+
+    split_scores_l1: dict[int, float] = {}
+    for idx in selected_l1:
+        s = float(split_utilities_l1[idx])
+        o = float(split_overheads_l1[idx])
+        if not math.isfinite(s):
+            raise ValueError("split_utilities_l1 must be finite")
+        if not math.isfinite(o):
+            raise ValueError("split_overheads_l1 must be finite")
+        denom = o if o > _EPS else _EPS
+        split_scores_l1[idx] = s / denom
+
+    split_l1_parent_order = sorted(selected_l1, key=lambda idx: (-split_scores_l1[idx], idx))
+
+    split_l1_parent_indices: list[int] = []
+    split_l1_spent_budget = 0.0
+    l2_indices: list[int] = []
+
+    for parent_idx in split_l1_parent_order:
+        overhead = float(split_overheads_l1[parent_idx])
+        children = l1_to_l2_children_indices(parent_idx, l1_grid_h, l1_grid_w).tolist()
+
+        if split_l1_spent_budget + overhead > budget_b3 + _EPS:
+            continue
+        if len(l2_indices) + len(children) > kmax_l2:
+            continue
+
+        split_l1_parent_indices.append(parent_idx)
+        split_l1_spent_budget += overhead
+        l2_indices.extend(int(child) for child in children)
+
+    l2_ordered_indices = order_tile_indices(l2_indices, l2_grid_h, l2_grid_w, mode=l2_order_mode)
+    l2_kmax_buffer = build_kmax_buffer(l2_ordered_indices, kmax=kmax_l2)
+
+    return ThreeStageSelectionResult(
+        two_stage=two_stage,
+        split_l1_parent_indices=split_l1_parent_indices,
+        split_l1_parent_order=split_l1_parent_order,
+        split_l1_spent_budget=float(split_l1_spent_budget),
+        l2_indices=l2_indices,
+        l2_ordered_indices=l2_ordered_indices,
+        l2_grid_h=l2_grid_h,
+        l2_grid_w=l2_grid_w,
+        l2_kmax_buffer=l2_kmax_buffer,
+        l2_valid_count=len(l2_ordered_indices),
     )

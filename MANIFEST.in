@@ -1,0 +1,18 @@
+include README.md
+include LICENSE
+include CONTRIBUTING.md
+include CODE_OF_CONDUCT.md
+include CHANGELOG.md
+include SECURITY.md
+include pyproject.toml
+
+recursive-include apex_x *.py
+recursive-include docs *
+recursive-include examples *.py *.yaml
+recursive-include tests *.py *.yaml
+recursive-include runtime *
+recursive-include scripts *.py *.json
+
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store

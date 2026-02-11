@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
-from apex_x.kernels.triton.tileunpack import tileunpack_dispatch, tileunpack_reference
+import apex_x.kernels.triton.tileunpack as tileunpack_mod
+from apex_x.kernels.triton.tileunpack import (
+    TritonTileUnpackAvailability,
+    get_triton_tileunpack_availability,
+    tileunpack_dispatch,
+    tileunpack_reference,
+)
 from apex_x.runtime import evaluate_parity_outputs
 from apex_x.utils.repro import seed_all
 
@@ -103,7 +110,7 @@ def test_overlap_dispatch_parity_with_reference_override() -> None:
     assert report.passed is True
 
 
-def test_overlap_blend_mode_dispatch_uses_reference_path() -> None:
+def test_overlap_blend_mode_dispatch_parity() -> None:
     base = torch.zeros((1, 1, 8, 8), dtype=torch.float32)
     packed = torch.zeros((1, 2, 1, 4, 4), dtype=torch.float32)
     packed[0, 0] = 1.0
@@ -129,7 +136,50 @@ def test_overlap_blend_mode_dispatch_uses_reference_path() -> None:
         prefer_triton=True,
         allow_fallback=True,
     )
-    assert out.backend == "reference"
-    assert out.fallback_reason == "blend_mode_uses_reference_path"
     assert torch.allclose(out.merged, expected)
+    availability = get_triton_tileunpack_availability()
+    if availability.available:
+        assert out.backend == "triton"
+        assert out.fallback_reason is None
+    else:
+        assert out.backend == "reference"
+        assert out.fallback_reason is not None
 
+
+def test_overlap_blend_mode_dispatch_does_not_force_reference_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base = torch.zeros((1, 1, 8, 8), dtype=torch.float32)
+    packed = torch.zeros((1, 2, 1, 4, 4), dtype=torch.float32)
+    packed[0, 0] = 1.0
+    packed[0, 1] = 3.0
+    meta = _overlap_meta(base.device)
+    levels = torch.tensor([[1, 2]], dtype=torch.int32)
+    sentinel = torch.full_like(base, fill_value=7.0)
+
+    monkeypatch.setattr(
+        tileunpack_mod,
+        "get_triton_tileunpack_availability",
+        lambda: TritonTileUnpackAvailability(
+            triton_installed=True,
+            cuda_available=True,
+            cuda_device_count=1,
+            reason=None,
+        ),
+    )
+    monkeypatch.setattr(tileunpack_mod, "tileunpack_triton", lambda *args, **kwargs: sentinel)
+
+    out = tileunpack_dispatch(
+        base_map=base,
+        packed_out=packed,
+        meta=meta,
+        levels=levels,
+        overlap_mode="blend",
+        blend_alpha=0.25,
+        prefer_triton=True,
+        allow_fallback=True,
+    )
+
+    assert out.backend == "triton"
+    assert out.fallback_reason is None
+    assert torch.equal(out.merged, sentinel)

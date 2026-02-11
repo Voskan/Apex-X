@@ -32,11 +32,10 @@ Legacy runtime fused entrypoints:
 - `gather_gate_scatter(...)`
 
 `gather_gate_scatter(...)` dispatches:
-- Triton backend when available and requested
-- reference backend on fallback (`allow_fallback=True`)
+- reference backend in all environments (legacy API is reference-only)
 
 Result object includes:
-- `backend` (`reference` or `triton`)
+- `backend` (`reference`)
 - `fallback_reason`
 - `merged`, `priority_map`, `alpha_map`, `meta`
 
@@ -73,17 +72,42 @@ Current status in this repository:
   - bidirectional merge modes: `sum`, `avg`, `gated` (gate computed in torch)
 - Stage-1 fused fast path (`gather -> affine+ReGLU -> scatter`) is implemented:
   - `apex_x/kernels/triton/fused_pack_op_unpack.py`
-- legacy runtime `gather_gate_scatter(...)` Triton entrypoint remains a stub:
-  - `_triton_fused_kernel_stub(...)` raises `NotImplementedError`
-  - fallback keeps the reference path stable
+  - compatibility-gated selector is wired into `FFHeavyPath` inference path for
+    decomposed-vs-fused routing where Stage-1 constraints are satisfied
+- legacy runtime `gather_gate_scatter(...)` entrypoint is kept for compatibility but is
+  de-facto reference-only with explicit fallback reason:
+  - `legacy_triton_entrypoint_deprecated_reference_only`
 
 This keeps compatibility for the old runtime API while enabling a practical fused kernel path.
+
+## Autotune Registry
+Triton kernel autotune telemetry is tracked by:
+- `apex_x/kernels/triton/autotune_registry.py`
+
+Registry contract:
+- key: `op_name + shape_bucket`
+- cached payload:
+  - selected config (`BLOCK_*`, `num_warps`, `num_stages` when available)
+  - selection source (`triton_best_config`, `heuristic`, or `registry_cache`)
+  - launch count and cache hit/miss counters
+
+Current instrumented kernels:
+- `tilepack._tilepack_kernel`
+- `tileunpack._tileunpack_priority_kernel`
+- `tileunpack._tileunpack_scatter_kernel`
+- `fusiongate._fusiongate_alpha_kernel`
+- `fusiongate._fusiongate_fuse_kernel`
+- `fused_pack_op_unpack._fused_pack_op_unpack_kernel`
+
+GPU benchmark output (`apex_x/bench/gpu_bench.py`) exports this telemetry in:
+- JSON: `triton_autotune.summary`, `triton_autotune.entries`
+- Markdown: `Triton Autotune Registry` section
 
 ## Correctness Tests
 - `tests/test_triton_fused.py`
   - reference dispatch parity vs explicit reference pipeline
   - fallback behavior when Triton is unavailable
-  - forced Triton path without fallback raises stub error
+  - forced Triton path stays reference-only and does not raise
 - `tests/test_triton_fused_stage1_dispatch.py`
   - CPU fallback parity vs separate pack/op/unpack composition
   - deterministic duplicate-index guard
@@ -100,7 +124,7 @@ This keeps compatibility for the old runtime API while enabling a practical fuse
   - prints backend and fallback reason
   - on CPU/no-Triton setups, benchmark exercises fallback path
 
-When Triton kernel is implemented, the same script should report runtime speedup.
+On CUDA+Triton hosts, the same script reports runtime speedup deltas and selected backend metadata.
 
 For Stage-1 fused microbench:
 - `python -m apex_x.bench.triton_fused_stage1_bench`

@@ -105,7 +105,9 @@ def test_dispatch_falls_back_to_reference_when_triton_unavailable() -> None:
         assert out.fallback_reason is not None
 
 
-def test_dispatch_stub_raises_without_fallback_when_forced(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dispatch_never_raises_on_legacy_triton_entrypoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from apex_x.runtime import triton_fused as triton_module
 
     monkeypatch.setattr(
@@ -125,14 +127,15 @@ def test_dispatch_stub_raises_without_fallback_when_forced(monkeypatch: pytest.M
     boundary = torch.rand((1, 1, 8, 8), dtype=torch.float32)
     uncertainty = torch.rand((1, 1, 8, 8), dtype=torch.float32)
 
-    with pytest.raises(NotImplementedError, match="Triton fused gather\\+gate\\+scatter kernel"):
-        gather_gate_scatter(
-            base_map=base,
-            heavy_map=heavy,
-            indices=idx,
-            tile_size=4,
-            boundary_proxy=boundary,
-            uncertainty_proxy=uncertainty,
-            prefer_triton=True,
-            allow_fallback=False,
-        )
+    out = gather_gate_scatter(
+        base_map=base,
+        heavy_map=heavy,
+        indices=idx,
+        tile_size=4,
+        boundary_proxy=boundary,
+        uncertainty_proxy=uncertainty,
+        prefer_triton=True,
+        allow_fallback=False,
+    )
+    assert out.backend == "reference"
+    assert out.fallback_reason == "legacy_triton_entrypoint_deprecated_reference_only"

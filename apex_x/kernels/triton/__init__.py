@@ -1,3 +1,13 @@
+from .autotune_registry import (
+    TritonAutotuneEntry,
+    build_shape_bucket,
+    clear_triton_autotune_registry,
+    extract_triton_best_config,
+    get_cached_triton_config,
+    record_triton_autotune_selection,
+    resolve_triton_launch_config,
+    snapshot_triton_autotune_registry,
+)
 from .fused_pack_op_unpack import (
     FusedPackOpUnpackDispatchResult,
     TritonFusedStage1Availability,
@@ -47,6 +57,14 @@ from .tileunpack import (
 )
 
 __all__ = [
+    "TritonAutotuneEntry",
+    "build_shape_bucket",
+    "clear_triton_autotune_registry",
+    "extract_triton_best_config",
+    "get_cached_triton_config",
+    "record_triton_autotune_selection",
+    "resolve_triton_launch_config",
+    "snapshot_triton_autotune_registry",
     "TritonFusedStage1Availability",
     "FusedPackOpUnpackDispatchResult",
     "get_triton_fused_stage1_availability",

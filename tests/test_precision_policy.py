@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from apex_x.config import ApexXConfig
-from apex_x.runtime import resolve_precision_policy
+from apex_x.runtime import resolve_precision_policy, runtime_reason_catalog
 from apex_x.train import ApexXTrainer
 
 
@@ -61,3 +61,22 @@ def test_trainer_reports_precision_fallback_in_summary() -> None:
     assert precision["fallback_reason"] == "fp8_requires_cuda"
     assert precision["router_dtype"] == "float16"
     assert precision["kan_dtype"] == "float16"
+
+
+def test_fp8_fallback_reason_uses_canonical_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    from apex_x.runtime import precision as precision_module
+
+    monkeypatch.setattr(
+        precision_module,
+        "_detect_cuda_fp8_support",
+        lambda device: (False, "compute_capability_below_sm90"),
+    )
+
+    cfg = ApexXConfig()
+    cfg.runtime.precision_profile = "balanced"
+    cfg.validate()
+
+    policy = resolve_precision_policy(cfg, device="cuda:0")
+    assert policy.fp8_requested is True
+    assert policy.fp8_enabled is False
+    assert policy.fallback_reason in set(runtime_reason_catalog()["fp8"])

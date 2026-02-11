@@ -10,8 +10,8 @@ This service is a lightweight runtime wrapper for Apex-X inference backends.
 - short-window batching queue for `/predict`
 - per-request budget profile (`quality`, `balanced`, `edge`)
 - adapter layer:
-  - ONNX Runtime CPU baseline adapter scaffold
-  - TensorRT adapter scaffold via CGO build tags
+  - ONNX Runtime model adapter with optional Python bridge execution
+  - TensorRT adapter via CGO build tags + optional Python bridge execution
 
 ## Run Locally
 ```bash
@@ -31,12 +31,18 @@ go run ./cmd/apexx-runtime \
   -log-level info
 ```
 
+For real ORT execution on hosts without native Go ORT bindings:
+```bash
+export APEXX_ORT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge"
+```
+Adapters fail closed when bridge/native backend execution is unavailable.
+
 ## API
 
 ### `GET /health`
 Response:
 ```json
-{"status":"ok","adapter":"onnxruntime-cpu-stub"}
+{"status":"ok","adapter":"onnxruntime-cpu-baseline"}
 ```
 
 ### `POST /predict`
@@ -56,7 +62,7 @@ Response:
   "budget_profile": "balanced",
   "selected_tiles": 32,
   "scores": [0.2],
-  "backend": "onnxruntime-cpu-stub"
+  "backend": "onnxruntime-cpu-baseline"
 }
 ```
 
@@ -83,7 +89,8 @@ This requires `CGO_ENABLED=1`.
 Current status:
 - interface + build-tag wiring in place
 - engine-file loader via CGO is implemented
-- concrete TensorRT inference execution path remains pending
+- optional TensorRT Python bridge inference path is implemented (`APEXX_TRT_BRIDGE_CMD`)
+- native TensorRT CGO execution path remains pending
 
 See full service runtime docs:
 - `docs/runtime/GO_SERVICE.md`

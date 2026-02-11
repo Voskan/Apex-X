@@ -16,6 +16,10 @@ import torch
 from torch import Tensor
 
 from apex_x.config import ApexXConfig
+from apex_x.kernels.triton.autotune_registry import (
+    clear_triton_autotune_registry,
+    snapshot_triton_autotune_registry,
+)
 from apex_x.kernels.triton.fusiongate import fusiongate_dispatch
 from apex_x.kernels.triton.tilepack import tilepack_dispatch, tilepack_reference
 from apex_x.kernels.triton.tilessm_scan import tilessm_scan_dispatch, tilessm_scan_reference
@@ -55,6 +59,11 @@ def _dtype_from_name(name: str) -> torch.dtype:
         return torch.bfloat16
     if lowered == "fp32":
         return torch.float32
+    if lowered == "fp8":
+        fp8_dtype = getattr(torch, "float8_e4m3fn", None)
+        if isinstance(fp8_dtype, torch.dtype):
+            return fp8_dtype
+        raise ValueError("unsupported dtype name: fp8 (torch build missing float8_e4m3fn)")
     raise ValueError(f"unsupported dtype name: {name}")
 
 
@@ -78,6 +87,39 @@ def _normalize_dtype_for_device(dtype: torch.dtype, *, device: torch.device) -> 
     if dtype in {torch.float16, torch.bfloat16}:
         return torch.float32
     return dtype
+
+
+def _resolve_effective_dtype(
+    *,
+    cfg: GPUBenchConfig,
+    caps: RuntimeCaps,
+    device: torch.device,
+) -> tuple[torch.dtype, dict[str, Any]]:
+    requested_dtype = str(cfg.dtype).lower()
+    fp8_requested = requested_dtype == "fp8"
+    fp8_enabled = False
+    fp8_fallback_reason: str | None = None
+
+    if fp8_requested:
+        fp8_dtype = getattr(torch, "float8_e4m3fn", None)
+        if caps.fp8.available and isinstance(fp8_dtype, torch.dtype):
+            dtype = fp8_dtype
+            fp8_enabled = True
+        else:
+            dtype = torch.float16
+            fp8_fallback_reason = caps.fp8.reason or "fp8_not_available"
+    else:
+        dtype = _dtype_from_name(requested_dtype)
+
+    effective_dtype = _normalize_dtype_for_device(dtype, device=device)
+    telemetry = {
+        "requested_dtype": requested_dtype,
+        "effective_dtype": str(effective_dtype).replace("torch.", ""),
+        "fp8_requested": fp8_requested,
+        "fp8_enabled": fp8_enabled,
+        "fp8_fallback_reason": fp8_fallback_reason,
+    }
+    return effective_dtype, telemetry
 
 
 def _measure_ms(
@@ -393,8 +435,9 @@ def _random_stable_params(
     gen = torch.Generator(device=device)
     gen.manual_seed(seed)
     return {
-        "decay": (torch.rand((channels,), generator=gen, device=device, dtype=dtype) * 0.8 + 0.1)
-        .contiguous(),
+        "decay": (
+            torch.rand((channels,), generator=gen, device=device, dtype=dtype) * 0.8 + 0.1
+        ).contiguous(),
         "input_gain": (
             torch.rand((channels,), generator=gen, device=device, dtype=dtype) * 1.5 + 0.05
         ).contiguous(),
@@ -626,9 +669,7 @@ def _bench_end_to_end_infer(
 
 def _resolve_plugin_library_path(explicit_path: str) -> Path | None:
     source = (
-        explicit_path.strip()
-        if explicit_path
-        else os.getenv("APEXX_TRT_PLUGIN_LIB", "").strip()
+        explicit_path.strip() if explicit_path else os.getenv("APEXX_TRT_PLUGIN_LIB", "").strip()
     )
     if not source:
         return None
@@ -1046,7 +1087,8 @@ def _bench_tensorrt_engine(cfg: GPUBenchConfig, *, device: torch.device) -> dict
 def run_gpu_bench(cfg: GPUBenchConfig) -> dict[str, Any]:
     caps: RuntimeCaps = detect_runtime_caps()
     device = torch.device("cuda" if caps.cuda.available else "cpu")
-    dtype = _normalize_dtype_for_device(_dtype_from_name(cfg.dtype), device=device)
+    dtype, dtype_telemetry = _resolve_effective_dtype(cfg=cfg, caps=caps, device=device)
+    clear_triton_autotune_registry()
 
     report: dict[str, Any] = {
         "schema_version": 1,
@@ -1059,6 +1101,11 @@ def run_gpu_bench(cfg: GPUBenchConfig) -> dict[str, Any]:
             "runtime_caps": caps.to_dict(),
             "device": str(device),
             "dtype": str(dtype).replace("torch.", ""),
+            "requested_dtype": dtype_telemetry["requested_dtype"],
+            "effective_dtype": dtype_telemetry["effective_dtype"],
+            "fp8_requested": dtype_telemetry["fp8_requested"],
+            "fp8_enabled": dtype_telemetry["fp8_enabled"],
+            "fp8_fallback_reason": dtype_telemetry["fp8_fallback_reason"],
         },
         "config": {
             "batch": cfg.batch,
@@ -1071,6 +1118,7 @@ def run_gpu_bench(cfg: GPUBenchConfig) -> dict[str, Any]:
             "warmup": cfg.warmup,
             "iters": cfg.iters,
             "seed": cfg.seed,
+            "dtype": cfg.dtype,
             "budget_b1": cfg.budget_b1,
             "budget_b2": cfg.budget_b2,
             "budget_total": cfg.budget_total,
@@ -1084,6 +1132,7 @@ def run_gpu_bench(cfg: GPUBenchConfig) -> dict[str, Any]:
         report["status"] = "skipped"
         report["reason"] = caps.cuda.reason or "cuda_unavailable"
         report["benchmarks"] = {}
+        report["triton_autotune"] = snapshot_triton_autotune_registry()
         return report
 
     seed_all(cfg.seed, deterministic=True)
@@ -1097,6 +1146,7 @@ def run_gpu_bench(cfg: GPUBenchConfig) -> dict[str, Any]:
         "tilessm": _bench_tilessm(cfg, device=device, dtype=dtype),
         "end_to_end_infer": _bench_end_to_end_infer(cfg, device=device, dtype=dtype),
     }
+    report["triton_autotune"] = snapshot_triton_autotune_registry()
     return report
 
 
@@ -1108,15 +1158,80 @@ def _format_metric(value: Any) -> str:
     return str(value)
 
 
+def _append_autotune_markdown(lines: list[str], report: dict[str, Any]) -> None:
+    autotune = report.get("triton_autotune", {})
+    autotune_summary = autotune.get("summary", {})
+    lines.extend(
+        [
+            "",
+            "## Triton Autotune Registry",
+            "",
+            f"- cache_entries: `{autotune_summary.get('cache_entries', 0)}`",
+            f"- launches: `{autotune_summary.get('launches', 0)}`",
+            f"- cache_hits: `{autotune_summary.get('cache_hits', 0)}`",
+            f"- cache_misses: `{autotune_summary.get('cache_misses', 0)}`",
+        ]
+    )
+    cache_hit_rate = autotune_summary.get("cache_hit_rate")
+    if isinstance(cache_hit_rate, float):
+        lines.append(f"- cache_hit_rate: `{cache_hit_rate:.4f}`")
+    else:
+        lines.append("- cache_hit_rate: `n/a`")
+
+    entries = autotune.get("entries", [])
+    if entries:
+        lines.extend(
+            [
+                "",
+                "| op | kernel | shape bucket | selected config | source | launches |",
+                "| --- | --- | --- | --- | --- | ---: |",
+            ]
+        )
+        for row in entries:
+            config_text = json.dumps(row.get("selected_config", {}), sort_keys=True)
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        str(row.get("op_name", "unknown")),
+                        str(row.get("kernel_name", "unknown")),
+                        str(row.get("shape_bucket", "")),
+                        config_text,
+                        str(row.get("selection_source", "unknown")),
+                        str(row.get("launches", 0)),
+                    ]
+                )
+                + " |"
+            )
+
+
 def render_markdown_summary(report: dict[str, Any]) -> str:
     lines = [
         "# Apex-X GPU Benchmark Report",
         "",
         f"- status: `{report.get('status', 'unknown')}`",
         f"- device: `{report.get('environment', {}).get('device', 'unknown')}`",
-        f"- dtype: `{report.get('environment', {}).get('dtype', 'unknown')}`",
+        (
+            f"- requested_dtype: `"
+            f"{report.get('environment', {}).get('requested_dtype', 'unknown')}`"
+        ),
+        (
+            f"- effective_dtype: `"
+            f"{report.get('environment', {}).get('effective_dtype', 'unknown')}`"
+        ),
         f"- timestamp_utc: `{report.get('timestamp_utc', '')}`",
     ]
+    if report.get("environment", {}).get("fp8_requested"):
+        if report.get("environment", {}).get("fp8_enabled"):
+            lines.append("- fp8: `enabled`")
+        else:
+            lines.append(
+                "- fp8: `fallback` "
+                f"reason=`{report.get('environment', {}).get('fp8_fallback_reason', 'unknown')}`"
+            )
+
+    _append_autotune_markdown(lines, report)
+
     if report.get("status") != "ok":
         lines.extend(
             [
@@ -1203,9 +1318,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
             + " |"
         )
     else:
-        lines.append(
-            "| TensorRT plugin | skipped | n/a | n/a | n/a |"
-        )
+        lines.append("| TensorRT plugin | skipped | n/a | n/a | n/a |")
 
     infer = report["benchmarks"]["end_to_end_infer"]
     lines.extend(
@@ -1254,9 +1367,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
     else:
         lines.append("| TensorRT engine | n/a | n/a | n/a | n/a |")
         lines.append("")
-        lines.append(
-            f"TensorRT engine benchmark skipped: `{trt_engine.get('reason', 'unknown')}`."
-        )
+        lines.append(f"TensorRT engine benchmark skipped: `{trt_engine.get('reason', 'unknown')}`.")
     return "\n".join(lines) + "\n"
 
 
@@ -1272,7 +1383,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--iters", type=int, default=50)
     parser.add_argument("--seed", type=int, default=123)
-    parser.add_argument("--dtype", type=str, default="fp16", choices=["fp16", "bf16", "fp32"])
+    parser.add_argument(
+        "--dtype",
+        type=str,
+        default="fp16",
+        choices=["fp16", "bf16", "fp32", "fp8"],
+    )
     parser.add_argument("--budget-b1", type=float, default=16.0)
     parser.add_argument("--budget-b2", type=float, default=8.0)
     parser.add_argument("--budget-total", type=float, default=32.0)

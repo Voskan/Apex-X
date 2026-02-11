@@ -62,6 +62,24 @@ python -m apex_x.bench.gpu_bench \
 For dynamic-shape engines, provide one `--trt-input-shape name=AxBx...` per dynamic input.
 If missing, unresolved dynamic dims default to `1` and may fail for some engines.
 
+## TensorRT Engine Shape Sweep
+For dynamic-shape validation across multiple deployment profiles:
+```bash
+python -m apex_x.bench.trt_engine_sweep \
+  --trt-engine-path artifacts/trt/apex_x.engine \
+  --shape-case "input=1x3x128x128" \
+  --shape-case "input=1x3x256x256" \
+  --output-json artifacts/perf_trt_shape_sweep.json \
+  --output-md artifacts/perf_trt_shape_sweep.md
+```
+
+For multi-input engines, pass named tensors in a single case:
+```bash
+python -m apex_x.bench.trt_engine_sweep \
+  --trt-engine-path artifacts/trt/apex_x.engine \
+  --shape-case "image=1x3x128x128;centers=1024x2;strides=1024"
+```
+
 ## Report Schema Notes
 JSON top-level keys:
 - `schema_version`
@@ -71,6 +89,7 @@ JSON top-level keys:
 - `config`
 - `status`
 - `benchmarks`
+- `triton_autotune`
 
 Important metrics:
 - `p50_ms`, `p95_ms`
@@ -80,6 +99,23 @@ Important metrics:
   - `elements_per_s`
   - `frames_per_s`
 - `peak_memory_mb` (CUDA `max_memory_allocated`)
+
+`triton_autotune` report block:
+- `summary`:
+  - `cache_entries`
+  - `launches`
+  - `cache_hits`
+  - `cache_misses`
+  - `cache_hit_rate`
+- `entries[]`:
+  - `op_name`
+  - `kernel_name`
+  - `shape_bucket`
+  - `selected_config`
+  - `selection_source` (`triton_best_config|heuristic|registry_cache`)
+  - `launches`
+  - `cache_hits`
+  - `cache_misses`
 
 ## Fallback Behavior
 - If CUDA is unavailable: suite returns `status=skipped`.
@@ -93,3 +129,65 @@ Important metrics:
    - tile ops
    - TileSSM
    - end-to-end infer
+
+## CI Regression Compare
+GPU CI compares against `scripts/perf_baseline_gpu.json` with:
+```bash
+python scripts/perf_regression_gpu.py \
+  --compare \
+  --baseline scripts/perf_baseline_gpu.json \
+  --output artifacts/perf_gpu_current_ci.json \
+  --summary artifacts/perf_gpu_compare_ci.json \
+  --trend-output artifacts/perf_gpu_trend_ci.json
+```
+
+TensorRT shape-sweep regression compare wrapper:
+```bash
+python scripts/perf_regression_trt.py \
+  --compare \
+  --baseline scripts/perf_baseline_trt.json \
+  --output artifacts/perf_trt_current.json \
+  --summary artifacts/perf_trt_compare.json \
+  --trend-output artifacts/perf_trt_trend.json \
+  --trt-engine-path artifacts/trt/apex_x.engine \
+  --shape-case "input=1x3x128x128" \
+  --shape-case "input=1x3x256x256"
+```
+
+TRT baseline template generation:
+```bash
+python scripts/perf_regression_trt.py \
+  --emit-baseline-template \
+  --baseline scripts/perf_baseline_trt.json \
+  --trt-engine-path artifacts/trt/apex_x.engine \
+  --shape-case "input=1x3x128x128"
+```
+
+Failure rule matches CPU policy:
+- fail when `current_ms > value_ms * (1 + max_regression_ratio) + max_regression_abs_ms`
+
+Trend artifact uses the same normalized schema as CPU:
+- `schema_version`, `suite`, `timestamp_utc`, `overall_status`
+- `total_metrics`, `failed_metrics`
+- `metrics[]` with `metric/status/baseline_ms/allowed_max_ms/current_ms/regression_ratio`
+
+Workflows:
+- `.github/workflows/perf_gpu.yml` (`gpu-perf-regression`) for PR/manual/scheduled GPU gate
+- `.github/workflows/perf_trend_weekly.yml` (`gpu-trend`) for weekly trend artifacts
+- GPU workflows also auto-generate release evidence drafts:
+  - `artifacts/release/release_attestation_gpu_ci.json`
+  - `artifacts/release/release_attestation_gpu_ci.md`
+  - `artifacts/release/release_attestation_gpu_weekly.json`
+  - `artifacts/release/release_attestation_gpu_weekly.md`
+
+## Replay and Hash Logging
+For deterministic replay metadata (seed/config/artifact hashes), use:
+- `apex_x.utils.build_replay_manifest(...)`
+- golden fixtures:
+  - `tests/fixtures/replay_golden_small.json`
+  - `tests/fixtures/replay_golden_medium.json`
+
+Validation command:
+```bash
+python -m pytest -q tests/test_repro.py tests/test_replay_golden.py
+```

@@ -9,8 +9,9 @@ import (
 )
 
 type ORTAdapter struct {
-	modelPath string
-	modelSize int64
+	modelPath     string
+	modelSize     int64
+	bridgeCommand []string
 }
 
 func NewORTAdapter(modelPath string) (InferenceAdapter, error) {
@@ -32,9 +33,14 @@ func NewORTAdapter(modelPath string) (InferenceAdapter, error) {
 	if info.Size() <= 0 {
 		return nil, fmt.Errorf("onnx model path %q is empty", resolvedPath)
 	}
+	bridgeCommand, err := parseBridgeCommand(os.Getenv("APEXX_ORT_BRIDGE_CMD"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid APEXX_ORT_BRIDGE_CMD: %w", err)
+	}
 	return &ORTAdapter{
-		modelPath: resolvedPath,
-		modelSize: info.Size(),
+		modelPath:     resolvedPath,
+		modelSize:     info.Size(),
+		bridgeCommand: bridgeCommand,
 	}, nil
 }
 
@@ -46,25 +52,26 @@ func (a *ORTAdapter) PredictBatch(
 	ctx context.Context,
 	reqs []PredictRequest,
 ) ([]PredictResponse, error) {
-	out := make([]PredictResponse, len(reqs))
-	for idx, req := range reqs {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		profile, err := normalizeBudgetProfile(req.BudgetProfile, BudgetProfileBalanced)
-		if err != nil {
-			return nil, err
-		}
-		score := mean(req.Input)
-		out[idx] = PredictResponse{
-			RequestID:     req.RequestID,
-			BudgetProfile: profile,
-			SelectedTiles: selectedTilesForProfile(profile),
-			Scores:        []float32{score},
-			Backend:       a.Name(),
-		}
+	if len(a.bridgeCommand) == 0 {
+		return nil, fmt.Errorf(
+			"%w: onnxruntime bridge command is not configured; set APEXX_ORT_BRIDGE_CMD",
+			ErrBackendUnavailable,
+		)
 	}
-	return out, nil
+	bridgeResponses, bridgeErr := runBridgePredictBatch(
+		ctx,
+		a.bridgeCommand,
+		bridgePredictRequest{
+			Backend:      "onnxruntime",
+			ArtifactPath: a.modelPath,
+			Requests:     reqs,
+		},
+		a.Name(),
+	)
+	if bridgeErr != nil {
+		return nil, fmt.Errorf("onnxruntime bridge predict failed: %w", bridgeErr)
+	}
+	return bridgeResponses, nil
 }
 
 func (a *ORTAdapter) Close() error {

@@ -1,0 +1,207 @@
+name: Perf Trend Weekly
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_gpu:
+        description: "Run GPU weekly trend job on self-hosted runner"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      trt_engine_path:
+        description: "Optional TensorRT engine path for GPU weekly trend run"
+        required: false
+        default: ""
+        type: string
+      trt_plugin_lib:
+        description: "Optional TensorRT plugin shared library path"
+        required: false
+        default: ""
+        type: string
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-trend-weekly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cpu-trend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple -e ".[dev]"
+      - name: Generate CPU weekly trend
+        run: |
+          python scripts/perf_regression.py \
+            --compare \
+            --baseline scripts/perf_baseline_cpu.json \
+            --output artifacts/perf_current_weekly.json \
+            --summary artifacts/perf_compare_weekly.json \
+            --trend-output artifacts/perf_trend_cpu_weekly.json \
+            --infer-iters 20 \
+            --micro-iters 30 \
+            --infer-warmup 3 \
+            --micro-warmup 3
+      - name: Capture runtime capability snapshot (CPU weekly)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from apex_x.runtime import detect_runtime_caps
+
+          payload = detect_runtime_caps().to_dict()
+          output = Path("artifacts/runtime/caps_cpu_weekly.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(f"runtime_caps output={output}")
+          PY
+      - name: Generate release evidence draft (CPU weekly)
+        run: |
+          python scripts/release_attestation.py \
+            --runtime-target cpu \
+            --artifact-path performance_report=artifacts/perf_compare_weekly.json \
+            --artifact-path runtime_capability_snapshot=artifacts/runtime/caps_cpu_weekly.json \
+            --gate-status lint_type_tests=PENDING \
+            --gate-status cpu_perf_regression=PASS \
+            --gate-status gpu_perf_regression=N/A \
+            --gate-status runtime_backend_parity=PENDING \
+            --gate-status runtime_capability_transparency=PASS \
+            --gate-status security_review=PENDING \
+            --gate-status documentation_sync=PENDING \
+            --output-json artifacts/release/release_attestation_cpu_weekly.json \
+            --output-md artifacts/release/release_attestation_cpu_weekly.md
+      - name: Upload CPU trend artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-trend-cpu-weekly
+          path: |
+            artifacts/perf_current_weekly.json
+            artifacts/perf_compare_weekly.json
+            artifacts/perf_trend_cpu_weekly.json
+            artifacts/runtime/caps_cpu_weekly.json
+            artifacts/release/release_attestation_cpu_weekly.json
+            artifacts/release/release_attestation_cpu_weekly.md
+
+  gpu-trend:
+    if: >-
+      ${{
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gpu == 'true') ||
+        (github.event_name == 'schedule' && vars.APEXX_ENABLE_GPU_WEEKLY == 'true')
+      }}
+    runs-on: [self-hosted, linux, x64, gpu]
+    timeout-minutes: 60
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      TRT_ENGINE_PATH: ${{ github.event.inputs.trt_engine_path || '' }}
+      TRT_PLUGIN_LIB: ${{ github.event.inputs.trt_plugin_lib || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies (GPU environment)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Preflight GPU check
+        run: |
+          python - <<'PY'
+          import torch
+          print(f"torch={torch.__version__}")
+          print(f"cuda_available={torch.cuda.is_available()}")
+          if not torch.cuda.is_available():
+              raise SystemExit("CUDA is required for weekly GPU trend workflow")
+          print(f"device_count={torch.cuda.device_count()}")
+          print(f"device_name={torch.cuda.get_device_name(0)}")
+          print(f"capability={torch.cuda.get_device_capability(0)}")
+          PY
+      - name: Generate GPU weekly trend
+        env:
+          APEXX_TRT_PLUGIN_LIB: ${{ env.TRT_PLUGIN_LIB }}
+        run: |
+          python scripts/perf_regression_gpu.py \
+            --compare \
+            --baseline scripts/perf_baseline_gpu.json \
+            --output artifacts/perf_gpu_current_weekly.json \
+            --summary artifacts/perf_gpu_compare_weekly.json \
+            --trend-output artifacts/perf_gpu_trend_weekly.json \
+            --warmup 5 \
+            --iters 20 \
+            --trt-engine-path "${TRT_ENGINE_PATH}" \
+            --trt-plugin-lib "${TRT_PLUGIN_LIB}"
+      - name: Generate TensorRT weekly trend (optional)
+        run: |
+          if [ -z "${TRT_ENGINE_PATH}" ]; then
+            echo "TRT_ENGINE_PATH is empty; skipping TensorRT weekly trend generation."
+            exit 0
+          fi
+          python scripts/perf_regression_trt.py \
+            --compare \
+            --baseline scripts/perf_baseline_trt.json \
+            --output artifacts/perf_trt_current_weekly.json \
+            --summary artifacts/perf_trt_compare_weekly.json \
+            --trend-output artifacts/perf_trt_trend_weekly.json \
+            --trt-engine-path "${TRT_ENGINE_PATH}" \
+            --warmup 3 \
+            --iters 10
+      - name: Capture runtime capability snapshot (GPU weekly)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from apex_x.runtime import detect_runtime_caps
+
+          payload = detect_runtime_caps().to_dict()
+          output = Path("artifacts/runtime/caps_gpu_weekly.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(f"runtime_caps output={output}")
+          PY
+      - name: Generate release evidence draft (GPU weekly)
+        run: |
+          python scripts/release_attestation.py \
+            --runtime-target torch \
+            --artifact-path performance_report=artifacts/perf_gpu_compare_weekly.json \
+            --artifact-path runtime_capability_snapshot=artifacts/runtime/caps_gpu_weekly.json \
+            --gate-status lint_type_tests=PENDING \
+            --gate-status cpu_perf_regression=N/A \
+            --gate-status gpu_perf_regression=PASS \
+            --gate-status runtime_backend_parity=PENDING \
+            --gate-status runtime_capability_transparency=PASS \
+            --gate-status security_review=PENDING \
+            --gate-status documentation_sync=PENDING \
+            --output-json artifacts/release/release_attestation_gpu_weekly.json \
+            --output-md artifacts/release/release_attestation_gpu_weekly.md
+      - name: Upload GPU trend artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-trend-gpu-weekly
+          path: |
+            artifacts/perf_gpu_current_weekly.json
+            artifacts/perf_gpu_compare_weekly.json
+            artifacts/perf_gpu_trend_weekly.json
+            artifacts/perf_trt_current_weekly.json
+            artifacts/perf_trt_compare_weekly.json
+            artifacts/perf_trt_trend_weekly.json
+            artifacts/runtime/caps_gpu_weekly.json
+            artifacts/release/release_attestation_gpu_weekly.json
+            artifacts/release/release_attestation_gpu_weekly.md

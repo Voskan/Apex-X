@@ -7,6 +7,13 @@ import torch
 
 from apex_x.config import ApexXConfig
 
+from .caps import (
+    FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90,
+    FP8_REASON_COMPUTE_CAPABILITY_UNKNOWN,
+    FP8_REASON_CUDA_REQUIRED,
+    FP8_REASON_TORCH_DTYPE_MISSING,
+)
+
 
 def dtype_name(dtype: torch.dtype) -> str:
     return str(dtype).replace("torch.", "")
@@ -29,17 +36,20 @@ def _preferred_fp8_dtype() -> torch.dtype | None:
 
 def _detect_cuda_fp8_support(device: torch.device) -> tuple[bool, str | None]:
     if device.type != "cuda":
-        return False, "fp8_requires_cuda"
+        return False, FP8_REASON_CUDA_REQUIRED
     if not torch.cuda.is_available():
-        return False, "cuda_unavailable"
+        return False, FP8_REASON_CUDA_REQUIRED
     if _preferred_fp8_dtype() is None:
-        return False, "torch_build_missing_fp8_dtype"
+        return False, FP8_REASON_TORCH_DTYPE_MISSING
 
     idx = 0 if device.index is None else int(device.index)
-    major, minor = torch.cuda.get_device_capability(idx)
+    try:
+        major, _minor = torch.cuda.get_device_capability(idx)
+    except Exception:  # pragma: no cover - defensive fallback
+        return False, FP8_REASON_COMPUTE_CAPABILITY_UNKNOWN
     # Conservative gate: native FP8 tensor-core support starts with Hopper (sm90+).
     if major < 9:
-        return False, f"compute_capability_{major}_{minor}_below_sm90"
+        return False, FP8_REASON_COMPUTE_CAPABILITY_BELOW_SM90
     return True, None
 
 

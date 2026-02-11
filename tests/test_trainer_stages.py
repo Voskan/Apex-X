@@ -24,6 +24,15 @@ def test_staged_trainer_runs_all_required_stages() -> None:
     assert result.final_mu >= 0.0
     assert "selected_ratios" in result.routing_diagnostics
     assert "l0" in result.routing_diagnostics["selected_ratios"]
+    assert "pcgrad" in result.train_summary
+    assert result.train_summary["pcgrad"]["enabled"] is True
+    assert (
+        result.train_summary["pcgrad"]["conflict_rate_after"]
+        <= result.train_summary["pcgrad"]["conflict_rate_before"]
+    )
+    stage2_metrics = result.stage_results[2].metrics
+    assert stage2_metrics["sampled_long_tail_last"] >= 0
+    assert 0.0 <= stage2_metrics["oracle_delta_clipped_ratio_last"] <= 1.0
 
 
 def test_staged_trainer_is_repeatable_with_fixed_seed() -> None:
@@ -40,3 +49,15 @@ def test_staged_trainer_is_repeatable_with_fixed_seed() -> None:
         == second.routing_diagnostics["selected_counts"]
     )
     assert first.final_mu == second.final_mu
+
+
+def test_staged_trainer_pcgrad_snapshot_disabled_when_toggle_off() -> None:
+    cfg = ApexXConfig()
+    cfg.train.disable_pcgradpp = True
+
+    result = ApexXTrainer(config=cfg, num_classes=3).run(steps_per_stage=1, seed=3)
+
+    snapshot = result.train_summary["pcgrad"]
+    assert snapshot["enabled"] is False
+    assert snapshot["conflict_rate_before"] == 0.0
+    assert snapshot["conflict_rate_after"] == 0.0

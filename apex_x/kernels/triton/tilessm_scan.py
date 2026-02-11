@@ -13,6 +13,7 @@ BidirectionalMergeMode = Literal["sum", "avg", "gated"]
 
 
 _tilessm_scan_kernel: Any | None = None
+_TRITON_MAX_STEPS = 4096
 triton: Any
 tl: Any
 
@@ -275,11 +276,12 @@ if triton is not None:
             tl.store(out_ptr + offs, y)
 
         tl.store(final_state_ptr + b * channels + c, state)
+
 else:
     _tilessm_scan_kernel = None
 
 
-def _scan_triton_forward(
+def _scan_triton_forward_single(
     tokens: Tensor,
     *,
     decay: Tensor,
@@ -295,8 +297,11 @@ def _scan_triton_forward(
     batch, steps, channels = tokens.shape
     if tokens.device.type != "cuda":
         raise ValueError("tilessm_scan_triton requires CUDA tokens")
-    if steps > 4096:
-        raise ValueError("tilessm_scan_triton currently supports K<=4096 for compile stability")
+    if steps > _TRITON_MAX_STEPS:
+        raise ValueError(
+            "tilessm_scan_triton single launch supports "
+            f"K<={_TRITON_MAX_STEPS} for compile stability"
+        )
 
     device = tokens.device
     dtype = tokens.dtype
@@ -331,6 +336,49 @@ def _scan_triton_forward(
         STEPS=steps,
     )
     return out.contiguous(), final_state.contiguous()
+
+
+def _scan_triton_forward(
+    tokens: Tensor,
+    *,
+    decay: Tensor,
+    input_gain: Tensor,
+    output_gain: Tensor,
+    state_bias: Tensor,
+    init_state: Tensor | None,
+    clamp_value: float,
+) -> tuple[Tensor, Tensor]:
+    _, steps, _ = tokens.shape
+    if steps <= _TRITON_MAX_STEPS:
+        return _scan_triton_forward_single(
+            tokens,
+            decay=decay,
+            input_gain=input_gain,
+            output_gain=output_gain,
+            state_bias=state_bias,
+            init_state=init_state,
+            clamp_value=clamp_value,
+        )
+
+    outputs: list[Tensor] = []
+    state_next = init_state
+    for start in range(0, steps, _TRITON_MAX_STEPS):
+        stop = min(start + _TRITON_MAX_STEPS, steps)
+        chunk_tokens = tokens[:, start:stop, :].contiguous()
+        chunk_out, state_next = _scan_triton_forward_single(
+            chunk_tokens,
+            decay=decay,
+            input_gain=input_gain,
+            output_gain=output_gain,
+            state_bias=state_bias,
+            init_state=state_next,
+            clamp_value=clamp_value,
+        )
+        outputs.append(chunk_out)
+
+    assert state_next is not None
+    merged = torch.cat(outputs, dim=1)
+    return merged.contiguous(), state_next.contiguous()
 
 
 def tilessm_scan_reference(
