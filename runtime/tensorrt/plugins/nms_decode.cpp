@@ -441,6 +441,7 @@ const char* NMSDecodePluginCreator::getPluginNamespace() const noexcept {
 
 }  // namespace apexx::trt::plugins
 
-REGISTER_TENSORRT_PLUGIN(apexx::trt::plugins::NMSDecodePluginCreator);
+using ApexXNMSDecodePluginCreator = apexx::trt::plugins::NMSDecodePluginCreator;
+REGISTER_TENSORRT_PLUGIN(ApexXNMSDecodePluginCreator);
 
 #endif  // APEXX_ENABLE_TENSORRT

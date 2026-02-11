@@ -144,14 +144,14 @@ bool run_case(int32_t direction) {
   const std::size_t y_bytes = h_ref_y.size() * sizeof(__half);
   const std::size_t final_bytes = h_ref_final.size() * sizeof(__half);
 
-  if (!check_cuda(cudaMalloc(&d_tokens, tokens_bytes), "cudaMalloc(d_tokens)") ||
-      !check_cuda(cudaMalloc(&d_decay, vec_bytes), "cudaMalloc(d_decay)") ||
-      !check_cuda(cudaMalloc(&d_in_gain, vec_bytes), "cudaMalloc(d_in_gain)") ||
-      !check_cuda(cudaMalloc(&d_out_gain, vec_bytes), "cudaMalloc(d_out_gain)") ||
-      !check_cuda(cudaMalloc(&d_bias, vec_bytes), "cudaMalloc(d_bias)") ||
-      !check_cuda(cudaMalloc(&d_init, init_bytes), "cudaMalloc(d_init)") ||
-      !check_cuda(cudaMalloc(&d_y, y_bytes), "cudaMalloc(d_y)") ||
-      !check_cuda(cudaMalloc(&d_final, final_bytes), "cudaMalloc(d_final)")) {
+  if (!check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_tokens), tokens_bytes), "cudaMalloc(d_tokens)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_decay), vec_bytes), "cudaMalloc(d_decay)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_in_gain), vec_bytes), "cudaMalloc(d_in_gain)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_out_gain), vec_bytes), "cudaMalloc(d_out_gain)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_bias), vec_bytes), "cudaMalloc(d_bias)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_init), init_bytes), "cudaMalloc(d_init)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_y), y_bytes), "cudaMalloc(d_y)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_final), final_bytes), "cudaMalloc(d_final)")) {
     return false;
   }
 

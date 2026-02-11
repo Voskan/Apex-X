@@ -10,6 +10,8 @@ import torch
 
 from apex_x.kernels.triton.tilepack import tilepack_reference
 
+_PLUGIN_LIB_HANDLE: ctypes.CDLL | None = None
+
 
 def _maybe_import_tensorrt():
     try:
@@ -20,13 +22,15 @@ def _maybe_import_tensorrt():
 
 
 def _load_plugin_library() -> Path:
+    global _PLUGIN_LIB_HANDLE
     lib_env = os.getenv("APEXX_TRT_PLUGIN_LIB", "").strip()
     if not lib_env:
         pytest.skip("APEXX_TRT_PLUGIN_LIB is not set")
     lib_path = Path(lib_env).expanduser().resolve()
     if not lib_path.exists():
         pytest.skip(f"APEXX_TRT_PLUGIN_LIB does not exist: {lib_path}")
-    ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
+    if _PLUGIN_LIB_HANDLE is None:
+        _PLUGIN_LIB_HANDLE = ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
     return lib_path
 
 
@@ -36,9 +40,13 @@ def _get_tilepack_creator(trt):
     if hasattr(registry, "get_plugin_creator"):
         creator = registry.get_plugin_creator("TilePack", "1", "apexx")
     if creator is not None:
+        if hasattr(creator, "plugin_namespace"):
+            creator.plugin_namespace = ""
         return creator
     for item in registry.plugin_creator_list:
         if item.name == "TilePack" and getattr(item, "plugin_namespace", "") == "apexx":
+            if hasattr(item, "plugin_namespace"):
+                item.plugin_namespace = ""
             return item
     pytest.skip("TilePack plugin creator was not registered (library loaded but creator missing)")
 
@@ -77,6 +85,8 @@ def _build_engine(
         config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 20)
     else:  # pragma: no cover - TRT API version dependent
         config.max_workspace_size = 1 << 20
+    if hasattr(config, "set_flag") and hasattr(trt, "BuilderFlag"):
+        config.set_flag(trt.BuilderFlag.FP16)
 
     if hasattr(builder, "build_serialized_network"):
         serialized = builder.build_serialized_network(network, config)

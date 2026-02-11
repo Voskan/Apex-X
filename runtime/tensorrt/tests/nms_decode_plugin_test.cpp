@@ -264,15 +264,15 @@ bool run_case(float score_threshold, float iou_threshold) {
   const std::size_t out_class_bytes = static_cast<std::size_t>(batch * max_det) * sizeof(int32_t);
   const std::size_t out_valid_bytes = static_cast<std::size_t>(batch) * sizeof(int32_t);
 
-  if (!check_cuda(cudaMalloc(&d_cls, cls_bytes), "cudaMalloc(cls)") ||
-      !check_cuda(cudaMalloc(&d_box, box_bytes), "cudaMalloc(box)") ||
-      !check_cuda(cudaMalloc(&d_quality, quality_bytes), "cudaMalloc(quality)") ||
-      !check_cuda(cudaMalloc(&d_centers, centers_bytes), "cudaMalloc(centers)") ||
-      !check_cuda(cudaMalloc(&d_strides, strides_bytes), "cudaMalloc(strides)") ||
-      !check_cuda(cudaMalloc(&d_boxes, out_boxes_bytes), "cudaMalloc(out boxes)") ||
-      !check_cuda(cudaMalloc(&d_scores, out_scores_bytes), "cudaMalloc(out scores)") ||
-      !check_cuda(cudaMalloc(&d_class_ids, out_class_bytes), "cudaMalloc(out class)") ||
-      !check_cuda(cudaMalloc(&d_valid, out_valid_bytes), "cudaMalloc(out valid)")) {
+  if (!check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_cls), cls_bytes), "cudaMalloc(cls)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_box), box_bytes), "cudaMalloc(box)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_quality), quality_bytes), "cudaMalloc(quality)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_centers), centers_bytes), "cudaMalloc(centers)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_strides), strides_bytes), "cudaMalloc(strides)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_boxes), out_boxes_bytes), "cudaMalloc(out boxes)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_scores), out_scores_bytes), "cudaMalloc(out scores)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_class_ids), out_class_bytes), "cudaMalloc(out class)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_valid), out_valid_bytes), "cudaMalloc(out valid)")) {
     return false;
   }
 
@@ -357,7 +357,7 @@ bool run_case(float score_threshold, float iou_threshold) {
   out_desc[3].dims.d[0] = batch;
 
   const std::size_t ws = plugin->getWorkspaceSize(in_desc, 5, out_desc, 4);
-  if (ws > 0 && !check_cuda(cudaMalloc(&d_workspace, ws), "cudaMalloc(workspace)")) {
+  if (ws > 0 && !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_workspace), ws), "cudaMalloc(workspace)")) {
     plugin->terminate();
     plugin->destroy();
     return false;

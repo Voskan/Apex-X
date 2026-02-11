@@ -337,6 +337,7 @@ const char* TileSSMScanPluginCreator::getPluginNamespace() const noexcept {
 
 }  // namespace apexx::trt::plugins
 
-REGISTER_TENSORRT_PLUGIN(apexx::trt::plugins::TileSSMScanPluginCreator);
+using ApexXTileSSMScanPluginCreator = apexx::trt::plugins::TileSSMScanPluginCreator;
+REGISTER_TENSORRT_PLUGIN(ApexXTileSSMScanPluginCreator);
 
 #endif  // APEXX_ENABLE_TENSORRT

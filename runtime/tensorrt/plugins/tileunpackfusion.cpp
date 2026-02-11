@@ -335,6 +335,7 @@ const char* TileUnpackFusionPluginCreator::getPluginNamespace() const noexcept {
 
 }  // namespace apexx::trt::plugins
 
-REGISTER_TENSORRT_PLUGIN(apexx::trt::plugins::TileUnpackFusionPluginCreator);
+using ApexXTileUnpackFusionPluginCreator = apexx::trt::plugins::TileUnpackFusionPluginCreator;
+REGISTER_TENSORRT_PLUGIN(ApexXTileUnpackFusionPluginCreator);
 
 #endif  // APEXX_ENABLE_TENSORRT

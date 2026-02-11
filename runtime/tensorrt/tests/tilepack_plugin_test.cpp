@@ -105,11 +105,11 @@ int main() {
   __half* d_output = nullptr;
   int32_t* d_idx = nullptr;
   if (!check_cuda(
-          cudaMalloc(&d_input, h_input.size() * sizeof(__half)),
+          cudaMalloc(reinterpret_cast<void**>(&d_input), h_input.size() * sizeof(__half)),
           "cudaMalloc(d_input)") ||
-      !check_cuda(cudaMalloc(&d_idx, h_idx.size() * sizeof(int32_t)), "cudaMalloc(d_idx)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_idx), h_idx.size() * sizeof(int32_t)), "cudaMalloc(d_idx)") ||
       !check_cuda(
-          cudaMalloc(&d_output, static_cast<std::size_t>(out_numel) * sizeof(__half)),
+          cudaMalloc(reinterpret_cast<void**>(&d_output), static_cast<std::size_t>(out_numel) * sizeof(__half)),
           "cudaMalloc(d_output)")) {
     return 2;
   }

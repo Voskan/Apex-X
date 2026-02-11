@@ -94,6 +94,7 @@ Recently completed and removed from active queue:
 - Device validation: Triton GPU parity suite on CUDA host (2026-02-11)
 - Device validation: GPU perf baseline artifacts on CUDA host (2026-02-11)
 - Device validation: Go ORT bridge with real ONNX model on host (2026-02-11)
+- Device validation: TensorRT plugin native C++ tests on CUDA host (2026-02-11)
 
 Device/deployment-blocked validation queue:
 - Blocking snapshot (2026-02-11):
@@ -103,7 +104,10 @@ Device/deployment-blocked validation queue:
   - `tensorrt` Python module available (`10.15.1.29`)
   - `onnxruntime` Python module available (`1.24.1`)
   - `cmake` CLI available (`4.2.1`)
-  - TensorRT plugin shared library is still unavailable on this host (missing TensorRT headers + CUDA compiler toolchain)
+  - CUDA compiler available (`nvcc 12.8.93`, conda `cuda-nvcc`)
+  - TensorRT plugin shared library available:
+    - `runtime/tensorrt/build_cuda_10_15/libapexx_trt_plugins.so`
+    - validation summary: `artifacts/trt_plugin_validation_summary.{json,md}`
   - GitHub API branch-protection checks require authenticated `gh` (not installed on host)
 - `Status: [ ]` Run TensorRT engine shape sweep on deployment GPU and attach artifacts:
   - local run completed with synthetic dynamic engine:
@@ -120,16 +124,12 @@ Device/deployment-blocked validation queue:
   - blocker: baseline tuning with final deployment engine is still required.
   - `python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --output artifacts/perf_trt_current.json --summary artifacts/perf_trt_compare.json --trend-output artifacts/perf_trt_trend.json --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256"`
 - `Status: [ ]` Run TensorRT plugin parity tests on CUDA host:
-  - blocker: tests are skipped while `APEXX_TRT_PLUGIN_LIB` is unset; shared plugin `.so` is not built on this host.
-  - local evidence: `artifacts/trt_plugin_parity_pytest.log`
-  - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py`
-- `Status: [ ]` Run TensorRT plugin C++ shape/serialization tests after native build:
-  - local configure/build completed (`artifacts/trt_cmake_configure.log`, `artifacts/trt_cmake_build.log`),
-    but plugin shared library and native tests are skipped because TensorRT headers and CUDA compiler are absent.
-  - `ctest` currently reports no discovered tests (`artifacts/trt_ctest.log`).
-  - `cmake -S runtime/tensorrt -B runtime/tensorrt/build -DAPEXX_ENABLE_TRT=ON`
-  - `cmake --build runtime/tensorrt/build -j`
-  - `ctest --test-dir runtime/tensorrt/build --output-on-failure`
+  - local parity run now executes against real plugin `.so`, but fails numerical correctness checks
+    against PyTorch references:
+    - `artifacts/trt_plugin_parity_pytest.log`
+    - `artifacts/trt_plugin_validation_summary.{json,md}`
+  - blocker: TensorRT plugin kernel parity mismatch (device correctness issue, not toolchain availability).
+  - `APEXX_TRT_PLUGIN_LIB=runtime/tensorrt/build_cuda_10_15/libapexx_trt_plugins.so LD_LIBRARY_PATH=runtime/tensorrt/build_cuda_10_15:artifacts/toolchains/tensorrt_10_15_1_29/lib:/home/voskan/anaconda3/lib/python3.13/site-packages/tensorrt_libs:/home/voskan/anaconda3/targets/x86_64-linux/lib:$LD_LIBRARY_PATH python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py`
 - `Status: [ ]` Capture FP8 benchmark evidence on supported GPU (`sm90+`) for P4-07 closure:
   - blocker: host GPU is `sm75`; FP8 request falls back with `compute_capability_below_sm90`
   - `python -m apex_x.bench.gpu_bench --dtype fp8 --warmup 10 --iters 50 --output-json artifacts/perf_gpu_fp8.json --output-md artifacts/perf_gpu_fp8.md`

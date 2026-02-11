@@ -137,11 +137,11 @@ int main() {
   const std::size_t idx_bytes = h_indices.size() * sizeof(int32_t);
   const std::size_t out_bytes = base_bytes;
 
-  if (!check_cuda(cudaMalloc(&d_base, base_bytes), "cudaMalloc(d_base)") ||
-      !check_cuda(cudaMalloc(&d_packed, packed_bytes), "cudaMalloc(d_packed)") ||
-      !check_cuda(cudaMalloc(&d_indices, idx_bytes), "cudaMalloc(d_indices)") ||
-      !check_cuda(cudaMalloc(&d_levels, idx_bytes), "cudaMalloc(d_levels)") ||
-      !check_cuda(cudaMalloc(&d_out, out_bytes), "cudaMalloc(d_out)")) {
+  if (!check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_base), base_bytes), "cudaMalloc(d_base)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_packed), packed_bytes), "cudaMalloc(d_packed)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_indices), idx_bytes), "cudaMalloc(d_indices)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_levels), idx_bytes), "cudaMalloc(d_levels)") ||
+      !check_cuda(cudaMalloc(reinterpret_cast<void**>(&d_out), out_bytes), "cudaMalloc(d_out)")) {
     return 2;
   }
 
@@ -207,7 +207,7 @@ int main() {
 
   const std::size_t workspace_bytes = plugin->getWorkspaceSize(in_desc, 4, out_desc, 1);
   void* workspace = nullptr;
-  if (workspace_bytes > 0 && !check_cuda(cudaMalloc(&workspace, workspace_bytes), "cudaMalloc(workspace)")) {
+  if (workspace_bytes > 0 && !check_cuda(cudaMalloc(reinterpret_cast<void**>(&workspace), workspace_bytes), "cudaMalloc(workspace)")) {
     plugin->terminate();
     plugin->destroy();
     return 5;

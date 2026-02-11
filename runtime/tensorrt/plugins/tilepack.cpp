@@ -257,6 +257,7 @@ const char* TilePackPluginCreator::getPluginNamespace() const noexcept { return 
 
 }  // namespace apexx::trt::plugins
 
-REGISTER_TENSORRT_PLUGIN(apexx::trt::plugins::TilePackPluginCreator);
+using ApexXTilePackPluginCreator = apexx::trt::plugins::TilePackPluginCreator;
+REGISTER_TENSORRT_PLUGIN(ApexXTilePackPluginCreator);
 
 #endif  // APEXX_ENABLE_TENSORRT

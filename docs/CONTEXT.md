@@ -20,7 +20,8 @@
 - Deployment CUDA host validation snapshot was refreshed:
   - `torch.cuda.is_available() == True`, `device_count == 1` (`NVIDIA GeForce RTX 2070 SUPER`, `sm75`)
   - `triton` import available (`3.5.1`)
-  - `tensorrt` and `onnxruntime` Python modules remain unavailable on this host
+  - `tensorrt` import available (`10.15.1.29`)
+  - `onnxruntime` import available (`1.24.1`)
   - environment artifact bundle:
     - `artifacts/env_check_cuda.json`
     - `artifacts/env_check_cuda.md`
@@ -39,9 +40,24 @@
   - deployment runner still required for real TensorRT metrics/baseline tuning
 - Runtime environment was further unblocked on this host:
   - `tensorrt==10.15.1.29` (`tensorrt-cu12`), `onnxruntime==1.24.1`, `cmake==4.2.1`
+  - CUDA compiler toolchain installed in conda base (`cuda-nvcc 12.8.93`)
   - updated environment snapshot:
     - `artifacts/env_check_cuda.json`
     - `artifacts/env_check_cuda.md`
+- TensorRT plugin native toolchain was unblocked on this host:
+  - TensorRT headers synced from `TensorRT release/10.15` (`TRT 10.15.1.29`)
+    into `artifacts/toolchains/tensorrt_10_15_1_29/include`
+  - shared plugin library build now succeeds:
+    - `runtime/tensorrt/build_cuda_10_15/libapexx_trt_plugins.so`
+  - native plugin executables passed on CUDA host:
+    - `artifacts/trt_native_tests.log`
+  - configure/build logs:
+    - `artifacts/trt_cmake_configure.log`
+    - `artifacts/trt_cmake_build.log`
+- TensorRT Python parity harness now executes with real plugin `.so` but currently fails correctness gates:
+  - parity log: `artifacts/trt_plugin_parity_pytest.log`
+  - summary bundle: `artifacts/trt_plugin_validation_summary.{json,md}`
+  - blocker moved from toolchain availability to plugin numerical parity mismatch.
 - Local TensorRT shape-sweep and compare/trend artifacts were captured using a real CUDA engine:
   - engine artifact: `artifacts/models/trt_bench_dynamic.engine`
   - shape sweep: `artifacts/perf_trt_shape_sweep.json`, `artifacts/perf_trt_shape_sweep.md`
