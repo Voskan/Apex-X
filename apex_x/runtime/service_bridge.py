@@ -53,6 +53,31 @@ def _reshape_flat_input(flat: np.ndarray, shape_spec: Any) -> np.ndarray:
 
     if isinstance(shape_spec, (tuple, list)):
         dims = [_positive_dim(dim) for dim in shape_spec]
+        if dims:
+            # TensorRT commonly reports dynamic dims as -1. Resolve them against
+            # provided flat input length when possible.
+            resolved = list(dims)
+            if resolved[0] is None:
+                resolved[0] = 1
+            dynamic_positions = [idx for idx, dim in enumerate(resolved) if dim is None]
+            known_product = 1
+            for dim in resolved:
+                if dim is not None:
+                    known_product *= int(dim)
+            if known_product > 0 and flat_vec.size % known_product == 0:
+                remaining = int(flat_vec.size // known_product)
+                if len(dynamic_positions) == 0 and remaining == 1:
+                    return flat_vec.reshape(tuple(int(cast(int, dim)) for dim in resolved))
+                if len(dynamic_positions) == 1:
+                    resolved[dynamic_positions[0]] = remaining
+                    return flat_vec.reshape(tuple(int(cast(int, dim)) for dim in resolved))
+                if len(dynamic_positions) == 2:
+                    side = int(np.sqrt(float(remaining)))
+                    if side * side == remaining:
+                        resolved[dynamic_positions[0]] = side
+                        resolved[dynamic_positions[1]] = side
+                        return flat_vec.reshape(tuple(int(cast(int, dim)) for dim in resolved))
+
         if len(dims) >= 2 and all(dim is not None for dim in dims[1:]):
             tail_dims = [cast(int, dim) for dim in dims[1:]]
             expected = int(np.prod(np.asarray(tail_dims, dtype=np.int64)))
@@ -136,12 +161,45 @@ def _predict_tensorrt(
 ) -> list[dict[str, Any]]:
     if TensorRTEngineExecutor is None:
         raise RuntimeError("TensorRT Python executor is not available")
+    try:
+        import tensorrt as trt  # type: ignore[import-untyped]
+    except Exception as exc:  # pragma: no cover - runtime dependent
+        raise RuntimeError(f"TensorRT Python package is not available: {exc}") from exc
+
+    logger = trt.Logger(trt.Logger.ERROR)
+    runtime = trt.Runtime(logger)
+    engine = runtime.deserialize_cuda_engine(artifact_path.read_bytes())
+    if engine is None:
+        raise RuntimeError(f"failed to deserialize TensorRT engine: {artifact_path}")
+
+    input_shapes: dict[str, tuple[int, ...]] = {}
+    if hasattr(engine, "num_io_tensors") and hasattr(engine, "get_tensor_name"):
+        for idx in range(int(engine.num_io_tensors)):
+            name = str(engine.get_tensor_name(idx))
+            mode = engine.get_tensor_mode(name)
+            if hasattr(trt, "TensorIOMode"):
+                is_input = bool(mode == trt.TensorIOMode.INPUT)
+            else:  # pragma: no cover - TRT API compatibility path
+                is_input = "INPUT" in str(mode).upper()
+            if is_input:
+                input_shapes[name] = tuple(int(dim) for dim in engine.get_tensor_shape(name))
+    elif hasattr(engine, "num_bindings"):  # pragma: no cover - TRT API compatibility path
+        for idx in range(int(engine.num_bindings)):
+            if bool(engine.binding_is_input(idx)):
+                name = str(engine.get_binding_name(idx))
+                input_shapes[name] = tuple(int(dim) for dim in engine.get_binding_shape(idx))
+
+    if not input_shapes:
+        raise RuntimeError("TensorRT engine has no inputs")
+
     executor = TensorRTEngineExecutor(engine_path=artifact_path)
     results: list[dict[str, Any]] = []
     for item in items:
-        # TensorRT runtime bridge currently maps flat vectors to [1, F] by default.
-        input_batch = _reshape_flat_input(item.input_values, None)
-        execution = executor.run(input_batch=input_batch.astype(np.float32, copy=False))
+        input_tensors: dict[str, np.ndarray] = {}
+        for name, shape_spec in input_shapes.items():
+            shaped = _reshape_flat_input(item.input_values, shape_spec)
+            input_tensors[name] = shaped.astype(np.float32, copy=False)
+        execution = executor.run(input_tensors=input_tensors)
         output_arrays = [np.asarray(value) for value in execution.outputs.values()]
         score = _score_from_arrays(output_arrays)
         results.append(

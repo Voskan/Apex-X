@@ -37,6 +37,27 @@
 - TensorRT compare baseline wiring was finalized with committed template:
   - `scripts/perf_baseline_trt.json`
   - deployment runner still required for real TensorRT metrics/baseline tuning
+- Runtime environment was further unblocked on this host:
+  - `tensorrt==10.15.1.29` (`tensorrt-cu12`), `onnxruntime==1.24.1`, `cmake==4.2.1`
+  - updated environment snapshot:
+    - `artifacts/env_check_cuda.json`
+    - `artifacts/env_check_cuda.md`
+- Local TensorRT shape-sweep and compare/trend artifacts were captured using a real CUDA engine:
+  - engine artifact: `artifacts/models/trt_bench_dynamic.engine`
+  - shape sweep: `artifacts/perf_trt_shape_sweep.json`, `artifacts/perf_trt_shape_sweep.md`
+  - compare/trend: `artifacts/perf_trt_current.json`, `artifacts/perf_trt_compare.json`, `artifacts/perf_trt_trend.json`
+- Service bridge TensorRT input-shape handling was hardened for dynamic engines:
+  - `apex_x/runtime/service_bridge.py` now resolves engine input shapes and infers dynamic dimensions from flat input payloads
+  - coverage expanded in `tests/test_runtime_service_bridge.py`
+  - real TensorRT bridge probe artifact:
+    - `artifacts/service_bridge_trt_real_engine.json`
+- Go runtime bridge validation on host:
+  - ORT bridge with real ONNX model:
+    - model: `artifacts/models/bridge_test_model.onnx`
+    - logs: `artifacts/go_ort_bridge_test_real_model.log`
+    - probe: `artifacts/service_bridge_ort_real_model.json`
+  - TRT bridge with real TensorRT engine:
+    - logs: `artifacts/go_trt_bridge_test_real_engine.log`
 
 - Runtime capability contract was hardened:
   - canonical reason-code catalog added in `apex_x/runtime/caps.py`

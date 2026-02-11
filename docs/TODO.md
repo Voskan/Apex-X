@@ -91,27 +91,42 @@ Recently completed and removed from active queue:
 - `P3-04` FP16/INT8 mixed precision policy enforcement for sensitive layers (2026-02-11)
 - `P3-01` End-to-end plugin registration and contract validation at build time (2026-02-11)
 - `P3-03` INT8 production calibration flow and cache governance (2026-02-11)
+- Device validation: Triton GPU parity suite on CUDA host (2026-02-11)
+- Device validation: GPU perf baseline artifacts on CUDA host (2026-02-11)
+- Device validation: Go ORT bridge with real ONNX model on host (2026-02-11)
 
 Device/deployment-blocked validation queue:
 - Blocking snapshot (2026-02-11):
   - `torch.cuda.is_available() == True`
   - `torch.cuda.device_count() == 1` (`NVIDIA GeForce RTX 2070 SUPER`, `sm75`)
   - `triton` Python module available (`3.5.1`)
-  - `tensorrt` Python module unavailable (`ModuleNotFoundError`)
-  - `onnxruntime` Python module unavailable (`ModuleNotFoundError`)
-  - `cmake` CLI unavailable on host
+  - `tensorrt` Python module available (`10.15.1.29`)
+  - `onnxruntime` Python module available (`1.24.1`)
+  - `cmake` CLI available (`4.2.1`)
+  - TensorRT plugin shared library is still unavailable on this host (missing TensorRT headers + CUDA compiler toolchain)
   - GitHub API branch-protection checks require authenticated `gh` (not installed on host)
 - `Status: [ ]` Run TensorRT engine shape sweep on deployment GPU and attach artifacts:
-  - blocker: TensorRT Python runtime is not installed on this host (`tensorrt_python_not_installed`)
+  - local run completed with synthetic dynamic engine:
+    - `artifacts/models/trt_bench_dynamic.engine`
+    - `artifacts/perf_trt_shape_sweep.json`
+    - `artifacts/perf_trt_shape_sweep.md`
+  - blocker: final deployment rerun is still required with production deployment engine.
   - `python -m apex_x.bench.trt_engine_sweep --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256" --output-json artifacts/perf_trt_shape_sweep.json --output-md artifacts/perf_trt_shape_sweep.md`
 - `Status: [ ]` Run TensorRT regression compare/trend wrapper on deployment GPU and archive artifacts:
-  - blocker: current run is `status=skipped` until TensorRT Python runtime + deployment engine are available
+  - local run completed and compare currently passes on synthetic engine:
+    - `artifacts/perf_trt_current.json`
+    - `artifacts/perf_trt_compare.json`
+    - `artifacts/perf_trt_trend.json`
+  - blocker: baseline tuning with final deployment engine is still required.
   - `python scripts/perf_regression_trt.py --compare --baseline scripts/perf_baseline_trt.json --output artifacts/perf_trt_current.json --summary artifacts/perf_trt_compare.json --trend-output artifacts/perf_trt_trend.json --trt-engine-path <engine> --shape-case "input=1x3x128x128" --shape-case "input=1x3x256x256"`
 - `Status: [ ]` Run TensorRT plugin parity tests on CUDA host:
-  - blocker: tests are skipped while `tensorrt` Python package is unavailable
+  - blocker: tests are skipped while `APEXX_TRT_PLUGIN_LIB` is unset; shared plugin `.so` is not built on this host.
+  - local evidence: `artifacts/trt_plugin_parity_pytest.log`
   - `python -m pytest -q tests/test_tensorrt_tilepack_parity.py tests/test_tensorrt_tileunpackfusion_parity.py tests/test_tensorrt_tilessm_parity.py tests/test_tensorrt_nms_decode_parity.py`
 - `Status: [ ]` Run TensorRT plugin C++ shape/serialization tests after native build:
-  - blocker: `cmake` is missing on host and TensorRT SDK toolchain is not present
+  - local configure/build completed (`artifacts/trt_cmake_configure.log`, `artifacts/trt_cmake_build.log`),
+    but plugin shared library and native tests are skipped because TensorRT headers and CUDA compiler are absent.
+  - `ctest` currently reports no discovered tests (`artifacts/trt_ctest.log`).
   - `cmake -S runtime/tensorrt -B runtime/tensorrt/build -DAPEXX_ENABLE_TRT=ON`
   - `cmake --build runtime/tensorrt/build -j`
   - `ctest --test-dir runtime/tensorrt/build --output-on-failure`
@@ -136,11 +151,12 @@ Device/deployment-blocked validation queue:
     - `artifacts/perf_gpu_current_weekly.json`
     - `artifacts/perf_gpu_compare_weekly.json`
     - `artifacts/perf_gpu_trend_weekly.json`
-- `Status: [ ]` Validate Go runtime ORT bridge path with real ONNX model on deployment host:
-  - blocker: `onnxruntime` Python runtime and real ONNX artifact are not available on this host
-  - `cd runtime/go && APEXX_ORT_MODEL_PATH=<real_model.onnx> APEXX_ORT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" go test ./...`
 - `Status: [ ]` Validate Go runtime TRT bridge/native path with deployment engine on CUDA+TensorRT host:
-  - blocker: TensorRT Python runtime + deployment engine are unavailable on this host
+  - local bridge validation completed with real TensorRT engine artifact:
+    - engine: `artifacts/models/trt_bench_dynamic.engine`
+    - Go tests: `artifacts/go_trt_bridge_test_real_engine.log`
+    - bridge probe: `artifacts/service_bridge_trt_real_engine.json`
+  - blocker: final deployment rerun is still required with production deployment engine.
   - `cd runtime/go && APEXX_TRT_ENGINE_PATH=<engine.plan> APEXX_TRT_BRIDGE_CMD="python -m apex_x.runtime.service_bridge" CGO_ENABLED=1 go test -tags tensorrt ./...`
 
 ---
@@ -463,6 +479,11 @@ Progress (2026-02-11):
   - normalized trend artifact: `artifacts/perf_trt_trend*.json`
 - Added committed TensorRT baseline template file for compare-mode wiring:
   - `scripts/perf_baseline_trt.json` (template, metrics populated on deployment TensorRT runner)
+- Local TensorRT compare/trend smoke run is now passing with a real CUDA engine artifact:
+  - `artifacts/models/trt_bench_dynamic.engine`
+  - `artifacts/perf_trt_current.json`
+  - `artifacts/perf_trt_compare.json`
+  - `artifacts/perf_trt_trend.json`
 - CI jobs now publish trend artifacts:
   - CPU: `artifacts/perf_trend_cpu_ci.json` in `.github/workflows/ci.yml`
   - GPU: `artifacts/perf_gpu_trend_ci.json` in `.github/workflows/perf_gpu.yml`

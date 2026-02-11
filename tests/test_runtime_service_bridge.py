@@ -19,6 +19,24 @@ def test_reshape_flat_input_respects_static_shape() -> None:
     assert shaped.shape == (1, 3, 2, 2)
 
 
+def test_reshape_flat_input_resolves_dynamic_square_dims() -> None:
+    flat = np.arange(3 * 8 * 8, dtype=np.float32)
+    shaped = _reshape_flat_input(flat, [-1, 3, -1, -1])
+    assert shaped.shape == (1, 3, 8, 8)
+
+
+def test_reshape_flat_input_resolves_single_dynamic_dim() -> None:
+    flat = np.arange(12, dtype=np.float32)
+    shaped = _reshape_flat_input(flat, [1, -1])
+    assert shaped.shape == (1, 12)
+
+
+def test_reshape_flat_input_falls_back_when_dynamic_dims_are_unresolvable() -> None:
+    flat = np.arange(13, dtype=np.float32)
+    shaped = _reshape_flat_input(flat, [-1, 3, -1, -1])
+    assert shaped.shape == (1, 13)
+
+
 def test_parse_items_rejects_missing_request_id() -> None:
     with pytest.raises(ValueError, match="request_id"):
         _parse_items([{"budget_profile": "balanced", "input": [1.0]}])
