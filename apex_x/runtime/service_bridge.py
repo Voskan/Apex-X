@@ -9,7 +9,7 @@ from typing import Any, cast
 import numpy as np
 
 try:
-    import onnxruntime as ort  # type: ignore[import-untyped]
+    import onnxruntime as ort  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     ort = None
 
