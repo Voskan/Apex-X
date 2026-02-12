@@ -32,6 +32,9 @@ from .lsj_augmentation import LargeScaleJitter
 
 
 
+from .yolo import YOLOSegmentationDataset, yolo_collate_fn
+
+
 def dummy_batch(height: int = 128, width: int = 128) -> np.ndarray:
     return np.zeros((1, 3, height, width), dtype=np.float32)
 
@@ -65,6 +68,8 @@ __all__ = [
     "MixUpAugmentation",
     "CopyPasteAugmentation",
     "LargeScaleJitter",
+    "YOLOSegmentationDataset",
+    "yolo_collate_fn",
 ]
 
 
