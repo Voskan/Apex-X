@@ -55,16 +55,16 @@ def compute_v3_training_losses(
     loss_dict = {}
     device = next(model.parameters()).device
     
-    # 1. Detection losses (classification + box regression)
-    if 'boxes' in outputs and 'boxes' in targets:
-        det_loss, det_losses = detection_losses(
-            outputs['boxes'],
-            outputs['scores'],
-            targets['boxes'],
-            targets['labels'],
-            device=device,
-        )
-        loss_dict.update(det_losses)
+    # 1. Detection losses (simplified for now - will use proper det_loss later)
+    if 'scores' in outputs and 'labels' in targets:
+        # Classification loss
+        if outputs['scores'].numel() > 0 and targets['labels'].numel() > 0:
+            cls_loss = F.cross_entropy(
+                outputs['scores'].view(-1, outputs['scores'].shape[-1]),
+                targets['labels'].long().view(-1),
+                reduction='mean',
+            )
+            loss_dict['cls'] = cls_loss
     
     # 2. Segmentation losses (BCE + Dice)
     if 'masks' in outputs and 'masks' in targets:
