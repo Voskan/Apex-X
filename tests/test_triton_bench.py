@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.triton_fused_bench import benchmark_triton_fused
+from scripts.benchmark_triton_fused import benchmark_triton_fused
 
 
 def test_triton_bench_smoke_cpu_fallback() -> None:
