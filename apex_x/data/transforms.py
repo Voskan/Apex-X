@@ -48,6 +48,11 @@ class AlbumentationsAdapter:
                     masks = None
             else:
                 masks = sample.masks
+
+            # NEW: Strict clipping to image boundaries to prevent Albumentations scale/range errors
+            if boxes.shape[0] > 0:
+                boxes[:, 0::2] = np.clip(boxes[:, 0::2], 0.0, float(sample.width))
+                boxes[:, 1::2] = np.clip(boxes[:, 1::2], 0.0, float(sample.height))
                 
             kwargs["bboxes"] = boxes.tolist()
             kwargs["class_labels"] = classes.tolist()

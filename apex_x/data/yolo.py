@@ -125,12 +125,22 @@ class YOLOSegmentationDataset(Dataset):
                     coords = np.array(parts[1:]).reshape(-1, 2)
                     
                     # Denormalize coordinates
+                    # CLIP polygons to [0, 1] range first to be safe
+                    coords[:, 0] = np.clip(coords[:, 0], 0.0, 1.0)
+                    coords[:, 1] = np.clip(coords[:, 1], 0.0, 1.0)
+                    
                     coords[:, 0] *= w
                     coords[:, 1] *= h
                     
                     # Compute bbox from polygon
                     x1, y1 = coords.min(axis=0)
                     x2, y2 = coords.max(axis=0)
+                    
+                    # Strict clipping to image boundaries
+                    x1 = np.clip(x1, 0.0, float(w))
+                    x2 = np.clip(x2, 0.0, float(w))
+                    y1 = np.clip(y1, 0.0, float(h))
+                    y2 = np.clip(y2, 0.0, float(h))
                     
                     # Filter degenerate boxes (width or height <= 0.1 pixels)
                     if (x2 - x1) > 0.1 and (y2 - y1) > 0.1:
