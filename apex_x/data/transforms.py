@@ -25,38 +25,24 @@ class AlbumentationsAdapter:
         rng: np.random.RandomState | None = None,
     ) -> TransformSample:
         if A is None:
-            # warn or fail? For now, no-op if missing to allow running without deps
             return sample
         
-        # Albumentations uses its own RNG, but we should try to seed it if possible
-        # or just rely on its internal state. 
-        # A.Compose doesn't easily take an external RNG state for single call.
-        # We'll rely on global seeding or separate seeding if needed.
-        
-        # Prepare inputs
+        # Prepare inputs — ALWAYS pass bboxes and class_labels (even if empty)
+        # because the pipeline was composed with bbox_params that requires them.
         kwargs = {"image": sample.image}
         
-        # Boxes: [N, 4] -> [N, 4] (x1, y1, x2, y2)
-        # We need to ensure they are valid for Albumentations (x2 > x1, y2 > y1)
-        # The sanitizer should have handled this, but A is strict.
-        
         if sample.boxes_xyxy.shape[0] > 0:
-            kwargs["bboxes"] = sample.boxes_xyxy
-            kwargs["class_labels"] = sample.class_ids
+            kwargs["bboxes"] = sample.boxes_xyxy.tolist()
+            kwargs["class_labels"] = sample.class_ids.tolist()
+        else:
+            kwargs["bboxes"] = []
+            kwargs["class_labels"] = []
             
-        if sample.masks is not None:
-             # A supports list of masks for 'masks' arg, or single 'mask'. 
-             # sample.masks is [N, H, W]. 
-             # We can pass list of (H, W) masks.
-             kwargs["masks"] = list(sample.masks)  # type: ignore
-
-        # Run pipeline
-        # verification: A.Compose must be created with bbox_params=A.BboxParams(format="pascal_voc", label_fields=["class_labels"])
-        try:
-            res = self.pipeline(**kwargs)
-        except ValueError:
-            # Fallback for empty boxes sometimes causing issues in older versions
-            return sample
+        if sample.masks is not None and sample.masks.shape[0] > 0:
+             kwargs["masks"] = list(sample.masks)
+        
+        # Run pipeline — do NOT silently swallow errors and return unresized images
+        res = self.pipeline(**kwargs)
 
         # Unpack outputs
         out_image = res["image"]
@@ -69,12 +55,10 @@ class AlbumentationsAdapter:
             if "class_labels" in res:
                 out_classes = np.array(res["class_labels"], dtype=np.int64)
             else:
-                # Should not happen if configured correctly
                 out_classes = np.zeros((len(out_boxes),), dtype=np.int64)
                 
         out_masks = None
         if "masks" in res and len(res["masks"]) > 0:
-            # List of (H, W) -> [N, H, W]
             out_masks = np.stack(res["masks"], axis=0)
 
         return TransformSample(
