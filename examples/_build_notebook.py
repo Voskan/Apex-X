@@ -1,10 +1,19 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "id": "c8beecac",
-   "metadata": {},
-   "source": [
+#!/usr/bin/env python3
+"""Generate the Apex-X A100 training notebook with V3 optimizations."""
+import json, sys, os
+
+def md(source):
+    return {"cell_type": "markdown", "metadata": {}, "source": source}
+
+def code(source):
+    return {"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": source}
+
+cells = []
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 1 — Title & Hardware Overview
+# ═══════════════════════════════════════════════════════════════
+cells.append(md([
     "# 🚀 Apex-X — A100 SXM Training (TeacherModelV3)\n",
     "\n",
     "**World-Class Satellite Roof Segmentation** optimized for the **YOLO26_SUPER_MERGED** dataset.\n",
@@ -26,23 +35,14 @@
     "\n",
     "---\n",
     "**Repository**: [github.com/Voskan/Apex-X](https://github.com/Voskan/Apex-X)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "772bd30c",
-   "metadata": {},
-   "source": [
-    "## 1. 🔧 Environment Setup"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "b3bf191c",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 2 — Environment Setup
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 1. 🔧 Environment Setup"]))
+
+cells.append(code([
     "import os, subprocess, sys\n",
     "\n",
     "if not os.path.exists('Apex-X'):\n",
@@ -58,23 +58,14 @@
     "!pip install pycocotools albumentations matplotlib seaborn tqdm -q\n",
     "\n",
     "print('\\n✅ All dependencies installed')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "2bc6390c",
-   "metadata": {},
-   "source": [
-    "## 2. 🖥️ System & GPU Diagnostics"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "60495ee4",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 3 — System Diagnostics
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 2. 🖥️ System & GPU Diagnostics"]))
+
+cells.append(code([
     "import torch\n",
     "import platform\n",
     "import psutil\n",
@@ -90,23 +81,14 @@
     "print('=' * 60)\n",
     "\n",
     "!nvidia-smi"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "b7fb1fcc",
-   "metadata": {},
-   "source": [
-    "## 3. 📊 Dataset Visualization"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "bfb05b33",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 4 — Dataset Visualization
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 3. 📊 Dataset Visualization"]))
+
+cells.append(code([
     "import yaml, cv2, random\n",
     "import numpy as np\n",
     "import matplotlib.pyplot as plt\n",
@@ -140,23 +122,14 @@
     "    plt.axis('off')\n",
     "plt.tight_layout()\n",
     "plt.show()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "1162f02b",
-   "metadata": {},
-   "source": [
-    "## 4. ⚙️ Hyperparameter Configuration"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "661d6752",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 5 — Hyperparameters
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 4. ⚙️ Hyperparameter Configuration"]))
+
+cells.append(code([
     "# Optimized for 1× A100 80GB\n",
     "IMAGE_SIZE     = 512\n",
     "BATCH_SIZE     = 16      # Increased for A100 80GB\n",
@@ -169,23 +142,14 @@
     "NUM_WORKERS    = 12\n",
     "DEVICE         = 'cuda'\n",
     "OUTPUT_DIR     = './outputs/a100_v3_run'"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "a65d9c31",
-   "metadata": {},
-   "source": [
-    "## 5. 🧠 Model Initialization (TeacherModelV3)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "cb20cee2",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 6 — Model Initialization
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 5. 🧠 Model Initialization (TeacherModelV3)"]))
+
+cells.append(code([
     "from apex_x.config import ApexXConfig, ModelConfig, TrainConfig\n",
     "from apex_x.model import TeacherModelV3\n",
     "from apex_x.train.lr_scheduler import LinearWarmupCosineAnnealingLR\n",
@@ -209,23 +173,14 @@
     "\n",
     "optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=BASE_LR, weight_decay=WEIGHT_DECAY)\n",
     "scaler = torch.amp.GradScaler('cuda')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "1cb36344",
-   "metadata": {},
-   "source": [
-    "## 6. 🏋️ Training Loop (V3 Loss)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "9cec8034",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 7 — Training Loop
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 6. 🏋️ Training Loop (V3 Loss)"]))
+
+cells.append(code([
     "import time\n",
     "from tqdm.auto import tqdm\n",
     "from apex_x.train.train_losses_v3 import compute_v3_training_losses\n",
@@ -272,23 +227,14 @@
     "    # Save latest\n",
     "    torch.save(model.state_dict(), f'{OUTPUT_DIR}/latest.pt')\n",
     "    print(f'Epoch {epoch} finished.')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "f4380631",
-   "metadata": {},
-   "source": [
-    "## 7. ✅ Summary\n",
-    "Training complete. Models saved to `outputs/a100_v3_run`."
-   ]
-  }
- ],
- "metadata": {
-  "language_info": {
-   "name": "python"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+]))
+
+# ═══════════════════════════════════════════════════════════════
+# CELL 8 — Final Summary
+# ═══════════════════════════════════════════════════════════════
+cells.append(md(["## 7. ✅ Summary\n", "Training complete. Models saved to `outputs/a100_v3_run`."]))
+
+notebook = {"cells": cells, "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
+with open("train_a100_sxm.ipynb", "w") as f:
+    json.dump(notebook, f, indent=1)
+print("✅ train_a100_sxm.ipynb generated.")
