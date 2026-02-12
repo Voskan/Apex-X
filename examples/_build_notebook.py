@@ -45,7 +45,12 @@ cells.append(md([
 cells.append(md(["## 1. 🔧 Setup & Dependencies"]))
 
 cells.append(code([
-    "import os, sys\n",
+    "import os, sys, warnings\n",
+    "warnings.filterwarnings('ignore', category=UserWarning, module='IPython')\n",
+    "\n",
+    "# 1. Install critical system dependencies first\n",
+    "!pip install pickleshare structlog -q\n",
+    "\n",
     "if not os.path.exists('Apex-X'):\n",
     "    !git clone https://github.com/Voskan/Apex-X.git\n",
     "    print('✅ Repository cloned')\n",
@@ -55,8 +60,8 @@ cells.append(code([
     "\n",
     "%cd Apex-X\n",
     "!pip install -e . -q\n",
-    "!pip install pycocotools albumentations matplotlib seaborn tqdm pickleshare structlog -q\n",
-    "print('\\n✅ Ready')"
+    "!pip install pycocotools albumentations matplotlib seaborn tqdm -q\n",
+    "print('\\n✅ Environment Ready')"
 ]))
 
 # ═════════════════════════════════════════════
