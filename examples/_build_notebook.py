@@ -121,20 +121,23 @@ cells.append(md(["## 4. ⚙️ WORLD-CLASS Hyperparameters"]))
 
 cells.append(code([
     "IMAGE_SIZE     = 1024    # High-Resolution mode (Upscaled from 512px)\n",
-    "BATCH_SIZE     = 16      # 🚀 Increased from 4 -> 16 for A100 (80GB VRAM)\n",
-    "GRAD_ACCUM     = 4       # 🚀 Reduced from 16 -> 4 (Effective Batch remains 64)\n",
+    "BATCH_SIZE     = 24      # A100 SXM: high GPU utilization without overcommitting RAM queues\n",
+    "GRAD_ACCUM     = 3       # Effective batch = 72\n",
     "EPOCHS         = 200\n",
-    "BASE_LR        = 1e-3    # Lowered LR for higher resolution stability\n",
+    "BASE_LR        = 3e-4    # Lower LR to prevent early divergence/NaN\n",
     "WEIGHT_DECAY   = 1e-4\n",
-    "WARMUP_EPOCHS  = 10      # Longer warmup for 1024px\n",
+    "WARMUP_EPOCHS  = 10\n",
     "PATIENCE       = 30\n",
     "EMA_DECAY      = 0.999\n",
-    "NUM_WORKERS    = 16      # 🚀 Increased from 12 -> 16 to utilize 1024GB System RAM\n",
+    "NUM_WORKERS    = 6       # 16 vCPU host: leave CPU for training process + avoid RAM spikes\n",
+    "VAL_WORKERS    = max(1, NUM_WORKERS // 2)\n",
+    "TRAIN_PREFETCH = 1\n",
+    "VAL_PREFETCH   = 1\n",
     "DEVICE         = 'cuda'\n",
     "OUTPUT_DIR     = './outputs/a100_v3_1024px'\n",
     "\n",
     "os.makedirs(OUTPUT_DIR, exist_ok=True)\n",
-    "print(f'🚀 Optimized for A100: Batch 16 | Effective Batch 64 | Workers 16')"
+    "print(f'A100 config: batch={BATCH_SIZE}, grad_accum={GRAD_ACCUM}, workers={NUM_WORKERS}')"
 ]))
 
 # ═════════════════════════════════════════════
@@ -186,14 +189,30 @@ cells.append(code([
     "train_ds = YOLOSegmentationDataset(DATASET_ROOT, split='train', transforms=train_tf, image_size=IMAGE_SIZE)\n",
     "val_ds   = YOLOSegmentationDataset(DATASET_ROOT, split='val',   transforms=val_tf, image_size=IMAGE_SIZE)\n",
     "\n",
-    "train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, \n",
-    "                          num_workers=NUM_WORKERS, collate_fn=yolo_collate_fn, \n",
-    "                          pin_memory=True, persistent_workers=True)\n",
+    "train_loader = DataLoader(\n",
+    "    train_ds,\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    shuffle=True,\n",
+    "    num_workers=NUM_WORKERS,\n",
+    "    collate_fn=yolo_collate_fn,\n",
+    "    pin_memory=True,\n",
+    "    persistent_workers=(NUM_WORKERS > 0),\n",
+    "    prefetch_factor=TRAIN_PREFETCH if NUM_WORKERS > 0 else None,\n",
+    "    drop_last=True,\n",
+    ")\n",
     "\n",
-    "val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False,\n",
-    "                        num_workers=NUM_WORKERS//2, collate_fn=yolo_collate_fn)\n",
+    "val_loader = DataLoader(\n",
+    "    val_ds,\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    shuffle=False,\n",
+    "    num_workers=VAL_WORKERS,\n",
+    "    collate_fn=yolo_collate_fn,\n",
+    "    pin_memory=True,\n",
+    "    persistent_workers=False,\n",
+    "    prefetch_factor=VAL_PREFETCH if VAL_WORKERS > 0 else None,\n",
+    ")\n",
     "\n",
-    "print(f'✅ Pipeline Ready (Scaling to {IMAGE_SIZE}px)')"
+    "print(f'Pipeline ready at {IMAGE_SIZE}px | train={len(train_ds)} | val={len(val_ds)}')"
 ]))
 
 # ═════════════════════════════════════════════
@@ -224,11 +243,7 @@ cells.append(code([
     "optimizer = torch.optim.AdamW(list(model.parameters())+list(enhancer.parameters()), lr=BASE_LR, weight_decay=WEIGHT_DECAY)\n",
     "scheduler = LinearWarmupCosineAnnealingLR(optimizer, len(train_loader)*WARMUP_EPOCHS, len(train_loader)*EPOCHS)\n",
     "scaler    = torch.amp.GradScaler('cuda')\n",
-    "\n",
-    "# Create val loader\n",
-    "val_dataset = YOLOSegmentationDataset(DATASET_ROOT, split='val', transforms=val_tf, image_size=IMAGE_SIZE)\n",
-    "val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, collate_fn=yolo_collate_fn)\n",
-    "print(f'Val set: {len(val_dataset)} images')\n",
+    "print(f'Val set: {len(val_ds)} images')\n",
     "\n",
     "history = {'train_loss': [], 'val_loss': [], 'vram': []}\n",
     "best_val, counter = float('inf'), 0\n",
@@ -240,7 +255,7 @@ cells.append(code([
     "    pbar = tqdm(train_loader, desc=f'Epoch {epoch}')\n",
     "    \n",
     "    for i, samples in enumerate(pbar):\n",
-    "        imgs = torch.stack([torch.from_numpy(s.image).permute(2,0,1).float()/255.0 for s in samples]).to(DEVICE)\n",
+    "        imgs = torch.stack([torch.from_numpy(s.image).permute(2,0,1).float()/255.0 for s in samples]).to(DEVICE, non_blocking=True)\n",
     "        \n",
     "        # Concatenate targets from all samples in the batch\n",
     "        all_boxes = [torch.from_numpy(s.boxes_xyxy) for s in samples if s.boxes_xyxy.shape[0] > 0]\n",
@@ -248,9 +263,9 @@ cells.append(code([
     "        all_masks = [torch.from_numpy(s.masks) for s in samples if s.masks is not None and s.masks.shape[0] > 0]\n",
     "        \n",
     "        targets = {\n",
-    "            'boxes': torch.cat(all_boxes).to(DEVICE) if all_boxes else torch.zeros((0, 4), device=DEVICE),\n",
-    "            'labels': torch.cat(all_labels).to(DEVICE) if all_labels else torch.zeros((0,), dtype=torch.long, device=DEVICE),\n",
-    "            'masks': torch.cat(all_masks).to(DEVICE) if all_masks else None\n",
+    "            'boxes': torch.cat(all_boxes).to(DEVICE, non_blocking=True) if all_boxes else torch.zeros((0, 4), device=DEVICE),\n",
+    "            'labels': torch.cat(all_labels).to(DEVICE, non_blocking=True) if all_labels else torch.zeros((0,), dtype=torch.long, device=DEVICE),\n",
+    "            'masks': torch.cat(all_masks).to(DEVICE, non_blocking=True) if all_masks else None\n",
     "        }\n",
     "        \n",
     "        with torch.amp.autocast('cuda'):\n",
@@ -351,4 +366,3 @@ notebook = {"cells": cells, "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
 with open("train_a100_sxm.ipynb", "w") as f:
     json.dump(notebook, f, indent=1)
 print("✅ 1024px WORLD-CLASS train_a100_sxm.ipynb generated.")
-

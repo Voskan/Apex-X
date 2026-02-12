@@ -151,7 +151,8 @@ class YOLOSegmentationDataset(Dataset):
         boxes_np = np.array(boxes, dtype=np.float32) if boxes else np.zeros((0, 4), dtype=np.float32)
         class_ids_np = np.array(class_ids, dtype=np.int64) if class_ids else np.zeros((0,), dtype=np.int64)
         
-        # Generate binary masks from polygons
+        # Generate compact binary masks from polygons.
+        # Keep uint8 on CPU to avoid 4x RAM overhead from float32 masks.
         masks_np = None
         if polygons:
             masks_list = []
@@ -161,7 +162,7 @@ class YOLOSegmentationDataset(Dataset):
                 poly_int = poly.astype(np.int32).reshape((-1, 1, 2))
                 cv2.fillPoly(mask, [poly_int], 1)
                 masks_list.append(mask)
-            masks_np = np.stack(masks_list, axis=0).astype(np.float32)  # [N, H, W]
+            masks_np = np.stack(masks_list, axis=0)  # [N, H, W], uint8
         
         # TransformSample expects np.ndarray for image, boxes_xyxy, and class_ids
         sample = TransformSample(

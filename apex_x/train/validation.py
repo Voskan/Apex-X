@@ -47,6 +47,8 @@ def validate_epoch(
         Dict of validation metrics including val_loss and optionally mAP
     """
     model.eval()
+    device_obj = torch.device(device)
+    non_blocking = device_obj.type == "cuda"
     
     total_loss = 0.0
     num_batches = 0
@@ -56,7 +58,7 @@ def validate_epoch(
     if coco_evaluator is not None:
         coco_evaluator.reset()
     
-    with torch.no_grad():
+    with torch.inference_mode():
         for batch_idx, batch in enumerate(val_loader):
             # Handle different batch formats
             if isinstance(batch, (list, tuple)) and hasattr(batch[0], 'image'):
@@ -64,7 +66,7 @@ def validate_epoch(
                 images = torch.stack([
                     torch.from_numpy(s.image).permute(2, 0, 1).float() / 255.0
                     for s in batch
-                ]).to(device)
+                ]).to(device_obj, non_blocking=non_blocking)
                 
                 # Build targets
                 all_boxes = [torch.from_numpy(s.boxes_xyxy) for s in batch if s.boxes_xyxy.shape[0] > 0]
@@ -72,13 +74,18 @@ def validate_epoch(
                 all_masks = [torch.from_numpy(s.masks) for s in batch if s.masks is not None and s.masks.shape[0] > 0]
                 
                 targets = {
-                    'boxes': torch.cat(all_boxes).to(device) if all_boxes else torch.zeros((0, 4), device=device),
-                    'labels': torch.cat(all_labels).to(device) if all_labels else torch.zeros((0,), dtype=torch.long, device=device),
-                    'masks': torch.cat(all_masks).to(device) if all_masks else None,
+                    'boxes': torch.cat(all_boxes).to(device_obj, non_blocking=non_blocking) if all_boxes else torch.zeros((0, 4), device=device_obj),
+                    'labels': torch.cat(all_labels).to(device_obj, non_blocking=non_blocking) if all_labels else torch.zeros((0,), dtype=torch.long, device=device_obj),
+                    'masks': torch.cat(all_masks).to(device_obj, non_blocking=non_blocking) if all_masks else None,
                 }
             elif isinstance(batch, dict):
-                images = (batch.get('image') or batch.get('images')).to(device)
-                targets = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
+                images = batch.get('image')
+                if images is None:
+                    images = batch.get('images')
+                if images is None:
+                    continue
+                images = images.to(device_obj, non_blocking=non_blocking)
+                targets = {k: v.to(device_obj, non_blocking=non_blocking) if isinstance(v, torch.Tensor) else v 
                           for k, v in batch.items() if k != 'image' and k != 'images'}
             else:
                 continue
@@ -94,7 +101,8 @@ def validate_epoch(
                     
                     # Accumulate component losses
                     for k, v in loss_dict.items():
-                        loss_components[k] = loss_components.get(k, 0.0) + float(v.item())
+                        value = float(v.item()) if isinstance(v, torch.Tensor) else float(v)
+                        loss_components[k] = loss_components.get(k, 0.0) + value
                 
                 # Accumulate predictions for COCO eval
                 if coco_evaluator is not None and PYCOCOTOOLS_AVAILABLE:
@@ -105,6 +113,10 @@ def validate_epoch(
             except Exception as e:
                 LOGGER.warning(f"Validation batch {batch_idx} failed: {e}")
                 continue
+            finally:
+                del images, targets
+                if 'output' in locals():
+                    del output
     
     # Compute metrics
     metrics: dict[str, float] = {}
