@@ -122,16 +122,21 @@ def compute_v3_training_losses(
         mask_gt = targets["masks"]
         
         if mask_gt is not None and mask_pred.numel() > 0 and mask_gt.numel() > 0:
-            # Ensure 4D format [B, N, H, W] for loss functions
-            # Both pred and gt might be [N, H, W] from concatenated batch
-            if mask_pred.ndim == 3:
-                mask_pred = mask_pred.unsqueeze(0)  # [1, N, H, W]
-            if mask_gt.ndim == 3:
-                mask_gt = mask_gt.unsqueeze(0)  # [1, N, H, W]
-                
+            # Model outputs [N_total, 1, H, W] - squeeze channel dimension
+            if mask_pred.ndim == 4 and mask_pred.shape[1] == 1:
+                mask_pred = mask_pred.squeeze(1)  # [N_total, H, W]
+            
+            # Ensure 3D format [N, H, W] before adding batch dimension
+            if mask_pred.ndim != 3 or mask_gt.ndim != 3:
+                raise ValueError(f"Expected 3D masks but got pred: {mask_pred.shape}, gt: {mask_gt.shape}")
+            
+            # Add batch dimension: [N, H, W] -> [1, N, H, W]
+            mask_pred = mask_pred.unsqueeze(0)
+            mask_gt = mask_gt.unsqueeze(0)
+            
             mask_gt = mask_gt.to(device)
             
-            # align spatial dimensions
+            # Align spatial dimensions
             if mask_pred.shape[-2:] != mask_gt.shape[-2:]:
                 mask_gt = F.interpolate(
                     mask_gt.float(),
@@ -139,6 +144,7 @@ def compute_v3_training_losses(
                     mode="bilinear",
                     align_corners=False,
                 )
+            
             loss_dict["mask_bce"] = mask_bce_loss(mask_pred, mask_gt)
             loss_dict["mask_dice"] = mask_dice_loss(mask_pred, mask_gt)
 
@@ -147,24 +153,30 @@ def compute_v3_training_losses(
     if mask_logits is not None and "masks" in targets:
         mask_gt_b = targets["masks"]
         if mask_gt_b is not None and mask_logits.numel() > 0 and mask_gt_b.numel() > 0:
-            # Ensure 4D format [B, N, H, W]
-            if mask_logits.ndim == 3:
+            # Model outputs [N_total, 1, H, W] - squeeze channel dimension
+            if mask_logits.ndim == 4 and mask_logits.shape[1] == 1:
+                mask_logits = mask_logits.squeeze(1)  # [N_total, H, W]
+            
+            # Ensure 3D format before adding batch dimension
+            if mask_logits.ndim == 3 and mask_gt_b.ndim == 3:
+                # Add batch dimension: [N, H, W] -> [1, N, H, W]
                 mask_logits = mask_logits.unsqueeze(0)
-            if mask_gt_b.ndim == 3:
                 mask_gt_b = mask_gt_b.unsqueeze(0)
                 
-            mask_gt_b = mask_gt_b.to(device)
-            
-            if mask_logits.shape[-2:] != mask_gt_b.shape[-2:]:
-                mask_gt_b = F.interpolate(
-                    mask_gt_b.float(),
-                    size=mask_logits.shape[-2:],
-                    mode="bilinear",
-                    align_corners=False,
+                mask_gt_b = mask_gt_b.to(device)
+                
+                # Align spatial dimensions
+                if mask_logits.shape[-2:] != mask_gt_b.shape[-2:]:
+                    mask_gt_b = F.interpolate(
+                        mask_gt_b.float(),
+                        size=mask_logits.shape[-2:],
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+                
+                loss_dict["boundary_iou"] = boundary_iou_loss(
+                    mask_logits, mask_gt_b, boundary_width=3, reduction="mean",
                 )
-        loss_dict["boundary_iou"] = boundary_iou_loss(
-            mask_logits, mask_gt_b, boundary_width=3, reduction="mean",
-        )
 
     # ----- 5. mask quality loss (+1-2% AP) ---------------------------------
     if (
