@@ -12,7 +12,12 @@ import torch
 from torch import Tensor
 
 from apex_x.config import ApexXConfig
-from apex_x.data import SatelliteDataset, build_robust_transforms
+from apex_x.data import (
+    CocoDetectionDataset,
+    SatelliteDataset,
+    YOLOSegmentationDataset,
+    build_robust_transforms,
+)
 from apex_x.model import (
     ApexXModel,
     DetHead,
@@ -157,10 +162,10 @@ class ApexXTrainer:
             self.checkpoint_dir = Path(checkpoint_dir)
         else:
             self.checkpoint_dir = Path(self.config.train.output_dir) / "checkpoints"
-        self.best_metric = float('-inf')  # Higher is better for AP
-        self.best_metric_name = "mAP_segm"  # Track mask AP
+        self.best_metric = float("-inf")
+        self.best_metric_name = str(self.config.train.primary_metric)
         self.current_epoch = 0
-        self.val_interval = 5  # Validate every 5 epochs
+        self.val_interval = max(1, int(self.config.train.val_interval))
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         LOGGER.info(f"Checkpoint directory: {self.checkpoint_dir}")
         
@@ -181,6 +186,7 @@ class ApexXTrainer:
             p3_ch = pv_module.p3_channels
             p4_ch = pv_module.p4_channels
             p5_ch = pv_module.p5_channels
+            ff_channels = p3_ch
         else:
             pv_module = PVModule(
                 in_channels=3,
@@ -192,12 +198,13 @@ class ApexXTrainer:
             p3_ch = 16
             p4_ch = 24
             p5_ch = 32
+            ff_channels = 16
 
         fpn = DualPathFPN(
             pv_p3_channels=p3_ch,
             pv_p4_channels=p4_ch,
             pv_p5_channels=p5_ch,
-            ff_channels=16,
+            ff_channels=ff_channels,
             out_channels=16,
         )
         det_head = DetHead(
@@ -420,6 +427,19 @@ class ApexXTrainer:
                 if isinstance(batch_data, dict):
                     images = batch_data.get("images")
                     image_ids = batch_data.get("image_ids", [])
+                elif (
+                    isinstance(batch_data, list)
+                    and len(batch_data) > 0
+                    and hasattr(batch_data[0], "image")
+                ):
+                    image_ids = []
+                    images = torch.stack(
+                        [
+                            torch.from_numpy(sample.image).permute(2, 0, 1).float() / 255.0
+                            for sample in batch_data
+                        ],
+                        dim=0,
+                    )
                 else:
                     # Fallback for simple batch format
                     images = batch_data
@@ -535,6 +555,183 @@ class ApexXTrainer:
         LOGGER.info(f"Validation complete: {total_batches} batches, avg_loss={avg_loss:.4f}")
         return metrics
 
+    def _infer_dataset_type(self, dataset_path: str | Path | None) -> str:
+        configured = str(self.config.data.dataset_type).strip().lower()
+        if configured != "auto":
+            return configured
+
+        if self.config.data.coco_train_images and self.config.data.coco_train_annotations:
+            return "coco"
+
+        root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
+        root_text = root_text.strip()
+        if root_text:
+            root = Path(root_text).expanduser()
+            if (root / "data.yaml").exists():
+                return "yolo"
+            return "satellite"
+        return "synthetic"
+
+    def _build_training_dataloader(
+        self,
+        *,
+        train_h: int,
+        train_w: int,
+        dataset_path: str | Path | None,
+    ) -> tuple[torch.utils.data.DataLoader | None, int, str]:
+        dataset_type = self._infer_dataset_type(dataset_path)
+        steps_per_epoch = 1000
+        if dataset_type == "synthetic":
+            return None, steps_per_epoch, dataset_type
+
+        dataset: Any | None = None
+        try:
+            if dataset_type == "satellite":
+                root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
+                if not root_text:
+                    return None, steps_per_epoch, dataset_type
+                dataset = SatelliteDataset(
+                    root_dir=root_text,
+                    tile_size=max(train_h, 256),
+                    stride=max(train_h // 2, 128),
+                )
+            elif dataset_type == "coco":
+                if not self.config.data.coco_train_images or not self.config.data.coco_train_annotations:
+                    LOGGER.warning("COCO dataset_type selected but train image/annotation paths are not set")
+                    return None, steps_per_epoch, dataset_type
+                dataset = CocoDetectionDataset(
+                    root=self.config.data.coco_train_images,
+                    ann_file=self.config.data.coco_train_annotations,
+                    transforms=None,
+                )
+            elif dataset_type == "yolo":
+                root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
+                if not root_text:
+                    return None, steps_per_epoch, dataset_type
+                root = Path(root_text).expanduser()
+                if not (root / "data.yaml").exists():
+                    LOGGER.warning("YOLO dataset_type selected but data.yaml was not found")
+                    return None, steps_per_epoch, dataset_type
+                dataset = YOLOSegmentationDataset(
+                    root=root,
+                    split="train",
+                    image_size=max(train_h, train_w),
+                )
+            else:
+                raise ValueError(f"unsupported dataset type: {dataset_type}")
+        except Exception as exc:
+            LOGGER.warning(f"Failed to build train dataloader for dataset_type={dataset_type}: {exc}")
+            return None, steps_per_epoch, dataset_type
+
+        if dataset is None or len(dataset) == 0:
+            return None, steps_per_epoch, dataset_type
+
+        batch_size = 1
+        if self.config.train.auto_batch_size:
+            try:
+                batch_size = self.memory_manager.optimize_batch_size(
+                    self.teacher,
+                    (3, train_h, train_w),
+                    max_batch_size=32,
+                    start_batch_size=2,
+                    mode="train",
+                )
+                LOGGER.info(f"Using auto-tuned batch size: {batch_size}")
+            except Exception as exc:
+                LOGGER.warning(f"Auto batch-size tuning failed, fallback to batch_size=1: {exc}")
+                batch_size = 1
+
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=self.config.train.dataloader_num_workers,
+            pin_memory=self.config.train.dataloader_pin_memory,
+            collate_fn=_identity_collate,
+        )
+        steps_per_epoch = len(dataloader)
+        return dataloader, steps_per_epoch, dataset_type
+
+    def _build_validation_dataloader(
+        self,
+        *,
+        train_h: int,
+        train_w: int,
+        dataset_path: str | Path | None,
+    ) -> torch.utils.data.DataLoader | None:
+        dataset_type = self._infer_dataset_type(dataset_path)
+        dataset: Any | None = None
+        try:
+            if dataset_type == "satellite":
+                root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
+                if root_text:
+                    dataset = SatelliteDataset(
+                        root_dir=root_text,
+                        tile_size=max(train_h, 256),
+                        stride=max(train_h // 2, 128),
+                    )
+            elif dataset_type == "coco":
+                if self.config.data.coco_val_images and self.config.data.coco_val_annotations:
+                    dataset = CocoDetectionDataset(
+                        root=self.config.data.coco_val_images,
+                        ann_file=self.config.data.coco_val_annotations,
+                        transforms=None,
+                    )
+            elif dataset_type == "yolo":
+                root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
+                if root_text:
+                    root = Path(root_text).expanduser()
+                    if (root / "data.yaml").exists():
+                        dataset = YOLOSegmentationDataset(
+                            root=root,
+                            split="val",
+                            image_size=max(train_h, train_w),
+                        )
+        except Exception as exc:
+            LOGGER.warning(f"Failed to build val dataloader for dataset_type={dataset_type}: {exc}")
+            return None
+
+        if dataset is None or len(dataset) == 0:
+            return None
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_size=1,
+            shuffle=False,
+            num_workers=self.config.train.dataloader_num_workers,
+            pin_memory=self.config.train.dataloader_pin_memory,
+            collate_fn=_identity_collate,
+        )
+
+    @staticmethod
+    def _metric_score(metric_name: str, value: float) -> float:
+        lower = metric_name.lower()
+        return -value if "loss" in lower else value
+
+    def _select_checkpoint_metric(
+        self,
+        *,
+        val_metrics: Mapping[str, float] | None,
+        loss_proxy: float,
+    ) -> tuple[float, str, float]:
+        metrics = val_metrics or {}
+        preferred = str(self.config.train.primary_metric).strip()
+        ordered = [preferred, "mAP_segm", "mAP_bbox", "mAP", "val_loss", "loss_proxy"]
+        seen: set[str] = set()
+        for name in ordered:
+            key = str(name).strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            if key == "loss_proxy":
+                value = float(loss_proxy)
+            elif key in metrics:
+                value = float(metrics[key])
+            else:
+                continue
+            return self._metric_score(key, value), key, value
+        value = float(loss_proxy)
+        return self._metric_score("loss_proxy", value), "loss_proxy", value
+
 
     def _stage1_teacher_training(
         self,
@@ -561,38 +758,12 @@ class ApexXTrainer:
         train_h = min(self.config.model.input_height, 512)
         train_w = min(self.config.model.input_width, 512)
         
-        dataloader = None
-        steps_per_epoch = 1000  # Default fallback
-        
-        if dataset_path:
-            dataset = SatelliteDataset(
-                root_dir=dataset_path,
-                tile_size=max(train_h, 256),
-                stride=max(train_h // 2, 128),
-            )
-            if len(dataset) > 0:
-                # Auto-tuning batch size
-                batch_size = 1
-                if self.config.train.auto_batch_size:
-                    batch_size = self.memory_manager.optimize_batch_size(
-                        self.teacher, 
-                        (3, train_h, train_w),
-                        max_batch_size=32,
-                        start_batch_size=2,
-                        mode="train"
-                    )
-                    LOGGER.info(f"Using auto-tuned batch size: {batch_size}")
-
-                # Basic PyTorch DataLoader with performance tuning
-                dataloader = torch.utils.data.DataLoader(
-                     dataset, 
-                     batch_size=batch_size, # Optimized batch size
-                     shuffle=True,
-                     num_workers=self.config.train.dataloader_num_workers,
-                     pin_memory=self.config.train.dataloader_pin_memory,
-                     collate_fn=_identity_collate,  # Return list of samples
-                )
-                steps_per_epoch = len(dataloader)
+        dataloader, steps_per_epoch, dataset_type = self._build_training_dataloader(
+            train_h=train_h,
+            train_w=train_w,
+            dataset_path=dataset_path,
+        )
+        LOGGER.info(f"Stage1 dataset backend: {dataset_type}")
                 
         transforms = build_robust_transforms(
             height=train_h, 
@@ -609,13 +780,15 @@ class ApexXTrainer:
         iterator = iter(dataloader) if dataloader else None
         
         for step_idx in range(steps):
+            samples = None
             if iterator:
                 try:
                     samples = next(iterator)
                 except StopIteration:
                     iterator = iter(dataloader)
                     samples = next(iterator)
-                
+
+                batch_images = []
                 for s in samples:
                     # s is TransformSample. 
                     # Augment
@@ -623,23 +796,19 @@ class ApexXTrainer:
                     # Convert to tensor [C, H, W]
                     img_t = torch.from_numpy(aug.image).permute(2, 0, 1).float() / 255.0
                     batch_images.append(img_t)
-                
+
                 image = torch.stack(batch_images, dim=0)
 
             else:
                 image = torch.rand((1, 3, train_h, train_w), generator=generator, dtype=torch.float32)
 
+            image = image.to(next(self.teacher.parameters()).device)
+            samples_for_loss = samples if iterator else None
+
             # OOM Recovery Wrapper
-            with self.memory_manager.catch_oom() as oom_triggered:
-                if oom_triggered:
-                     # Skip this step if OOM occurred
-                     optimizer.zero_grad(set_to_none=True)
-                     continue
+            with self.memory_manager.catch_oom() as oom_state:
 
-                samples_for_loss = samples if iterator else None
-                # ... rest of the loop content ...
 
-            
                 # Only zero gradients at start of accumulation cycle
                 is_accumulation_step = (step_idx % self.gradient_accumulation_steps) != 0
                 should_step = (step_idx + 1) % self.gradient_accumulation_steps == 0
@@ -663,9 +832,24 @@ class ApexXTrainer:
                         
                         # Scale loss by accumulation steps
                         total_loss = total_loss / self.gradient_accumulation_steps
+                    if not total_loss.requires_grad:
+                        LOGGER.warning(
+                            f"Non-differentiable loss at step {step_idx}; skipping batch."
+                        )
+                        optimizer.zero_grad(set_to_none=True)
+                        continue
                     
                     # Backward with scaler (accumulate gradients)
-                    self.scaler.scale(total_loss).backward()
+                    try:
+                        self.scaler.scale(total_loss).backward()
+                    except RuntimeError as exc:
+                        if "inplace operation" in str(exc).lower():
+                            LOGGER.warning(
+                                f"Autograd inplace-modification error at step {step_idx}; skipping batch."
+                            )
+                            optimizer.zero_grad(set_to_none=True)
+                            continue
+                        raise
                     
                     # Only step optimizer after accumulating enough gradients
                     if should_step:
@@ -705,9 +889,24 @@ class ApexXTrainer:
                         
                         # Scale loss by accumulation steps
                         total_loss = total_loss / self.gradient_accumulation_steps
+                    if not total_loss.requires_grad:
+                        LOGGER.warning(
+                            f"Non-differentiable loss at step {step_idx}; skipping batch."
+                        )
+                        optimizer.zero_grad(set_to_none=True)
+                        continue
                     
                     # Backward (accumulate gradients)
-                    total_loss.backward()
+                    try:
+                        total_loss.backward()
+                    except RuntimeError as exc:
+                        if "inplace operation" in str(exc).lower():
+                            LOGGER.warning(
+                                f"Autograd inplace-modification error at step {step_idx}; skipping batch."
+                            )
+                            optimizer.zero_grad(set_to_none=True)
+                            continue
+                        raise
                     
                     # Only step optimizer after accumulating enough gradients
                     if should_step:
@@ -748,6 +947,10 @@ class ApexXTrainer:
                 if step_idx % 100 == 0:
                     current_lr = scheduler.get_last_lr()[0]
                     LOGGER.debug(f"Step {step_idx}/{steps}: loss={loss_last:.4f}, lr={current_lr:.6f}")
+
+            if oom_state.triggered:
+                optimizer.zero_grad(set_to_none=True)
+                continue
 
 
         # Finalize SWA
@@ -1166,23 +1369,12 @@ class ApexXTrainer:
 
         train_h = min(self.config.model.input_height, 512)
         train_w = min(self.config.model.input_width, 512)
-
-        dataloader = None
-        if dataset_path:
-            dataset = SatelliteDataset(
-                root_dir=dataset_path,
-                tile_size=max(train_h, 256),
-                stride=max(train_h // 2, 128),
-            )
-            if len(dataset) > 0:
-                dataloader = torch.utils.data.DataLoader(
-                     dataset,
-                     batch_size=1,
-                     shuffle=True,
-                     num_workers=self.config.train.dataloader_num_workers,
-                     pin_memory=self.config.train.dataloader_pin_memory,
-                     collate_fn=_identity_collate,
-                )
+        dataloader, _, dataset_type = self._build_training_dataloader(
+            train_h=train_h,
+            train_w=train_w,
+            dataset_path=dataset_path,
+        )
+        LOGGER.info(f"LoRA finetune dataset backend: {dataset_type}")
 
         transforms = build_robust_transforms(
             height=train_h,
@@ -1228,6 +1420,12 @@ class ApexXTrainer:
                         boundary_weight=0.1,  # Higher boundary focus in finetuning
                     )
                     total_loss = total_loss / self.gradient_accumulation_steps
+                if not total_loss.requires_grad:
+                    LOGGER.warning(
+                        f"Non-differentiable finetune loss at step {step_idx}; skipping batch."
+                    )
+                    optimizer.zero_grad(set_to_none=True)
+                    continue
                 self.scaler.scale(total_loss).backward()
                 if should_step:
                     self.scaler.unscale_(optimizer)
@@ -1254,6 +1452,12 @@ class ApexXTrainer:
                         samples=samples_for_loss,
                     )
                     total_loss = total_loss / self.gradient_accumulation_steps
+                if not total_loss.requires_grad:
+                    LOGGER.warning(
+                        f"Non-differentiable finetune loss at step {step_idx}; skipping batch."
+                    )
+                    optimizer.zero_grad(set_to_none=True)
+                    continue
                 total_loss.backward()
                 if should_step:
                     torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=5.0)
@@ -1292,96 +1496,199 @@ class ApexXTrainer:
         if steps_per_stage <= 0:
             raise ValueError("steps_per_stage must be > 0")
 
+        num_epochs = max(1, int(self.config.train.epochs))
+        save_interval = max(1, int(self.config.train.save_interval))
         seed_all(seed=seed, deterministic=self.config.runtime.deterministic)
         rng = np.random.RandomState(seed)
         generator = torch.Generator(device="cpu")
         generator.manual_seed(seed)
         self._prepare_quantization(generator)
 
-        stage0 = self._stage0_baseline_warmup(rng, steps=steps_per_stage)
-        stage1, stage1_loss = self._stage1_teacher_training(
-            generator, 
-            steps=steps_per_stage, 
-            dataset_path=dataset_path
+        train_h = min(self.config.model.input_height, 512)
+        train_w = min(self.config.model.input_width, 512)
+        val_loader = self._build_validation_dataloader(
+            train_h=train_h,
+            train_w=train_w,
+            dataset_path=dataset_path,
         )
-        stage2, stage2_loss = self._stage2_oracle_bootstrapping(
-            rng,
-            generator,
-            steps=steps_per_stage,
-        )
-        if enable_budgeting:
-            stage3, stage3_loss, utility_snapshot = self._stage3_continuous_budgeting(
-                generator,
-                steps=steps_per_stage,
-            )
-        else:
-            _, _, k_tiles = self._l0_grid()
-            utility_snapshot = [float(v) for v in rng.standard_normal(k_tiles).tolist()]
-            stage3 = StageResult(
-                stage_id=3,
-                name="continuous_budgeting",
-                metrics={
-                    "steps": int(steps_per_stage),
-                    "expected_cost_last": 0.0,
-                    "budget_loss_last": 0.0,
-                    "mu_before": float(self.dual_controller.mu),
-                    "mu_after": float(self.dual_controller.mu),
-                    "budgeting_enabled": False,
-                },
-            )
-            stage3_loss = 0.0
-        stage4, routing_diag = self._stage4_deterministic_emulation(utility_snapshot)
-        stage_results: list[StageResult] = [stage0, stage1, stage2, stage3, stage4]
-        stage5_loss = 0.0
-        if self.config.train.enable_lora_finetune:
-            stage5, stage5_loss = self._stage_finetune_lora(
+        if val_loader is None:
+            LOGGER.info("Validation dataloader not available; checkpoint selection will fallback to loss proxy")
+
+        trainable_params = [p for p in self.teacher.parameters() if p.requires_grad]
+        if not trainable_params:
+            trainable_params = list(self.teacher.parameters())
+        checkpoint_optimizer = torch.optim.SGD(trainable_params, lr=0.0, momentum=0.0)
+
+        history: list[dict[str, float | int | str]] = []
+        last_result: StagedTrainResult | None = None
+        final_val_metrics: dict[str, float] = {}
+
+        for epoch in range(num_epochs):
+            self.current_epoch = epoch
+            stage0 = self._stage0_baseline_warmup(rng, steps=steps_per_stage)
+            stage1, stage1_loss = self._stage1_teacher_training(
                 generator,
                 steps=steps_per_stage,
                 dataset_path=dataset_path,
             )
-            stage_results.append(stage5)
-        
-        pcgrad_snapshot = self._pcgrad_monitoring_snapshot()
+            stage2, stage2_loss = self._stage2_oracle_bootstrapping(
+                rng,
+                generator,
+                steps=steps_per_stage,
+            )
+            if enable_budgeting:
+                stage3, stage3_loss, utility_snapshot = self._stage3_continuous_budgeting(
+                    generator,
+                    steps=steps_per_stage,
+                )
+            else:
+                _, _, k_tiles = self._l0_grid()
+                utility_snapshot = [float(v) for v in rng.standard_normal(k_tiles).tolist()]
+                stage3 = StageResult(
+                    stage_id=3,
+                    name="continuous_budgeting",
+                    metrics={
+                        "steps": int(steps_per_stage),
+                        "expected_cost_last": 0.0,
+                        "budget_loss_last": 0.0,
+                        "mu_before": float(self.dual_controller.mu),
+                        "mu_after": float(self.dual_controller.mu),
+                        "budgeting_enabled": False,
+                    },
+                )
+                stage3_loss = 0.0
+            stage4, routing_diag = self._stage4_deterministic_emulation(utility_snapshot)
+            stage_results: list[StageResult] = [stage0, stage1, stage2, stage3, stage4]
+            stage5_loss = 0.0
+            if self.config.train.enable_lora_finetune:
+                stage5, stage5_loss = self._stage_finetune_lora(
+                    generator,
+                    steps=steps_per_stage,
+                    dataset_path=dataset_path,
+                )
+                stage_results.append(stage5)
 
-        train_summary = {
-            "routing_diagnostics": routing_diag,
-            "training_toggles": {
-                "distill_enabled": self.config.train.distill_enabled(),
-                "pcgradpp_enabled": self.config.train.pcgradpp_enabled(),
-            },
-            "pcgrad": pcgrad_snapshot,
-            "quantization": {
-                "mode": self.quantization_summary.mode,
-                "wrapped_modules": self.quantization_summary.wrapped_modules,
-                "calibration_batches": self.quantization_summary.calibration_batches,
-                "router_gating_fp16": self.quantization_summary.router_gating_fp16,
-            },
-            "precision": self.precision_policy.to_dict(),
-        }
-        loss_proxy = float(stage1_loss + stage2_loss + abs(stage3_loss) + stage5_loss)
-        result = StagedTrainResult(
-            stage_results=tuple(stage_results),
-            routing_diagnostics=routing_diag,
-            train_summary=train_summary,
-            loss_proxy=loss_proxy,
-            final_mu=float(self.dual_controller.mu),
-        )
+            pcgrad_snapshot = self._pcgrad_monitoring_snapshot()
+            loss_proxy = float(stage1_loss + stage2_loss + abs(stage3_loss) + stage5_loss)
+            val_metrics: dict[str, float] = {}
+            if val_loader is not None and (
+                ((epoch + 1) % self.val_interval == 0) or (epoch == num_epochs - 1)
+            ):
+                val_metrics = self.validate(
+                    val_dataloader=val_loader,
+                    device=str(next(self.teacher.parameters()).device),
+                    compute_map=True,
+                    max_batches=64,
+                )
+                final_val_metrics = dict(val_metrics)
+
+            metric_score, metric_name, metric_value = self._select_checkpoint_metric(
+                val_metrics=val_metrics,
+                loss_proxy=loss_proxy,
+            )
+            if np.isfinite(float(self.best_metric)):
+                current_best_score = self._metric_score(self.best_metric_name, float(self.best_metric))
+            else:
+                current_best_score = float("-inf")
+            is_best = metric_score > current_best_score
+            if is_best:
+                self.best_metric = float(metric_value)
+                self.best_metric_name = str(metric_name)
+
+            train_summary = {
+                "epoch": int(epoch),
+                "epochs": int(num_epochs),
+                "routing_diagnostics": routing_diag,
+                "training_toggles": {
+                    "distill_enabled": self.config.train.distill_enabled(),
+                    "pcgradpp_enabled": self.config.train.pcgradpp_enabled(),
+                },
+                "pcgrad": pcgrad_snapshot,
+                "quantization": {
+                    "mode": self.quantization_summary.mode,
+                    "wrapped_modules": self.quantization_summary.wrapped_modules,
+                    "calibration_batches": self.quantization_summary.calibration_batches,
+                    "router_gating_fp16": self.quantization_summary.router_gating_fp16,
+                },
+                "precision": self.precision_policy.to_dict(),
+                "selection_metric": {
+                    "name": str(metric_name),
+                    "value": float(metric_value),
+                    "score": float(metric_score),
+                },
+            }
+            if val_metrics:
+                train_summary["val_metrics"] = dict(val_metrics)
+
+            result = StagedTrainResult(
+                stage_results=tuple(stage_results),
+                routing_diagnostics=routing_diag,
+                train_summary=train_summary,
+                loss_proxy=loss_proxy,
+                final_mu=float(self.dual_controller.mu),
+            )
+            last_result = result
+            history.append(
+                {
+                    "epoch": int(epoch),
+                    "loss_proxy": float(loss_proxy),
+                    "selected_metric_name": str(metric_name),
+                    "selected_metric_value": float(metric_value),
+                    "is_best": bool(is_best),
+                }
+            )
+
+            should_save = ((epoch + 1) % save_interval == 0) or (epoch == num_epochs - 1)
+            if should_save:
+                metrics_payload: dict[str, float] = {
+                    "loss_proxy": float(loss_proxy),
+                    "final_mu": float(result.final_mu),
+                    "selection_metric_value": float(metric_value),
+                }
+                for key, value in val_metrics.items():
+                    if isinstance(value, (int, float)) and np.isfinite(float(value)):
+                        metrics_payload[str(key)] = float(value)
+                self.save_training_checkpoint(
+                    epoch=epoch,
+                    step=0,
+                    optimizer=checkpoint_optimizer,
+                    metrics=metrics_payload,
+                    is_best=is_best,
+                )
+
+            log_event(
+                LOGGER,
+                "staged_training_epoch_complete",
+                fields={
+                    "epoch": int(epoch),
+                    "epochs": int(num_epochs),
+                    "stages": len(result.stage_results),
+                    "loss_proxy": round(result.loss_proxy, 6),
+                    "final_mu": round(result.final_mu, 6),
+                    "best_metric_name": self.best_metric_name,
+                    "best_metric_value": float(self.best_metric),
+                },
+            )
+
+        if last_result is None:
+            raise RuntimeError("training completed without producing a result")
 
         log_event(
             LOGGER,
             "staged_training_complete",
             fields={
-                "stages": len(result.stage_results),
-                "loss_proxy": round(result.loss_proxy, 6),
-                "final_mu": round(result.final_mu, 6),
+                "epochs": int(num_epochs),
+                "stages": len(last_result.stage_results),
+                "loss_proxy": round(last_result.loss_proxy, 6),
+                "final_mu": round(last_result.final_mu, 6),
+                "best_metric_name": self.best_metric_name,
+                "best_metric": float(self.best_metric),
             },
         )
 
-        # Save checkpoints and config artifacts.
         output_dir = Path(self.config.train.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Keep legacy state_dict artifact for backward compatibility with existing tooling.
         legacy_checkpoint_path = output_dir / "teacher_checkpoint.pt"
         torch.save(self.teacher.state_dict(), legacy_checkpoint_path)
 
@@ -1391,23 +1698,20 @@ class ApexXTrainer:
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(self.config.to_dict(), f, indent=2)
 
-        # Canonical checkpoint lifecycle (epoch_*.pt + best.pt + last.pt + metadata).
-        trainable_params = [p for p in self.teacher.parameters() if p.requires_grad]
-        if not trainable_params:
-            trainable_params = list(self.teacher.parameters())
-        checkpoint_optimizer = torch.optim.SGD(trainable_params, lr=0.0, momentum=0.0)
-        self.best_metric_name = "loss_proxy"
-        self.best_metric = float(result.loss_proxy)
-        self.save_training_checkpoint(
-            epoch=self.current_epoch,
-            step=0,
-            optimizer=checkpoint_optimizer,
-            metrics={
-                "loss_proxy": float(result.loss_proxy),
-                "final_mu": float(result.final_mu),
+        report_payload = {
+            "epochs": int(num_epochs),
+            "best_metric_name": self.best_metric_name,
+            "best_metric_value": float(self.best_metric),
+            "history": history,
+            "final": {
+                "loss_proxy": float(last_result.loss_proxy),
+                "final_mu": float(last_result.final_mu),
+                "val_metrics": final_val_metrics,
             },
-            is_best=True,
-        )
+        }
+        report_path = output_dir / "train_report.json"
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report_payload, f, indent=2)
 
         log_event(
             LOGGER,
@@ -1417,10 +1721,11 @@ class ApexXTrainer:
                 "checkpoint_best": str(self.checkpoint_dir / "best.pt"),
                 "checkpoint_last": str(self.checkpoint_dir / "last.pt"),
                 "config": str(config_path),
+                "report": str(report_path),
             },
         )
 
-        return result
+        return last_result
 
 
 __all__ = [

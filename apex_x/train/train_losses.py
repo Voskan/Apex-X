@@ -13,7 +13,6 @@ from torch import Tensor
 from apex_x.data import TransformSample
 from apex_x.model import TeacherDistillOutput, compute_anchor_centers
 from apex_x.losses.det_loss import (
-    build_simota_targets_for_anchors,
     det_loss_with_simota,
 )
 from apex_x.losses.seg_loss import instance_segmentation_losses
@@ -151,34 +150,24 @@ def compute_teacher_training_loss(
             if len(gt_boxes) == 0:
                 continue
             
-            # Build SimOTA targets
-            targets = build_simota_targets_for_anchors(
+            # Compute loss for this level/image (includes target assignment)
+            loss_out = det_loss_with_simota(
                 pred_cls_logits=cls_logits,
                 pred_boxes_xyxy=pred_boxes_xyxy,
+                pred_quality_logits=quality,
                 anchor_centers_xy=anchor_centers,
                 gt_boxes_xyxy=gt_boxes,
                 gt_classes=gt_classes,
                 topk_center=10,
                 classification_mode="focal",
-                cls_weight=1.0,
-                iou_weight=3.0,
-                center_weight=1.0,
                 dynamic_topk=10,
                 min_dynamic_k=1,
                 small_object_boost=2.0,  # STAL-inspired boosting
-            )
-            
-            # Compute loss for this level/image
-            loss_out = det_loss_with_simota(
-                pred_cls_logits=cls_logits,
-                pred_boxes_xyxy=pred_boxes_xyxy,
-                pred_quality_logits=quality,
-                targets=targets,
                 cls_loss_type="focal",
                 quality_loss_type="qfl",
-                cls_weight=cls_weight,
-                box_weight=box_weight,
-                quality_weight=quality_weight,
+                cls_loss_weight=cls_weight,
+                box_loss_weight=box_weight,
+                quality_loss_weight=quality_weight,
                 box_loss_type=box_loss_type,
             )
             

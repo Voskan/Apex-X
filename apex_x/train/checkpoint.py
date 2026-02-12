@@ -34,6 +34,15 @@ class CheckpointMetadata:
     config: dict[str, Any]
     train_metrics: dict[str, float] | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize metadata to a JSON-friendly dictionary."""
+        payload = asdict(self)
+        # `ema_state_dict` is attached dynamically in `load_checkpoint` when present.
+        ema_state_dict = getattr(self, "ema_state_dict", None)
+        if ema_state_dict is not None:
+            payload["ema_state_dict"] = ema_state_dict
+        return payload
+
 
 def save_checkpoint(
     path: Path,

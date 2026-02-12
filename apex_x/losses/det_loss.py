@@ -269,7 +269,12 @@ def build_simota_targets_for_anchors(
 
     cls_target[fg_idx, fg_classes] = 1.0
     box_target[fg_idx] = gt_boxes[fg_gt]
-    quality_target[fg_idx] = iou_matrix[fg_gt, fg_idx].detach().clamp(min=0.0, max=1.0)
+    quality_target[fg_idx] = (
+        iou_matrix[fg_gt, fg_idx]
+        .detach()
+        .clamp(min=0.0, max=1.0)
+        .to(dtype=quality_target.dtype)
+    )
 
     # Small-object stability: inverse sqrt(area), clipped to avoid exploding gradients.
     gt_w = (gt_boxes[:, 2] - gt_boxes[:, 0]).clamp(min=1e-6)

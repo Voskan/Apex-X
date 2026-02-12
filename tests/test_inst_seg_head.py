@@ -154,3 +154,13 @@ def test_crop_to_boxes_applies_fill_value_outside_boxes() -> None:
     outside_logits = torch.masked_select(out.mask_logits, ~box_mask)
     assert outside_logits.numel() > 0
     assert torch.allclose(outside_logits, torch.full_like(outside_logits, fill_value))
+
+
+def test_rasterize_box_masks_matches_expected_pixels() -> None:
+    boxes = torch.tensor([[[1.2, 2.0, 3.9, 4.1]]], dtype=torch.float32)
+    mask = rasterize_box_masks(boxes, height=6, width=6, image_size=(6, 6))
+
+    expected = torch.zeros((1, 1, 6, 6), dtype=torch.bool)
+    # floor(x1,y1)=(1,2), ceil(x2,y2)=(4,5) -> y in [2,5), x in [1,4)
+    expected[0, 0, 2:5, 1:4] = True
+    assert torch.equal(mask, expected)

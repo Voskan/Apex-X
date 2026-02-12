@@ -57,12 +57,12 @@ class AlbumentationsAdapter:
             kwargs["bboxes"] = boxes.tolist()
             kwargs["class_labels"] = classes.tolist()
             if masks is not None and masks.shape[0] > 0:
-                kwargs["masks"] = list(masks)
+                kwargs["masks"] = [m.astype(np.uint8, copy=False) for m in masks]
         else:
             kwargs["bboxes"] = []
             kwargs["class_labels"] = []
             if sample.masks is not None and sample.masks.shape[0] > 0:
-                kwargs["masks"] = list(sample.masks)
+                kwargs["masks"] = [m.astype(np.uint8, copy=False) for m in sample.masks]
         
         # Run pipeline — do NOT silently swallow errors and return unresized images
         res = self.pipeline(**kwargs)
@@ -86,7 +86,7 @@ class AlbumentationsAdapter:
                 
         out_masks = None
         if "masks" in res and len(res["masks"]) > 0:
-            out_masks = np.stack(res["masks"], axis=0)
+            out_masks = np.stack(res["masks"], axis=0).astype(bool, copy=False)
 
         return TransformSample(
             image=out_image,

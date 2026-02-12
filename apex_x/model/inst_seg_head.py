@@ -21,6 +21,17 @@ class InstanceSegOutput:
     mask_scores: Tensor  # [B,N]
 
 
+def _runtime_tensor_checks_enabled() -> bool:
+    """Disable eager-only tensor value checks while tracing/exporting."""
+    compiler_mod = getattr(torch, "compiler", None)
+    if compiler_mod is not None and hasattr(compiler_mod, "is_compiling"):
+        if bool(compiler_mod.is_compiling()):
+            return False
+    if torch.jit.is_tracing() or torch.jit.is_scripting():
+        return False
+    return True
+
+
 def assemble_mask_logits_from_prototypes(prototypes: Tensor, coefficients: Tensor) -> Tensor:
     """Assemble per-instance mask logits via prototype linear combination."""
     if prototypes.ndim != 4:
@@ -95,7 +106,7 @@ def rasterize_box_masks(
         raise ValueError("boxes_xyxy must be [B,N,4]")
     if height <= 0 or width <= 0:
         raise ValueError("height and width must be > 0")
-    if not torch.isfinite(boxes_xyxy).all():
+    if _runtime_tensor_checks_enabled() and not torch.isfinite(boxes_xyxy).all():
         raise ValueError("boxes_xyxy must contain finite values")
 
     projected = _project_boxes_to_size(
@@ -111,26 +122,21 @@ def rasterize_box_masks(
     projected[..., 1] = projected[..., 1].clamp(0.0, float(height))
     projected[..., 3] = projected[..., 3].clamp(0.0, float(height))
 
-    bsz, num_instances, _ = projected.shape
-    masks = torch.zeros(
-        (bsz, num_instances, height, width),
-        device=boxes_xyxy.device,
-        dtype=torch.bool,
-    )
-    for b in range(bsz):
-        for n in range(num_instances):
-            box = projected[b, n]
-            x1 = int(torch.floor(box[0]).item())
-            y1 = int(torch.floor(box[1]).item())
-            x2 = int(torch.ceil(box[2]).item())
-            y2 = int(torch.ceil(box[3]).item())
-            x1 = max(0, min(width, x1))
-            x2 = max(0, min(width, x2))
-            y1 = max(0, min(height, y1))
-            y2 = max(0, min(height, y2))
-            if x2 <= x1 or y2 <= y1:
-                continue
-            masks[b, n, y1:y2, x1:x2] = True
+    # Export-friendly vectorized rasterization (no Python-side item()/int()/loops).
+    x1 = torch.floor(projected[..., 0]).clamp(0.0, float(width))
+    y1 = torch.floor(projected[..., 1]).clamp(0.0, float(height))
+    x2 = torch.ceil(projected[..., 2]).clamp(0.0, float(width))
+    y2 = torch.ceil(projected[..., 3]).clamp(0.0, float(height))
+
+    grid_y = torch.arange(height, device=boxes_xyxy.device, dtype=projected.dtype).view(1, 1, height, 1)
+    grid_x = torch.arange(width, device=boxes_xyxy.device, dtype=projected.dtype).view(1, 1, 1, width)
+
+    y1 = y1.unsqueeze(-1).unsqueeze(-1)
+    y2 = y2.unsqueeze(-1).unsqueeze(-1)
+    x1 = x1.unsqueeze(-1).unsqueeze(-1)
+    x2 = x2.unsqueeze(-1).unsqueeze(-1)
+
+    masks = (grid_y >= y1) & (grid_y < y2) & (grid_x >= x1) & (grid_x < x2)
     return masks
 
 
@@ -440,7 +446,7 @@ class PrototypeInstanceSegHead(nn.Module):
     ) -> InstanceSegOutput:
         if boxes_xyxy.ndim != 3 or boxes_xyxy.shape[-1] != 4:
             raise ValueError("boxes_xyxy must be [B,N,4]")
-        if not torch.isfinite(boxes_xyxy).all():
+        if _runtime_tensor_checks_enabled() and not torch.isfinite(boxes_xyxy).all():
             raise ValueError("boxes_xyxy must contain finite values")
 
         feature_map = self._select_feature(features)

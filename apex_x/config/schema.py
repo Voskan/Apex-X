@@ -208,6 +208,9 @@ class TrainConfig:
 
     output_dir: str = "artifacts/train_output"
     save_interval: int = 1
+    epochs: int = 1
+    val_interval: int = 1
+    primary_metric: str = "mAP_segm"
 
     qat_enable: bool = False
     qat_int8: bool = False
@@ -261,6 +264,12 @@ class TrainConfig:
 
         if self.save_interval <= 0:
             raise ValueError("train.save_interval must be > 0")
+        if self.epochs <= 0:
+            raise ValueError("train.epochs must be > 0")
+        if self.val_interval <= 0:
+            raise ValueError("train.val_interval must be > 0")
+        if not str(self.primary_metric).strip():
+            raise ValueError("train.primary_metric must be a non-empty string")
 
         if self.dataloader_num_workers < 0:
             raise ValueError("train.dataloader_num_workers must be >= 0")
@@ -293,6 +302,9 @@ class TrainConfig:
 
 @dataclass(slots=True)
 class DataConfig:
+    dataset_type: str = "auto"  # auto | satellite | coco | yolo
+    dataset_root: str = ""
+
     coco_train_images: str = ""
     coco_train_annotations: str = ""
     coco_val_images: str = ""
@@ -305,6 +317,11 @@ class DataConfig:
     scale_max: float = 1.2
 
     def validate(self) -> None:
+        dataset_type = str(self.dataset_type).strip().lower()
+        if dataset_type not in {"auto", "satellite", "coco", "yolo"}:
+            raise ValueError("data.dataset_type must be auto, satellite, coco, or yolo")
+        self.dataset_type = dataset_type
+
         for name, value in (
             ("flip_prob", self.flip_prob),
             ("hsv_prob", self.hsv_prob),

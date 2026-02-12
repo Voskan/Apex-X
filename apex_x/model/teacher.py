@@ -191,13 +191,17 @@ class TeacherModel(nn.Module):
         self,
         image: Tensor,
         *,
-        pv_module: PVModule,
+        pv_module: nn.Module,
         fpn: DualPathFPN,
         det_head: DetHead,
-    ) -> tuple[PVModuleOutput, DetHeadOutput, dict[str, Tensor]]:
+    ) -> tuple[PVModuleOutput | dict[str, Tensor], DetHeadOutput, dict[str, Tensor]]:
         pv_out = pv_module(image)
-        ff_high = pv_out.features["P3"]
-        fpn_out = fpn(pv_out.features, ff_high)
+        if isinstance(pv_out, dict):
+            pv_features = pv_out
+        else:
+            pv_features = pv_out.features
+        ff_high = pv_features["P3"]
+        fpn_out = fpn(pv_features, ff_high)
         det_out = det_head(fpn_out.pyramid)
         return pv_out, det_out, fpn_out.pyramid
 
@@ -291,12 +295,16 @@ class TeacherModel(nn.Module):
                 det_head=self.det_head,
             )
 
-        boundaries = f.interpolate(
-            pv_out.proxy_maps["boundary"],
-            size=image.shape[2:],
-            mode="bilinear",
-            align_corners=False,
-        ).clamp(0.0, 1.0)
+        if isinstance(pv_out, dict):
+            boundary_source = image.new_zeros((image.shape[0], 1, image.shape[2], image.shape[3]))
+        else:
+            boundary_source = f.interpolate(
+                pv_out.proxy_maps["boundary"],
+                size=image.shape[2:],
+                mode="bilinear",
+                align_corners=False,
+            )
+        boundaries = boundary_source.clamp(0.0, 1.0)
         logits_flat = flatten_logits_for_distill(det_out.cls_logits)
         selected_features = self._select_features(fpn_features)
 

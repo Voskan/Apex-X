@@ -1,5 +1,6 @@
 """Trainer utilities - adds train_epoch method to ApexXTrainer."""
 
+from dataclasses import asdict, is_dataclass
 import shutil
 import torch
 from apex_x.utils import get_logger
@@ -145,7 +146,13 @@ def add_train_epoch_method(trainer_class):
     def load_checkpoint(self, path):
         """Simple load wrapper."""
         metadata = self.load_training_checkpoint(path, device="cpu")
-        return metadata.to_dict() if hasattr(metadata, 'to_dict') else {}
+        if hasattr(metadata, "to_dict"):
+            return metadata.to_dict()
+        if is_dataclass(metadata):
+            return asdict(metadata)
+        if isinstance(metadata, dict):
+            return metadata
+        return {}
     
     trainer_class.train_epoch = train_epoch
     if not hasattr(trainer_class, 'save_checkpoint'):

@@ -125,8 +125,10 @@ def heavy_ops_autocast_context(policy: PrecisionPolicy) -> AbstractContextManage
     if policy.heavy_ops_dtype is torch.float16:
         if policy.device.startswith("cuda"):
             return torch.autocast(device_type="cuda", dtype=torch.float16)
+        # CPU float16 autocast is unstable and can trigger dtype/inplace issues
+        # in training paths that are expected to be CPU-safe.
         if policy.device == "cpu":
-            return torch.autocast(device_type="cpu", dtype=torch.float16)
+            return nullcontext()
     # FP8 is expected to be consumed by specialized kernels/plugins.
     return nullcontext()
 

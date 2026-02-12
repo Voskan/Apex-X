@@ -3,6 +3,7 @@ from __future__ import annotations
 import gc
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, Callable
 
 import torch
@@ -12,6 +13,15 @@ from torch import Tensor
 from apex_x.utils import get_logger
 
 LOGGER = get_logger(__name__)
+
+
+@dataclass(slots=True)
+class OOMState:
+    triggered: bool = False
+    message: str | None = None
+
+    def __bool__(self) -> bool:
+        return bool(self.triggered)
 
 
 class MemoryManager:
@@ -40,21 +50,25 @@ class MemoryManager:
         }
 
     @contextmanager
-    def catch_oom(self) -> Generator[bool, None, None]:
+    def catch_oom(self) -> Generator[OOMState, None, None]:
         """Context manager to catch OOM errors and clear memory."""
+        state = OOMState()
         try:
-            yield False
-        except torch.cuda.OutOfMemoryError:
+            yield state
+        except torch.cuda.OutOfMemoryError as exc:
+            state.triggered = True
+            state.message = str(exc)
             self.clear()
             LOGGER.warning("OutOfMemoryError caught! Clearing cache...")
-            yield True
         except Exception as e:
-            if "out of memory" in str(e).lower():
+            message = str(e)
+            if "out of memory" in message.lower():
+                state.triggered = True
+                state.message = message
                 self.clear()
                 LOGGER.warning(f"OOM-like error caught: {e}. Clearing cache...")
-                yield True
             else:
-                raise e
+                raise
 
     def optimize_batch_size(
         self,
@@ -137,9 +151,7 @@ class MemoryManager:
     ) -> bool:
         try:
             dummy_input = torch.rand((bsz, *input_shape), device=self.device)
-            with self.catch_oom() as oom:
-                if oom: return False
-                
+            with self.catch_oom() as oom_state:
                 if mode == "train":
                     # Backward pass simulation
                     out = model(dummy_input)
@@ -163,10 +175,10 @@ class MemoryManager:
                 else:
                     with torch.no_grad():
                         _ = model(dummy_input)
-            
+            if oom_state.triggered:
+                return False
             return True
         except Exception:
             return False
         finally:
             self.clear()
-

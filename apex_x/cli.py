@@ -631,6 +631,7 @@ def export_cmd(
     shape_mode: str = "static",
     checkpoint: str | None = None,
     num_classes: int = 3,
+    strict_load: bool = True,
 ) -> None:
     overrides = set_values or []
     cfg = _load_config(Path(config), overrides)
@@ -643,8 +644,73 @@ def export_cmd(
 
         ckpt_path = Path(checkpoint)
         log_event(LOGGER, "export_loading_checkpoint", fields={"path": str(ckpt_path)})
-        state_dict = torch.load(ckpt_path, map_location="cpu")
-        model.load_state_dict(state_dict)
+        checkpoint_payload = torch.load(ckpt_path, map_location="cpu")
+        state_dict: dict[str, torch.Tensor] | None = None
+        checkpoint_format = "unknown"
+        if isinstance(checkpoint_payload, dict):
+            if isinstance(checkpoint_payload.get("model_state_dict"), dict):
+                state_dict = checkpoint_payload["model_state_dict"]
+                checkpoint_format = "structured_checkpoint"
+            elif isinstance(checkpoint_payload.get("state_dict"), dict):
+                state_dict = checkpoint_payload["state_dict"]
+                checkpoint_format = "state_dict_field"
+            elif checkpoint_payload and all(
+                isinstance(key, str) and isinstance(value, torch.Tensor)
+                for key, value in checkpoint_payload.items()
+            ):
+                state_dict = checkpoint_payload
+                checkpoint_format = "raw_state_dict"
+        if state_dict is None:
+            raise ValueError(
+                f"Unsupported checkpoint format at {ckpt_path}. "
+                "Expected raw state_dict or dict containing 'model_state_dict'."
+            )
+        cls_weight = state_dict.get("det_head.cls_pred.weight")
+        if isinstance(cls_weight, torch.Tensor) and cls_weight.ndim >= 1:
+            inferred_num_classes = int(cls_weight.shape[0])
+            if inferred_num_classes > 0 and inferred_num_classes != model.num_classes:
+                log_event(
+                    LOGGER,
+                    "export_checkpoint_num_classes_override",
+                    fields={
+                        "requested_num_classes": model.num_classes,
+                        "checkpoint_num_classes": inferred_num_classes,
+                    },
+                )
+                model = _build_teacher_for_export(cfg, num_classes=inferred_num_classes)
+        skipped_shape_mismatch: list[str] = []
+        if strict_load:
+            try:
+                incompatible = model.load_state_dict(state_dict, strict=True)
+            except RuntimeError as exc:
+                raise RuntimeError(
+                    f"{exc}\nUse --no-strict-load to ignore incompatible keys during export."
+                ) from exc
+        else:
+            model_state = model.state_dict()
+            filtered_state: dict[str, torch.Tensor] = {}
+            for key, value in state_dict.items():
+                expected = model_state.get(key)
+                if expected is None:
+                    continue
+                if tuple(expected.shape) != tuple(value.shape):
+                    skipped_shape_mismatch.append(key)
+                    continue
+                filtered_state[key] = value
+            incompatible = model.load_state_dict(filtered_state, strict=False)
+        log_event(
+            LOGGER,
+            "export_checkpoint_loaded",
+            fields={
+                "path": str(ckpt_path),
+                "checkpoint_format": checkpoint_format,
+                "num_params": len(state_dict),
+                "strict_load": bool(strict_load),
+                "missing_keys": list(getattr(incompatible, "missing_keys", [])),
+                "unexpected_keys": list(getattr(incompatible, "unexpected_keys", [])),
+                "skipped_shape_mismatch_keys": skipped_shape_mismatch,
+            },
+        )
 
     model.eval()
 
@@ -731,6 +797,19 @@ def main() -> None:
     export_parser.add_argument("--shape-mode", default="static")
     export_parser.add_argument("--checkpoint", help="Path to model checkpoint .pt file")
     export_parser.add_argument("--num-classes", type=int, default=3)
+    export_parser.add_argument(
+        "--strict-load",
+        dest="strict_load",
+        action="store_true",
+        default=True,
+        help="Load checkpoint with strict=True",
+    )
+    export_parser.add_argument(
+        "--no-strict-load",
+        dest="strict_load",
+        action="store_false",
+        help="Load checkpoint with strict=False",
+    )
 
     args = parser.parse_args()
 
@@ -796,6 +875,7 @@ def main() -> None:
             args.shape_mode,
             args.checkpoint,
             args.num_classes,
+            args.strict_load,
         )
 
 
