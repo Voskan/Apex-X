@@ -68,7 +68,6 @@ class TeacherModelV3(nn.Module):
             self.backbone = PVModuleDINOv2(
                 model_name=backbone_model,
                 lora_rank=lora_rank,
-                freeze_backbone=True,  # Fine-tune only LoRA
             )
             # DINOv2-large: [384, 768, 1024, 1024] channels
             backbone_channels = [384, 768, 1024, 1024]
