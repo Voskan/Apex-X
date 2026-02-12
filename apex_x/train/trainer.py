@@ -88,7 +88,7 @@ class ApexXTrainer:
         # Gradient accumulation for larger effective batch size
         self.gradient_accumulation_steps = max(1, gradient_accumulation_steps)
         if self.gradient_accumulation_steps > 1:
-            LOGGER.info(f\"Gradient accumulation: {self.gradient_accumulation_steps} steps\")
+            LOGGER.info(f"Gradient accumulation: {self.gradient_accumulation_steps} steps")
         if num_classes <= 0:
             raise ValueError("num_classes must be > 0")
 
