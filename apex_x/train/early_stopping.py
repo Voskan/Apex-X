@@ -75,16 +75,16 @@ class EarlyStopping:
             self.wait = 0
             if model_state_dict is not None:
                 self.best_state_dict = model_state_dict.copy()
-            LOGGER.info(f\"EarlyStopping: New best {current_value:.4f} at epoch {epoch}")
+            LOGGER.info(f"EarlyStopping: New best {current_value:.4f} at epoch {epoch}")
         else:
             # No improvement
             self.wait += 1
-            LOGGER.info(f\"EarlyStopping: No improvement for {self.wait}/{self.patience} epochs")
+            LOGGER.info(f"EarlyStopping: No improvement for {self.wait}/{self.patience} epochs")
             
             if self.wait >= self.patience:
                 self.stopped_epoch = epoch
                 self.should_stop = True
-                LOGGER.info(f\"EarlyStopping: Stopping at epoch {epoch}. Best was {self.best_value:.4f} at epoch {self.best_epoch}")
+                LOGGER.info(f"EarlyStopping: Stopping at epoch {epoch}. Best was {self.best_value:.4f} at epoch {self.best_epoch}")
                 return True
         
         return False

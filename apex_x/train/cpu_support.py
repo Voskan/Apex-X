@@ -34,7 +34,7 @@ def get_device(device_str: str = "auto") -> torch.device:
         else:
             LOGGER.error(f"CUDA requested but not available, falling back to CPU")
             device = torch.device("cpu")
-   else:
+    else:
         device = torch.device(device_str)
         LOGGER.info(f"Using device: {device_str}")
     
