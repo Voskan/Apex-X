@@ -121,20 +121,20 @@ cells.append(md(["## 4. ⚙️ WORLD-CLASS Hyperparameters"]))
 
 cells.append(code([
     "IMAGE_SIZE     = 1024    # High-Resolution mode (Upscaled from 512px)\n",
-    "BATCH_SIZE     = 4       # Optimized for 1024px + DINO-L on 80GB\n",
-    "GRAD_ACCUM     = 16      # Effective Batch = 64\n",
+    "BATCH_SIZE     = 16      # 🚀 Increased from 4 -> 16 for A100 (80GB VRAM)\n",
+    "GRAD_ACCUM     = 4       # 🚀 Reduced from 16 -> 4 (Effective Batch remains 64)\n",
     "EPOCHS         = 200\n",
     "BASE_LR        = 1e-3    # Lowered LR for higher resolution stability\n",
     "WEIGHT_DECAY   = 1e-4\n",
     "WARMUP_EPOCHS  = 10      # Longer warmup for 1024px\n",
     "PATIENCE       = 30\n",
     "EMA_DECAY      = 0.999\n",
-    "NUM_WORKERS    = 12\n",
+    "NUM_WORKERS    = 16      # 🚀 Increased from 12 -> 16 to utilize 1024GB System RAM\n",
     "DEVICE         = 'cuda'\n",
     "OUTPUT_DIR     = './outputs/a100_v3_1024px'\n",
     "\n",
     "os.makedirs(OUTPUT_DIR, exist_ok=True)\n",
-    "print(f'🚀 Configured for 1024px: Effective Batch 64')"
+    "print(f'🚀 Optimized for A100: Batch 16 | Effective Batch 64 | Workers 16')"
 ]))
 
 # ═════════════════════════════════════════════
@@ -207,6 +207,11 @@ cells.append(code([
     "from apex_x.train.train_losses_v3 import compute_v3_training_losses\n",
     "from apex_x.train.lr_scheduler import LinearWarmupCosineAnnealingLR\n",
     "from apex_x.train.validation import validate_epoch\n",
+    "\n",
+    "# 🚀 A100 Optimization Flags\n",
+    "torch.backends.cuda.matmul.allow_tf32 = True\n",
+    "torch.backends.cudnn.allow_tf32 = True\n",
+    "print('✅ TF32 Acceleration Enabled (A100 Native)')\n",
     "\n",
     "# Setup EMA\n",
     "ema_model = copy.deepcopy(model).eval()\n",
