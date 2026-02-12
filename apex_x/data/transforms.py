@@ -22,7 +22,7 @@ class AlbumentationsAdapter:
         self,
         sample: TransformSample,
         *,
-        rng: np.random.RandomState,
+        rng: np.random.RandomState | None = None,
     ) -> TransformSample:
         if A is None:
             # warn or fail? For now, no-op if missing to allow running without deps
@@ -160,7 +160,7 @@ class Transform(Protocol):
         self,
         sample: TransformSample,
         *,
-        rng: np.random.RandomState,
+        rng: np.random.RandomState | None = None,
     ) -> TransformSample: ...
 
 
@@ -239,7 +239,7 @@ class ClipBoxesAndMasks:
     min_box_area: float = 1.0
     min_visibility: float = 0.0
 
-    def __call__(self, sample: TransformSample, *, rng: np.random.RandomState) -> TransformSample:
+    def __call__(self, sample: TransformSample, *, rng: np.random.RandomState | None = None) -> TransformSample:
         del rng
         return sanitize_sample(
             sample,
@@ -253,11 +253,12 @@ class ClipBoxesAndMasks:
 class RandomHorizontalFlip:
     prob: float = 0.5
 
-    def __call__(self, sample: TransformSample, *, rng: np.random.RandomState) -> TransformSample:
+    def __call__(self, sample: TransformSample, *, rng: np.random.RandomState | None = None) -> TransformSample:
         if not (0.0 <= self.prob <= 1.0):
             raise ValueError("prob must be in [0,1]")
         _validate_sample_shapes(sample)
-        if float(rng.rand()) >= self.prob:
+        active_rng = np.random.RandomState() if rng is None else rng
+        if float(active_rng.rand()) >= self.prob:
             return sample
 
         image = sample.image[:, ::-1, :].copy()
