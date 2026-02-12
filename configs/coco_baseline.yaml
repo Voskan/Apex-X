@@ -1,0 +1,94 @@
+# Baseline COCO Training Configuration
+# Target: mAP > 45 after 300 epochs (competitive baseline)
+
+# Model Configuration
+model:
+  num_classes: 80  # COCO
+  image_size: 640
+  pretrained: false  # Train from scratch
+
+# Training Configuration
+epochs: 300
+batch_size: 16  # Adjust based on GPU memory (8x GPUs: 64 total)
+val_batch_size: 16
+val_interval: 5  # Validate every 5 epochs
+
+# Optimizer Configuration
+base_lr: 0.01
+weight_decay: 0.0005
+warmup_epochs: 5
+
+# Learning Rate Schedule
+lr_schedule:
+  type: "cosine"
+  warmup_epochs: 5
+  eta_min: 0.0001  # 1% of base_lr
+
+# Augmentation Configuration
+augmentation:
+  # Advanced augmentations (YOLO-style)
+  mosaic: true
+  mosaic_prob: 0.5
+  
+  mixup: true
+  mixup_alpha: 0.5
+  mixup_prob: 0.15
+  
+  copypaste: false  # Requires masks
+  
+  # Standard albumentations
+  albumentations: true
+  flip_prob: 0.5
+  color_jitter: true
+  gaussian_blur: false
+
+# Loss Configuration
+loss:
+  # Progressive loss balancing (YOLO26-style)
+  progressive: true
+  
+  # Loss weights
+  cls_weight: 1.0
+  box_weight: 2.0  # Will be adjusted by progressive schedule
+  quality_weight: 1.0
+  boundary_weight: 0.05
+  
+  # SimOTA parameters
+  simota:
+    dynamic_topk: 10
+    small_object_boost: 2.0  # STAL-inspired
+    topk_center: 10
+    cls_weight: 1.0
+    iou_weight: 3.0
+    center_weight: 1.0
+
+# Post-Processing Configuration
+post_process:
+  conf_threshold: 0.001
+  nms_threshold: 0.65
+  max_detections: 300
+  box_format: "distance"  # "distance" or "direct"
+
+# Checkpoint Configuration
+checkpoint:
+  save_interval: 10  # Save every 10 epochs
+  keep_last_n: 5  # Keep last 5 checkpoints
+  save_best: true  # Save best mAP checkpoint
+
+# Logging Configuration
+logging:
+  log_interval: 50  # Log every 50 iterations
+  tensorboard: true
+  wandb: false  # Set to true if using W&B
+  
+# Hardware Configuration
+num_workers: 4
+pin_memory: true
+mixed_precision: true  # Use AMP for faster training
+
+# Expected Results (after 300 epochs)
+# - mAP: > 45 (competitive baseline)
+# - AP50: > 65
+# - AP75: > 48
+# - Small object AP: > 25
+# - Training time: ~3-5 days on 1x V100

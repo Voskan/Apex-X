@@ -138,9 +138,16 @@ func main() {
 	mux := http.NewServeMux()
 	httpService.RegisterRoutes(mux)
 
+	// Apply middleware chain
+	handler := service.Chain(mux,
+		service.RequestIDMiddleware,
+		service.RecoveryMiddleware(logger),
+		service.LoggingMiddleware(logger),
+	)
+
 	server := &http.Server{
 		Addr:              *addr,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

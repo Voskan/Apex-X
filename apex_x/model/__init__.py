@@ -16,8 +16,17 @@ from .inst_seg_head import (
 from .pv_backbone import PVBackbone
 from .pv_coarse_heads import PVCoarseHeads, PVCoarseOutput
 from .pv_module import PVModule, PVModuleOutput
+from .pv_dinov2 import PVModuleDINOv2, LoRAAdapter, DINOV2_AVAILABLE
 from .teacher import TeacherDistillOutput, TeacherModel, flatten_logits_for_distill
+from .post_process import (
+    compute_anchor_centers,
+    decode_boxes_distance,
+    decode_boxes_direct,
+    post_process_detections,
+    post_process_detections_per_class,
+)
 from .tile_refine_block import TileRefineBlock
+from .timm_backbone import TimmBackboneAdapter
 from .track_head import TrackEmbeddingHead, TrackEmbeddingOutput
 
 __all__ = [
@@ -45,10 +54,20 @@ __all__ = [
     "PVCoarseOutput",
     "PVModule",
     "PVModuleOutput",
+    "PVModuleDINOv2",
+    "LoRAAdapter",
+    "DINOV2_AVAILABLE",
     "TileRefineBlock",
     "TeacherDistillOutput",
     "TeacherModel",
     "flatten_logits_for_distill",
+    "TimmBackboneAdapter",
     "TrackEmbeddingHead",
     "TrackEmbeddingOutput",
+    "compute_anchor_centers",
+    "decode_boxes_distance",
+    "decode_boxes_direct",
+    "post_process_detections",
+    "post_process_detections_per_class",
 ]
+

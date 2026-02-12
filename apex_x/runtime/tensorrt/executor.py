@@ -11,7 +11,7 @@ import torch
 from apex_x.utils.logging import get_logger
 
 try:
-    import tensorrt as trt  # type: ignore[import-not-found]
+    import tensorrt as trt  # type: ignore  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover - optional dependency
     trt = None
 

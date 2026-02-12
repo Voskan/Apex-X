@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from apex_x.bench.gpu_bench import GPUBenchConfig, render_markdown_summary, run_gpu_bench
 from apex_x.runtime import runtime_reason_catalog

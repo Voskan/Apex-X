@@ -15,7 +15,7 @@ _PLUGIN_LIB_HANDLE: ctypes.CDLL | None = None
 
 def _maybe_import_tensorrt():
     try:
-        import tensorrt as trt
+        import tensorrt as trt  # type: ignore
     except Exception as exc:  # pragma: no cover - runtime dependent
         pytest.skip(f"TensorRT Python is not available: {type(exc).__name__}: {exc}")
     return trt

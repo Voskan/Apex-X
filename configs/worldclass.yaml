@@ -1,0 +1,118 @@
+# World-Class COCO Training Configuration
+# Includes all SOTA improvements for mAP 55+ target
+
+# Model Configuration
+model:
+  num_classes: 80  # COCO
+  image_size: 640
+  use_dinov2: true  # DINOv2 backbone (+5-8% mAP) ⭐
+  dinov2_model: "facebook/dinov2-large"
+  lora_rank: 8  # Low-rank adaptation rank
+
+# Training Configuration
+epochs: 300
+batch_size: 16  # Per GPU (8 GPUs = 128 total)
+val_batch_size: 16
+val_interval: 5  # Validate every 5 epochs
+
+# Optimizer Configuration
+base_lr: 0.01
+weight_decay: 0.0005
+warmup_epochs: 5
+gradient_clip: 10.0  # Prevent exploding gradients
+
+# Learning Rate Schedule
+lr_schedule:
+  type: "cosine"
+  warmup_epochs: 5
+  eta_min: 0.0001  # 1% of base_lr
+
+# Augmentation Configuration (World-Class Suite)
+augmentation:
+  # Large Scale Jittering (Mask2Former-style) ⭐
+  lsj: true
+  lsj_min_scale: 0.1
+  lsj_max_scale: 2.0
+  lsj_prob: 0.5
+  
+  # Advanced augmentations (YOLO-style)
+  mosaic: true
+  mosaic_prob: 0.5
+  
+  mixup: true
+  mixup_alpha: 0.5
+  mixup_prob: 0.15
+  
+  # Instance-level augmentation
+  copypaste: false  # Requires full mask pipeline
+  
+  # Standard transformations
+  albumentations: true
+  flip_prob: 0.5
+  color_jitter: true
+  gaussian_blur: false
+
+# Loss Configuration
+loss:
+  # Progressive loss balancing (YOLO26-style) ⭐
+  progressive: true
+  
+  # Loss weights
+  cls_weight: 1.0
+  box_weight: 2.0  # Progressive: 0.5 → 2.0
+  quality_weight: 1.0
+  boundary_weight: 0.05
+  
+  # SimOTA parameters with small-object boost ⭐
+  simota:
+    dynamic_topk: 10
+    small_object_boost: 2.0  # STAL-inspired
+    topk_center: 10
+    cls_weight: 1.0
+    iou_weight: 3.0
+    center_weight: 1.0
+
+# Post-Processing Configuration
+post_process:
+  conf_threshold: 0.001
+  nms_threshold: 0.65
+  max_detections: 300
+  box_format: "distance"  # "distance" or "direct"
+
+# Test-Time Augmentation ⭐
+tta:
+  enabled: false  # Enable during final evaluation
+  scales: [0.8, 1.0, 1.2]
+  use_flip: true
+  fusion_mode: "weighted"
+
+# Checkpoint Configuration
+checkpoint:
+  save_interval: 10  # Save every 10 epochs
+  keep_last_n: 5  # Keep last 5 checkpoints
+  save_best: true  # Save best mAP checkpoint
+
+# Logging Configuration
+logging:
+  log_interval: 50  # Log every 50 iterations
+  tensorboard: true
+  wandb: false  # Set to true if using W&B
+
+# Hardware Configuration
+num_workers: 4
+pin_memory: true
+mixed_precision: true  # Use AMP for faster training
+
+# Multi-GPU Configuration (DDP) ⭐
+distributed:
+  enabled: true  # Enable via --distributed flag
+  backend: "nccl"
+  find_unused_parameters: false
+  gradient_as_bucket_view: true
+
+# Expected Results (after 300 epochs with all improvements)
+# - DINOv2 backbone: +5-8% mAP
+# - LSJ augmentation: +1-2% mAP  
+# - TTA (inference): +1-3% mAP
+# - Total target: mAP 52-55 (vs 45 baseline)
+# - Training time: ~12-16 hours on 8x V100

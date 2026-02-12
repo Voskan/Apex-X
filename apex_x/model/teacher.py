@@ -26,6 +26,13 @@ class TeacherDistillOutput:
     logits_by_level: dict[str, Tensor]  # [B,C,H,W] per level
     features: dict[str, Tensor]  # selected feature layers for feature distill
     boundaries: Tensor  # [B,1,H,W] boundary proxy aligned to input image size
+    
+    # Detection outputs for loss computation
+    boxes_by_level: dict[str, Tensor]  # [B, 4, H, W] per level box regressions
+    quality_by_level: dict[str, Tensor]  # [B, 1, H, W] per level quality scores
+    
+    # Segmentation outputs (optional, may be None if no seg head)
+    masks: Tensor | None = None  # [B, N, H_mask, W_mask] instance masks if available
 
 
 def flatten_logits_for_distill(logits_by_level: dict[str, Tensor]) -> Tensor:
@@ -215,11 +222,22 @@ class TeacherModel(nn.Module):
         logits_flat = flatten_logits_for_distill(det_out.cls_logits)
         selected_features = self._select_features(fpn_features)
 
+        # Optional: Add segmentation head output if available
+        masks = None
+        if hasattr(self, 'seg_head') and self.seg_head is not None:
+            # Run segmentation head if configured
+            # Would need boxes from detection for instance segmentation
+            # For now, keep as None - can be added when needed
+            pass
+        
         return TeacherDistillOutput(
             logits=logits_flat,
             logits_by_level=det_out.cls_logits,
             features=selected_features,
             boundaries=boundaries,
+            boxes_by_level=det_out.box_reg,
+            quality_by_level=det_out.quality,
+            masks=masks,
         )
 
 

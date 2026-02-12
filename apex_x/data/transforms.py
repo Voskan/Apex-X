@@ -6,6 +6,136 @@ from typing import Protocol, cast
 
 import numpy as np
 
+try:
+    import albumentations as A  # type: ignore
+except ImportError:
+    A = None
+
+
+@dataclass(frozen=True, slots=True)
+class AlbumentationsAdapter:
+    """Adapts an Albumentations pipeline to the Transform protocol."""
+
+    pipeline: A.Compose
+
+    def __call__(
+        self,
+        sample: TransformSample,
+        *,
+        rng: np.random.RandomState,
+    ) -> TransformSample:
+        if A is None:
+            # warn or fail? For now, no-op if missing to allow running without deps
+            return sample
+        
+        # Albumentations uses its own RNG, but we should try to seed it if possible
+        # or just rely on its internal state. 
+        # A.Compose doesn't easily take an external RNG state for single call.
+        # We'll rely on global seeding or separate seeding if needed.
+        
+        # Prepare inputs
+        kwargs = {"image": sample.image}
+        
+        # Boxes: [N, 4] -> [N, 4] (x1, y1, x2, y2)
+        # We need to ensure they are valid for Albumentations (x2 > x1, y2 > y1)
+        # The sanitizer should have handled this, but A is strict.
+        
+        if sample.boxes_xyxy.shape[0] > 0:
+            kwargs["bboxes"] = sample.boxes_xyxy
+            kwargs["class_labels"] = sample.class_ids
+            
+        if sample.masks is not None:
+             # A supports list of masks for 'masks' arg, or single 'mask'. 
+             # sample.masks is [N, H, W]. 
+             # We can pass list of (H, W) masks.
+             kwargs["masks"] = list(sample.masks)  # type: ignore
+
+        # Run pipeline
+        # verification: A.Compose must be created with bbox_params=A.BboxParams(format="pascal_voc", label_fields=["class_labels"])
+        try:
+            res = self.pipeline(**kwargs)
+        except ValueError:
+            # Fallback for empty boxes sometimes causing issues in older versions
+            return sample
+
+        # Unpack outputs
+        out_image = res["image"]
+        
+        out_boxes = np.zeros((0, 4), dtype=np.float32)
+        out_classes = np.zeros((0,), dtype=np.int64)
+        
+        if "bboxes" in res and res["bboxes"]:
+            out_boxes = np.array(res["bboxes"], dtype=np.float32)
+            if "class_labels" in res:
+                out_classes = np.array(res["class_labels"], dtype=np.int64)
+            else:
+                # Should not happen if configured correctly
+                out_classes = np.zeros((len(out_boxes),), dtype=np.int64)
+                
+        out_masks = None
+        if "masks" in res and res["masks"]:
+            # List of (H, W) -> [N, H, W]
+            out_masks = np.stack(res["masks"], axis=0)
+
+        return TransformSample(
+            image=out_image,
+            boxes_xyxy=out_boxes,
+            class_ids=out_classes,
+            masks=out_masks,
+        )
+
+
+def build_robust_transforms(
+    height: int,
+    width: int,
+    *,
+    blur_prob: float = 0.5,
+    noise_prob: float = 0.5,
+    distort_prob: float = 0.5,
+) -> Transform:
+    """Builds a robust augmentation pipeline for satellite imagery."""
+    if A is None:
+        return TransformPipeline(transforms=())
+        
+    transforms = [
+        A.RandomCrop(height=height, width=width),
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.RandomRotate90(p=0.5),
+    ]
+    
+    if blur_prob > 0:
+        transforms.append(
+            A.OneOf([
+                A.MotionBlur(p=1.0),
+                A.GaussianBlur(p=1.0),
+                A.Defocus(p=1.0),
+            ], p=blur_prob)
+        )
+        
+    if noise_prob > 0:
+        transforms.append(
+            A.OneOf([
+                A.GaussNoise(p=1.0),
+                A.ISONoise(p=1.0),
+                A.MultiplicativeNoise(p=1.0),
+            ], p=noise_prob)
+        )
+        
+    if distort_prob > 0:
+        transforms.append(
+            A.OneOf([
+                A.RandomBrightnessContrast(p=1.0),
+                A.HueSaturationValue(p=1.0),
+                A.ImageCompression(quality_lower=50, quality_upper=90, p=1.0),
+            ], p=distort_prob)
+        )
+        
+    pipeline = A.Compose(
+        transforms,
+        bbox_params=A.BboxParams(format="pascal_voc", label_fields=["class_labels"], min_visibility=0.1),
+    )
+    return AlbumentationsAdapter(pipeline=pipeline)
 
 @dataclass(frozen=True, slots=True)
 class TransformSample:

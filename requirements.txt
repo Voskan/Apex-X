@@ -1,0 +1,34 @@
+# Apex-X Requirements
+
+# Core deep learning
+torch>=2.0.0
+numpy>=1.24.0
+
+# Computer vision & data
+opencv-python>=4.8.0
+Pillow>=10.0.0
+albumentations>=1.3.0
+
+# Geospatial (optional)
+rasterio>=1.3.0
+
+# Backbone models
+timm>=0.9.0
+
+# Evaluation (optional but recommended for training)
+pycocotools>=2.0.6
+
+# Observability
+structlog>=23.1.0
+prometheus-client>=0.17.0
+opentelemetry-api>=1.20.0
+
+# Export & Deployment (optional)
+onnx>=1.14.0
+onnxruntime>=1.15.0
+# tensorrt>=8.6.0  # Install separately from NVIDIA
+
+# Development
+pytest>=7.4.0
+mypy>=1.5.0
+ruff>=0.0.290

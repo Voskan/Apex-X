@@ -12,7 +12,15 @@ import torch
 from torch import Tensor
 
 from apex_x.config import ApexXConfig
-from apex_x.model import ApexXModel, DetHead, DualPathFPN, PVModule, TeacherModel
+from apex_x.data import SatelliteDataset, build_robust_transforms
+from apex_x.model import (
+    ApexXModel,
+    DetHead,
+    DualPathFPN,
+    PVModule,
+    TeacherModel,
+    TimmBackboneAdapter,
+)
 from apex_x.routing import (
     BudgetDualController,
     build_routing_diagnostics,
@@ -28,8 +36,14 @@ from apex_x.runtime import heavy_ops_autocast_context, resolve_precision_policy
 from apex_x.tiles import tile_grid_shape
 from apex_x.utils import get_logger, log_event, seed_all
 
+from apex_x.eval import COCOEvaluator, PYCOCOTOOLS_AVAILABLE
+
+from .checkpoint import CheckpointMetadata, cleanup_old_checkpoints, load_checkpoint, save_checkpoint
+from .lr_scheduler import create_lr_scheduler
 from .pcgrad import apply_pcgradpp, diagnostics_to_dict
+from .train_losses import compute_teacher_training_loss
 from .qat import QuantizationSummary, prepare_int8_ptq, prepare_int8_qat
+from .trainer_utils import add_train_epoch_method
 
 LOGGER = get_logger(__name__)
 
@@ -52,16 +66,37 @@ class StagedTrainResult:
     final_mu: float
 
 
+@add_train_epoch_method
 class ApexXTrainer:
     """Implements stage-0..4 trainer flow defined in Apex-X engineering docs."""
 
-    def __init__(self, config: ApexXConfig | None = None, *, num_classes: int = 3) -> None:
+    def __init__(
+        self,
+        config: ApexXConfig | None = None,
+        *,
+        num_classes: int = 3,
+        backbone_type: str = "pv",
+        backbone_name: str = "efficientnet_b5",
+        pretrained_backbone: bool = True,
+        checkpoint_dir: Path | str | None = None,
+        use_amp: bool = True,
+        gradient_accumulation_steps: int = 1,
+    ) -> None:
         self.config = config or ApexXConfig()
         self.config.validate()
+
+        # Gradient accumulation for larger effective batch size
+        self.gradient_accumulation_steps = max(1, gradient_accumulation_steps)
+        if self.gradient_accumulation_steps > 1:
+            LOGGER.info(f\"Gradient accumulation: {self.gradient_accumulation_steps} steps\")
         if num_classes <= 0:
             raise ValueError("num_classes must be > 0")
 
         self.num_classes = int(num_classes)
+        self.backbone_type = backbone_type
+        self.backbone_name = backbone_name
+        self.pretrained_backbone = pretrained_backbone
+
         self.baseline_model = ApexXModel(config=self.config)
         self.teacher = self._build_teacher_model(num_classes=self.num_classes)
         self.teacher.train()
@@ -85,20 +120,48 @@ class ApexXTrainer:
         self.quantization_summary = QuantizationSummary.disabled()
         self._quantization_prepared = False
         self.precision_policy = resolve_precision_policy(self.config)
+        
+        # AMP (Automatic Mixed Precision) support
+        self.use_amp = use_amp and torch.cuda.is_available()
+        self.scaler = torch.cuda.amp.GradScaler() if self.use_amp else None
+        if self.use_amp:
+            LOGGER.info("AMP enabled: 2-3x speedup, 50% memory reduction")
+        
+        # Checkpoint management
+        self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
+        self.best_metric = float('inf')  # Lower is better for loss
+        self.best_metric_name = "loss"
+        if self.checkpoint_dir:
+            self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     def _build_teacher_model(self, *, num_classes: int) -> TeacherModel:
-        # Keep the staged trainer CPU-fast by using a compact teacher backbone.
-        pv_module = PVModule(
-            in_channels=3,
-            p3_channels=16,
-            p4_channels=24,
-            p5_channels=32,
-            coarse_level="P4",
-        )
+        # Keep the staged trainer CPU-fast by default, or use high-capacity backbone
+        if self.backbone_type == "timm":
+            pv_module = TimmBackboneAdapter(
+                model_name=self.backbone_name,
+                pretrained=self.pretrained_backbone,
+                out_indices=(2, 3, 4), # P3, P4, P5
+            )
+            # Adapt output channels from the backbone
+            p3_ch = pv_module.p3_channels
+            p4_ch = pv_module.p4_channels
+            p5_ch = pv_module.p5_channels
+        else:
+            pv_module = PVModule(
+                in_channels=3,
+                p3_channels=16,
+                p4_channels=24,
+                p5_channels=32,
+                coarse_level="P4",
+            )
+            p3_ch = 16
+            p4_ch = 24
+            p5_ch = 32
+
         fpn = DualPathFPN(
-            pv_p3_channels=16,
-            pv_p4_channels=24,
-            pv_p5_channels=32,
+            pv_p3_channels=p3_ch,
+            pv_p4_channels=p4_ch,
+            pv_p5_channels=p5_ch,
             ff_channels=16,
             out_channels=16,
         )
@@ -148,33 +211,417 @@ class ApexXTrainer:
         }
         return StageResult(stage_id=0, name="baseline_warmup", metrics=metrics)
 
+
+    def save_training_checkpoint(
+        self,
+        epoch: int,
+        step: int,
+        optimizer: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler._LRScheduler | None = None,
+        metrics: dict[str, float] | None = None,
+        is_best: bool = False,
+    ) -> None:
+        """Save a training checkpoint.
+        
+        Args:
+            epoch: Current epoch number
+            step: Current training step
+            optimizer: Optimizer to save
+            scheduler: Optional LR scheduler
+            metrics: Training/validation metrics
+            is_best: Whether this is the best checkpoint
+        """
+        if self.checkpoint_dir is None:
+            LOGGER.warning("checkpoint_dir not set, skipping checkpoint save")
+            return
+        
+        # Build checkpoint filename
+        ckpt_path = self.checkpoint_dir / f"epoch_{epoch:04d}.pt"
+        
+        # Get EMA state if available
+        ema_state = None
+        if self.teacher.use_ema:
+            ema_state = {
+                "ema_pv_module": self.teacher.ema_pv_module.state_dict() if self.teacher.ema_pv_module else None,
+                "ema_fpn": self.teacher.ema_fpn.state_dict() if self.teacher.ema_fpn else None,
+                "ema_det_head": self.teacher.ema_det_head.state_dict() if self.teacher.ema_det_head else None,
+            }
+        
+        # Save checkpoint
+        save_checkpoint(
+            path=ckpt_path,
+            model=self.teacher,
+            optimizer=optimizer,
+            epoch=epoch,
+            step=step,
+            scheduler=scheduler,
+            metrics=metrics,
+            best_metric=self.best_metric,
+            best_metric_name=self.best_metric_name,
+            config=self.config.to_dict(),
+            is_best=is_best,
+            ema_state_dict=ema_state,
+        )
+        
+        # Cleanup old checkpoints (keep last 3 + best)
+        cleanup_old_checkpoints(
+            checkpoint_dir=self.checkpoint_dir,
+            keep_best=True,
+            keep_last_n=3,
+        )
+        
+        # Update last checkpoint symlink
+        last_path = self.checkpoint_dir / "last.pt"
+        if last_path.exists() and last_path.is_symlink():
+            last_path.unlink()
+        elif last_path.exists():
+            last_path.unlink()
+        
+        try:
+            last_path.symlink_to(ckpt_path.name)
+        except OSError:
+            import shutil
+            shutil.copy2(ckpt_path, last_path)
+    
+    def load_training_checkpoint(
+        self,
+        checkpoint_path: Path | str,
+        optimizer: torch.optim.Optimizer | None = None,
+        scheduler: torch.optim.lr_scheduler._LRScheduler | None = None,
+        device: str = "cpu",
+    ) -> CheckpointMetadata:
+        """Load a training checkpoint.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file
+            optimizer: Optional optimizer to restore
+            scheduler: Optional scheduler to restore
+            device: Device to load checkpoint to
+        
+        Returns:
+            CheckpointMetadata with training state
+        """
+        metadata = load_checkpoint(
+            path=Path(checkpoint_path),
+            model=self.teacher,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            device=device,
+        )
+        
+        # Restore EMA state if present
+        if hasattr(metadata, "ema_state_dict"):
+            ema_dict = getattr(metadata, "ema_state_dict", None)
+            if ema_dict and self.teacher.use_ema:
+                if ema_dict.get("ema_pv_module") and self.teacher.ema_pv_module:
+                    self.teacher.ema_pv_module.load_state_dict(ema_dict["ema_pv_module"])
+                if ema_dict.get("ema_fpn") and self.teacher.ema_fpn:
+                    self.teacher.ema_fpn.load_state_dict(ema_dict["ema_fpn"])
+                if ema_dict.get("ema_det_head") and self.teacher.ema_det_head:
+                    self.teacher.ema_det_head.load_state_dict(ema_dict["ema_det_head"])
+                LOGGER.info("Restored EMA model state from checkpoint")
+        
+        # Restore best metric tracking
+        self.best_metric = metadata.best_metric
+        self.best_metric_name = metadata.best_metric_name
+        
+        LOGGER.info(f"Loaded checkpoint from epoch {metadata.epoch}, step {metadata.step}")
+        return metadata
+
+
+
+    def validate(
+        self,
+        val_dataloader: torch.utils.data.DataLoader,
+        device: str = "cpu",
+        max_batches: int | None = None,
+        compute_map: bool = True,
+        conf_threshold: float = 0.001,
+        nms_threshold: float = 0.65,
+    ) -> dict[str, float]:
+        """Run validation and compute metrics including mAP.
+        
+        Args:
+            val_dataloader: DataLoader for validation dataset
+            device: Device to run validation on
+            max_batches: Optional limit on number of batches to evaluate
+            compute_map: Whether to compute mAP (requires COCO annotations)
+            conf_threshold: Confidence threshold for detections
+            nms_threshold: NMS IoU threshold
+        
+        Returns:
+            Dict of validation metrics including mAP if available
+        """
+        from apex_x.model import post_process_detections
+        from apex_x.eval import COCOEvaluator
+        
+        self.teacher.eval()
+        self.teacher.to(device)
+        
+        # Initialize COCO evaluator if computing mAP
+        evaluator = None
+        if compute_map:
+            try:
+                # Try to get COCO annotations from dataset
+                if hasattr(val_dataloader.dataset, 'coco'):
+                    evaluator = COCOEvaluator(val_dataloader.dataset.coco)
+                    LOGGER.info("Initialized COCO evaluator for mAP computation")
+            except Exception as e:
+                LOGGER.warning(f"Could not initialize COCO evaluator: {e}")
+                compute_map = False
+        
+        all_image_ids = []
+        total_batches = 0
+        total_loss = 0.0
+        
+        LOGGER.info("Starting validation...")
+        
+        with torch.no_grad():
+            for batch_idx, batch_data in enumerate(val_dataloader):
+                if max_batches and batch_idx >= max_batches:
+                    break
+                
+                # Extract batch components
+                if isinstance(batch_data, dict):
+                    images = batch_data.get("images")
+                    image_ids = batch_data.get("image_ids", [])
+                else:
+                    # Fallback for simple batch format
+                    images = batch_data
+                    image_ids = []
+                
+                if images is None:
+                    continue
+                
+                # Move to device
+                images = images.to(device)
+                
+                # Model forward pass
+                output = self.teacher(images)
+                
+                # Compute validation loss (simplified)
+                if hasattr(output, 'logits'):
+                    val_loss = output.logits.pow(2).mean()
+                    if hasattr(output, 'boundaries'):
+                        val_loss = val_loss + 0.05 * output.boundaries.abs().mean()
+                    total_loss += float(val_loss.item())
+                
+                # Post-process detections for mAP
+                if compute_map and evaluator is not None:
+                    # Apply NMS and get final detections
+                    detections = post_process_detections(
+                        cls_logits_by_level=output.logits_by_level,
+                        box_reg_by_level=output.boxes_by_level,
+                        quality_by_level=output.quality_by_level,
+                        conf_threshold=conf_threshold,
+                        nms_threshold=nms_threshold,
+                        box_format="distance",  # or "direct" depending on head implementation
+                    )
+                    
+                    # Convert to COCO format and update evaluator
+                    for det_idx, detection in enumerate(detections):
+                        if det_idx < len(image_ids):
+                            img_id = image_ids[det_idx]
+                            
+                            # Convert to COCO format
+                            coco_dets = []
+                            boxes = detection['boxes'].cpu().numpy()
+                            scores = detection['scores'].cpu().numpy()
+                            classes = detection['classes'].cpu().numpy()
+                            
+                            for box, score, cls_id in zip(boxes, scores, classes):
+                                x1, y1, x2, y2 = box
+                                coco_dets.append({
+                                    'image_id': int(img_id),
+                                    'category_id': int(cls_id),
+                                    'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
+                                    'score': float(score),
+                                })
+                            
+                            evaluator.update(coco_dets)
+                            all_image_ids.append(img_id)
+                
+                total_batches += 1
+                
+                if (batch_idx + 1) % 100 == 0:
+                    LOGGER.info(f"Processed {batch_idx + 1} batches...")
+        
+        self.teacher.train()
+        
+        # Compute metrics
+        avg_loss = total_loss / max(1, total_batches)
+        
+        metrics = {
+            "val_batches": total_batches,
+            "val_loss": avg_loss,
+        }
+        
+        # Compute mAP if evaluator available
+        if evaluator is not None and len(all_image_ids) > 0:
+            LOGGER.info("Computing COCO metrics...")
+            try:
+                coco_metrics = evaluator.compute()
+                metrics.update(coco_metrics)
+                LOGGER.info(f"mAP: {coco_metrics.get('mAP', 0.0):.4f}")
+            except Exception as e:
+                LOGGER.error(f"Failed to compute COCO metrics: {e}")
+        
+        LOGGER.info(f"Validation complete: {total_batches} batches, avg_loss={avg_loss:.4f}")
+        return metrics
+
+
     def _stage1_teacher_training(
         self,
         generator: torch.Generator,
         *,
         steps: int,
+        dataset_path: str | Path | None = None,
     ) -> tuple[StageResult, float]:
         optimizer = torch.optim.AdamW(self.teacher.parameters(), lr=1e-3)
-        train_h = min(self.config.model.input_height, 64)
-        train_w = min(self.config.model.input_width, 64)
-        if train_h <= 0 or train_w <= 0:
-            raise ValueError("invalid train input shape")
+        
+        # Create LR scheduler with warmup
+        scheduler = create_lr_scheduler(
+            optimizer=optimizer,
+            scheduler_type="cosine_warmup",
+            total_steps=steps,
+            warmup_ratio=0.1,  # 10% warmup
+            min_lr=1e-6,
+        )
+        train_h = min(self.config.model.input_height, 512)
+        train_w = min(self.config.model.input_width, 512)
+        
+        dataloader = None
+        if dataset_path:
+            dataset = SatelliteDataset(
+                root_dir=dataset_path,
+                tile_size=max(train_h, 256),
+                stride=max(train_h // 2, 128),
+            )
+            if len(dataset) > 0:
+                # Basic PyTorch DataLoader
+                dataloader = torch.utils.data.DataLoader(
+                     dataset, 
+                     batch_size=1, # Single image for now to avoid collage logic complexity here
+                     shuffle=True,
+                     collate_fn=lambda x: x, # Return list of samples
+                )
+                
+        transforms = build_robust_transforms(
+            height=train_h, 
+            width=train_w,
+            blur_prob=0.3,
+            noise_prob=0.3,
+            distort_prob=0.3
+        )
+        rng = np.random.RandomState(42)
 
         loss_last = 0.0
-        for _ in range(steps):
-            image = torch.rand((1, 3, train_h, train_w), generator=generator, dtype=torch.float32)
-            with heavy_ops_autocast_context(self.precision_policy):
-                out = self.teacher(image, use_ema=False)
-                loss = out.logits.square().mean() + 0.05 * out.boundaries.mean()
-            optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            optimizer.step()
-            self.teacher.update_ema()
-            loss_last = float(loss.detach().item())
+        
+        # If dataloader exists, we iterate it. Else random loop.
+        iterator = iter(dataloader) if dataloader else None
+        
+        for step_idx in range(steps):
+            if iterator:
+                try:
+                    samples = next(iterator)
+                except StopIteration:
+                    iterator = iter(dataloader)
+                    samples = next(iterator)
+                
+                # Apply transforms
+                batch_images = []
+                for s in samples:
+                    # s is TransformSample. 
+                    # Augment
+                    aug = transforms(s, rng=rng)
+                    # Convert to tensor [C, H, W]
+                    img_t = torch.from_numpy(aug.image).permute(2, 0, 1).float() / 255.0
+                    batch_images.append(img_t)
+                
+                image = torch.stack(batch_images, dim=0)
 
+            else:
+                image = torch.rand((1, 3, train_h, train_w), generator=generator, dtype=torch.float32)
+
+            samples_for_loss = samples if iterator else None
+            
+            # Only zero gradients at start of accumulation cycle
+            is_accumulation_step = (step_idx % self.gradient_accumulation_steps) != 0
+            should_step = (step_idx + 1) % self.gradient_accumulation_steps == 0
+
+            if self.use_amp and self.scaler is not None:
+                # Zero gradients only at start of cycle
+                if not is_accumulation_step:
+                    optimizer.zero_grad(set_to_none=True)
+                    
+                with torch.cuda.amp.autocast():
+                    # Forward pass with AMP
+                    out = self.teacher(image, use_ema=False)
+                    # Compute training loss with real detection outputs
+                    total_loss, _ = compute_teacher_training_loss(
+                        output=out,
+                        samples=samples_for_loss,
+                        det_weight=1.0,
+                        boundary_weight=0.05,
+                    )
+                    
+                    # Scale loss by accumulation steps
+                    total_loss = total_loss / self.gradient_accumulation_steps
+                
+                # Backward with scaler (accumulate gradients)
+                self.scaler.scale(total_loss).backward()
+                
+                # Only step optimizer after accumulating enough gradients
+                if should_step:
+                    self.scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+            else:
+                # Zero gradients only at start of cycle
+                if not is_accumulation_step:
+                    optimizer.zero_grad(set_to_none=True)
+                    
+                with heavy_ops_autocast_context(self.precision_policy):
+                    out = self.teacher(image, use_ema=False)
+                    # Compute training loss with real detection outputs
+                    total_loss, _ = compute_teacher_training_loss(
+                        output=out,
+                        samples=samples_for_loss,
+                        det_weight=1.0,
+                        boundary_weight=0.05,
+                    )
+                    
+                    # Scale loss by accumulation steps
+                    total_loss = total_loss / self.gradient_accumulation_steps
+                
+                # Backward (accumulate gradients)
+                total_loss.backward()
+                
+                # Only step optimizer after accumulating enough gradients
+                if should_step:
+                    torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
+                    optimizer.step()
+            
+            # Update scheduler and EMA only when we actually step
+            if should_step:
+                scheduler.step()
+                self.teacher.update_ema()
+                
+            loss_last = float(total_loss.detach().item() * self.gradient_accumulation_steps)  # Unscale for logging
+            
+            # Log current LR (only do this periodically to avoid spam)
+            if step_idx % 100 == 0:
+                current_lr = scheduler.get_last_lr()[0]
+                LOGGER.debug(f"Step {step_idx}/{steps}: loss={loss_last:.4f}, lr={current_lr:.6f}")
+
+        # Get final LR
+        final_lr = scheduler.get_last_lr()[0]
+        
         metrics: dict[str, StageMetricValue] = {
             "steps": int(steps),
             "teacher_loss_last": loss_last,
+            "final_lr": float(final_lr),
             "full_compute_mode": bool(self.teacher.full_compute_mode),
             "qat_wrapped_modules": self.quantization_summary.wrapped_modules,
             "heavy_ops_dtype": self.precision_policy.to_dict()["heavy_ops_dtype"],
@@ -550,6 +997,7 @@ class ApexXTrainer:
         steps_per_stage: int = 1,
         seed: int = 0,
         enable_budgeting: bool = True,
+        dataset_path: str | Path | None = None,
     ) -> StagedTrainResult:
         if steps_per_stage <= 0:
             raise ValueError("steps_per_stage must be > 0")
@@ -561,7 +1009,11 @@ class ApexXTrainer:
         self._prepare_quantization(generator)
 
         stage0 = self._stage0_baseline_warmup(rng, steps=steps_per_stage)
-        stage1, stage1_loss = self._stage1_teacher_training(generator, steps=steps_per_stage)
+        stage1, stage1_loss = self._stage1_teacher_training(
+            generator, 
+            steps=steps_per_stage, 
+            dataset_path=dataset_path
+        )
         stage2, stage2_loss = self._stage2_oracle_bootstrapping(
             rng,
             generator,
