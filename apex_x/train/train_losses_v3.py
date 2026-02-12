@@ -159,6 +159,11 @@ def compute_v3_training_losses(
                     align_corners=False,
                 )
             
+            # Align instance count: N_pred may differ from N_gt
+            n = min(mask_pred.shape[1], mask_gt.shape[1])
+            mask_pred = mask_pred[:, :n]
+            mask_gt = mask_gt[:, :n]
+            
             loss_dict["mask_bce"] = mask_bce_loss(mask_pred, mask_gt)
             loss_dict["mask_dice"] = mask_dice_loss(mask_pred, mask_gt)
             loss_dict["lovasz"] = lovasz_instance_loss(mask_pred, mask_gt)
@@ -188,6 +193,11 @@ def compute_v3_training_losses(
                         mode="bilinear",
                         align_corners=False,
                     )
+                
+                # Align instance count
+                n = min(mask_logits.shape[1], mask_gt_b.shape[1])
+                mask_logits = mask_logits[:, :n]
+                mask_gt_b = mask_gt_b[:, :n]
                 
                 loss_dict["boundary_iou"] = boundary_iou_loss(
                     mask_logits, mask_gt_b, boundary_width=3, reduction="mean",
@@ -237,11 +247,11 @@ def compute_v3_training_losses(
                 ms_pred = ms_pred.unsqueeze(0)
             if ms_gt.ndim == 3:
                 ms_gt = ms_gt.unsqueeze(0)
-            if ms_pred.shape[-2:] != ms_gt.shape[-2:]:
-                ms_gt = F.interpolate(
-                    ms_gt.float(), size=ms_pred.shape[-2:],
-                    mode="bilinear", align_corners=False,
-                )
+            # Align instance count
+            n = min(ms_pred.shape[1], ms_gt.shape[1])
+            ms_pred = ms_pred[:, :n]
+            ms_gt = ms_gt[:, :n]
+            
             ms_out = multi_scale_instance_segmentation_losses(ms_pred, ms_gt)
             loss_dict["multi_scale"] = ms_out.total_loss
 
