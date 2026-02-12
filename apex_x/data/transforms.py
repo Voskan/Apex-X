@@ -98,8 +98,7 @@ def build_robust_transforms(
         return TransformPipeline(transforms=())
         
     transforms = [
-        A.SmallestMaxSize(max_size=max(height, width)),
-        A.RandomCrop(height=height, width=width),
+        A.Resize(height=height, width=width),  # Force exact size for batch consistency
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
         A.RandomRotate90(p=0.5),
