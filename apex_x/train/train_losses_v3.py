@@ -187,7 +187,14 @@ def compute_v3_training_losses(
     if "all_boxes" in outputs and "boxes" in targets:
         gt_b = targets["boxes"].to(device)
         cascade_w = 0.3
-        for stage_idx, stage_boxes in enumerate(outputs["all_boxes"][1:]):
+        # outputs["all_boxes"] is list[list[Tensor]] -> [Stage][Batch]
+        for stage_idx, stage_boxes_list in enumerate(outputs["all_boxes"][1:]):
+            if isinstance(stage_boxes_list, list):
+                # Flatten the list of tensors per batch image into one tensor for matching gt_b
+                stage_boxes = torch.cat([b for b in stage_boxes_list if b.numel() > 0]) if any(b.numel() > 0 for b in stage_boxes_list) else torch.zeros((0, 4), device=device)
+            else:
+                stage_boxes = stage_boxes_list
+
             if stage_boxes.numel() > 0 and gt_b.numel() > 0:
                 n = min(stage_boxes.shape[0], gt_b.shape[0])
                 loss_dict[f"cascade_s{stage_idx}"] = cascade_w * _giou_loss(

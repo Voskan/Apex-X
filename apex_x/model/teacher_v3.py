@@ -258,7 +258,7 @@ class TeacherModelV3(nn.Module):
             adjusted_scores_flat = final_scores_flat
 
         return {
-            "boxes": final_boxes_list,           # list[Tensor] (len B)
+            "boxes": flat_boxes[:, 1:],          # Tensor [N_total, 4]
             "masks": final_masks_flat,           # Tensor [N_total, 1, 28, 28]
             "scores": adjusted_scores_flat,      # Tensor [N_total, num_classes]
             "predicted_quality": predicted_quality,
