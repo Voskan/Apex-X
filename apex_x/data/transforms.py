@@ -127,7 +127,7 @@ def build_robust_transforms(
             A.OneOf([
                 A.RandomBrightnessContrast(p=1.0),
                 A.HueSaturationValue(p=1.0),
-                A.ImageCompression(quality_lower=50, quality_upper=90, p=1.0),
+                A.ImageCompression(quality_range=(50, 90), p=1.0),
             ], p=distort_prob)
         )
         
