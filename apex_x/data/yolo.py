@@ -132,9 +132,13 @@ class YOLOSegmentationDataset(Dataset):
                     x1, y1 = coords.min(axis=0)
                     x2, y2 = coords.max(axis=0)
                     
-                    boxes.append([x1, y1, x2, y2])
-                    class_ids.append(cls_id)
-                    polygons.append(coords)
+                    # Filter degenerate boxes (width or height <= 0.1 pixels)
+                    if (x2 - x1) > 0.1 and (y2 - y1) > 0.1:
+                        boxes.append([x1, y1, x2, y2])
+                        class_ids.append(cls_id)
+                        polygons.append(coords)
+                    else:
+                        LOGGER.warning(f"Skipping degenerate polygon in {lbl_path.name} (width: {x2-x1:.4f}, height: {y2-y1:.4f})")
                     
         # Convert to tensors (using numpy for TransformSample as per its definition)
         boxes_np = np.array(boxes, dtype=np.float32) if boxes else np.zeros((0, 4), dtype=np.float32)

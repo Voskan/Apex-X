@@ -32,14 +32,32 @@ class AlbumentationsAdapter:
         kwargs = {"image": sample.image}
         
         if sample.boxes_xyxy.shape[0] > 0:
-            kwargs["bboxes"] = sample.boxes_xyxy.tolist()
-            kwargs["class_labels"] = sample.class_ids.tolist()
+            boxes = sample.boxes_xyxy
+            classes = sample.class_ids
+            # Filter boxes with width or height <= 0
+            widths = boxes[:, 2] - boxes[:, 0]
+            heights = boxes[:, 3] - boxes[:, 1]
+            keep = (widths > 0) & (heights > 0)
+            
+            if not keep.all():
+                boxes = boxes[keep]
+                classes = classes[keep]
+                if sample.masks is not None:
+                    masks = sample.masks[keep]
+                else:
+                    masks = None
+            else:
+                masks = sample.masks
+                
+            kwargs["bboxes"] = boxes.tolist()
+            kwargs["class_labels"] = classes.tolist()
+            if masks is not None and masks.shape[0] > 0:
+                kwargs["masks"] = list(masks)
         else:
             kwargs["bboxes"] = []
             kwargs["class_labels"] = []
-            
-        if sample.masks is not None and sample.masks.shape[0] > 0:
-             kwargs["masks"] = list(sample.masks)
+            if sample.masks is not None and sample.masks.shape[0] > 0:
+                kwargs["masks"] = list(sample.masks)
         
         # Run pipeline — do NOT silently swallow errors and return unresized images
         res = self.pipeline(**kwargs)
