@@ -331,6 +331,7 @@ __all__ = [
     "boundary_distance_transform_surrogate_loss",
     "boundary_iou_loss",
     "instance_segmentation_losses",
+    "multi_scale_instance_segmentation_losses",
 ]
 
 

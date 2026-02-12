@@ -138,88 +138,89 @@ class PVModuleDINOv2(nn.Module):
         # We need to reshape to [B, D, H', W']
         self.patch_size = 14  # DINOv2 uses 14x14 patches
     
-    def _reshape_vit_output(self, x: Tensor, target_size: tuple[int, int]) -> Tensor:
+    def _reshape_vit_output(self, x: Tensor) -> Tensor:
         """Reshape ViT sequence output to 2D feature map.
-        
+
+        DINOv2 returns ``[B, 1 + num_patches, D]`` where the first
+        token is CLS.  ``num_patches = (H / patch_size) * (W / patch_size)``.
+        We infer the spatial grid from ``num_patches`` directly — no
+        need to pass an explicit target size.
+
         Args:
-            x: ViT output [B, N+1, D] (includes CLS token)
-            target_size: Target spatial size (H, W)
-        
+            x: ViT hidden-state ``[B, N+1, D]`` (includes CLS token).
+
         Returns:
-            Feature map [B, D, H, W]
+            Feature map ``[B, D, h_patches, w_patches]``.
         """
         B, N_plus_1, D = x.shape
-        
-        # Remove CLS token (first token)
-        x = x[:, 1:, :]  # [B, N, D]
-        
-        # Reshape to 2D grid
-        # N = (H/patch_size) * (W/patch_size)
-        h, w = target_size
-        h_patches = h // self.patch_size
-        w_patches = w // self.patch_size
-        
+
+        # Drop CLS token
+        x = x[:, 1:, :]              # [B, N, D]
+        N = x.shape[1]
+
+        # Infer spatial grid (assume square or almost-square)
+        h_patches = int(N ** 0.5)
+        w_patches = N // h_patches
+        assert h_patches * w_patches == N, (
+            f"Cannot reshape {N} tokens into a 2-D grid "
+            f"({h_patches}×{w_patches} != {N})"
+        )
+
         x = x.reshape(B, h_patches, w_patches, D)
-        x = x.permute(0, 3, 1, 2)  # [B, D, H', W']
-        
+        x = x.permute(0, 3, 1, 2)    # [B, D, h, w]
         return x
-    
+
     def forward(self, image: Tensor) -> Dict[str, Tensor]:
         """Extract multi-scale features using DINOv2.
-        
+
         Args:
-            image: Input image [B, 3, H, W]
-        
+            image: Input image ``[B, 3, H, W]``.
+                   *Must* be divisible by ``patch_size`` (14).
+
         Returns:
-            Dictionary with P3, P4, P5 features:
-                - P3: [B, 256, H/8, W/8]
-                - P4: [B, 512, H/16, W/16]
-                - P5: [B, 1024, H/32, W/32]
+            ``{'P3': ..., 'P4': ..., 'P5': ...}``
+            where P3 is the highest-resolution feature map.
         """
         B, _, H, W = image.shape
-        
-        # Forward through DINOv2 (frozen)
+
+        # Forward through frozen DINOv2
         with torch.no_grad():
             outputs = self.dinov2(
                 pixel_values=image,
                 output_hidden_states=True,
                 return_dict=True,
             )
-        
-        # Extract features from specified layers
+
         hidden_states = outputs.hidden_states
-        
-        feat_l8 = hidden_states[self.feature_layers[0]]   # Early features
-        feat_l16 = hidden_states[self.feature_layers[1]]  # Mid features
-        feat_l23 = hidden_states[self.feature_layers[2]]  # Deep features
-        
-        # Reshape to 2D feature maps
-        # Sizes decrease with depth in pyramid
-        feat_l8_2d = self._reshape_vit_output(feat_l8, (H // 2, W // 2))    
-        feat_l16_2d = self._reshape_vit_output(feat_l16, (H // 2, W // 2))   
-        feat_l23_2d = self._reshape_vit_output(feat_l23, (H // 2, W // 2))   
-        
-        # Apply LoRA adapters (trainable)
-        # P3: High resolution, early features
-        p3 = self.lora_p3(feat_l8_2d.permute(0, 2, 3, 1))  # [B, H, W, D]
-        p3 = p3.permute(0, 3, 1, 2)  # [B, D, H, W]
-        
-        # P4: Mid resolution, mid features
+
+        feat_l8  = hidden_states[self.feature_layers[0]]   # early
+        feat_l16 = hidden_states[self.feature_layers[1]]   # mid
+        feat_l23 = hidden_states[self.feature_layers[2]]   # deep
+
+        # Reshape to 2-D feature maps  ── all share the same spatial grid
+        feat_l8_2d  = self._reshape_vit_output(feat_l8)    # [B, D, h, w]
+        feat_l16_2d = self._reshape_vit_output(feat_l16)
+        feat_l23_2d = self._reshape_vit_output(feat_l23)
+
+        # ------- LoRA adapters (trainable) ----------------------------------
+        # P3 — full patch-grid resolution
+        p3 = self.lora_p3(feat_l8_2d.permute(0, 2, 3, 1))   # → [B, h, w, C3]
+        p3 = p3.permute(0, 3, 1, 2)                          # → [B, C3, h, w]
+
+        # P4 — half resolution
         p4 = self.lora_p4(feat_l16_2d.permute(0, 2, 3, 1))
         p4 = p4.permute(0, 3, 1, 2)
-        # Downsample to H/16
         p4 = nn.functional.avg_pool2d(p4, kernel_size=2, stride=2)
-        
-        # P5: Low resolution, deep features
+
+        # P5 — quarter resolution
         p5 = self.lora_p5(feat_l23_2d.permute(0, 2, 3, 1))
         p5 = p5.permute(0, 3, 1, 2)
-        # Downsample to H/32
         p5 = nn.functional.avg_pool2d(p5, kernel_size=4, stride=4)
-        
+
         return {
-            'P3': p3,  # [B, 256, H/8, W/8]
-            'P4': p4,  # [B, 512, H/16, W/16]
-            'P5': p5,  # [B, 1024, H/32, W/32]
+            'P3': p3,   # [B, 256,  h,    w   ]
+            'P4': p4,   # [B, 512,  h/2,  w/2 ]
+            'P5': p5,   # [B, 1024, h/4,  w/4 ]
         }
     
     def trainable_parameters(self) -> int:
