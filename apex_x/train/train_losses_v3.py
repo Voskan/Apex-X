@@ -119,10 +119,20 @@ def compute_v3_training_losses(
     # ----- 3. segmentation losses (BCE + Dice) -----------------------------
     if "masks" in outputs and outputs["masks"] is not None and "masks" in targets:
         mask_pred = outputs["masks"]
-        mask_gt = targets["masks"].to(device)
-        if mask_pred.numel() > 0 and mask_gt.numel() > 0:
+        mask_gt = targets["masks"]
+        
+        if mask_gt is not None and mask_pred.numel() > 0 and mask_gt.numel() > 0:
+            # Ensure 4D format [B, N, H, W] for loss functions
+            # Both pred and gt might be [N, H, W] from concatenated batch
+            if mask_pred.ndim == 3:
+                mask_pred = mask_pred.unsqueeze(0)  # [1, N, H, W]
+            if mask_gt.ndim == 3:
+                mask_gt = mask_gt.unsqueeze(0)  # [1, N, H, W]
+                
+            mask_gt = mask_gt.to(device)
+            
             # align spatial dimensions
-            if mask_pred.shape != mask_gt.shape:
+            if mask_pred.shape[-2:] != mask_gt.shape[-2:]:
                 mask_gt = F.interpolate(
                     mask_gt.float(),
                     size=mask_pred.shape[-2:],
@@ -135,14 +145,23 @@ def compute_v3_training_losses(
     # ----- 4. boundary IoU loss (+0.5-1% AP) -------------------------------
     mask_logits = outputs.get("masks")
     if mask_logits is not None and "masks" in targets:
-        mask_gt_b = targets["masks"].to(device)
-        if mask_logits.shape != mask_gt_b.shape:
-            mask_gt_b = F.interpolate(
-                mask_gt_b.float(),
-                size=mask_logits.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
-            )
+        mask_gt_b = targets["masks"]
+        if mask_gt_b is not None and mask_logits.numel() > 0 and mask_gt_b.numel() > 0:
+            # Ensure 4D format [B, N, H, W]
+            if mask_logits.ndim == 3:
+                mask_logits = mask_logits.unsqueeze(0)
+            if mask_gt_b.ndim == 3:
+                mask_gt_b = mask_gt_b.unsqueeze(0)
+                
+            mask_gt_b = mask_gt_b.to(device)
+            
+            if mask_logits.shape[-2:] != mask_gt_b.shape[-2:]:
+                mask_gt_b = F.interpolate(
+                    mask_gt_b.float(),
+                    size=mask_logits.shape[-2:],
+                    mode="bilinear",
+                    align_corners=False,
+                )
         loss_dict["boundary_iou"] = boundary_iou_loss(
             mask_logits, mask_gt_b, boundary_width=3, reduction="mean",
         )
