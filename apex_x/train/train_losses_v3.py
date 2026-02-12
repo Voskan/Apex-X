@@ -23,8 +23,6 @@ from apex_x.losses.seg_loss import (
     boundary_iou_loss,
     multi_scale_instance_segmentation_losses,
 )
-from apex_x.losses.det_loss import detection_losses
-from apex_x.losses.simota import simota_matching
 from apex_x.model.mask_quality_head import mask_iou_loss
 
 
