@@ -106,7 +106,7 @@ cells.append(code([
     "        if lp.exists():\n",
     "            with open(lp) as f:\n",
     "                for line in f:\n",
-    "                    pts = (np.array(line.split()[1:]).reshape(-1, 2) * [w, h]).astype(np.int32)\n",
+    "                    pts = (np.array(line.split()[1:], dtype=np.float32).reshape(-1, 2) * [w, h]).astype(np.int32)\n",
     "                    cv2.polylines(img, [pts], True, (0, 255, 0), 2)\n",
     "        plt.subplot(2, 4, i+1)\n",
     "        plt.imshow(img); plt.axis('off')\n",
