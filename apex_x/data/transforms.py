@@ -64,7 +64,7 @@ class AlbumentationsAdapter:
         out_boxes = np.zeros((0, 4), dtype=np.float32)
         out_classes = np.zeros((0,), dtype=np.int64)
         
-        if "bboxes" in res and res["bboxes"]:
+        if "bboxes" in res and len(res["bboxes"]) > 0:
             out_boxes = np.array(res["bboxes"], dtype=np.float32)
             if "class_labels" in res:
                 out_classes = np.array(res["class_labels"], dtype=np.int64)
@@ -73,7 +73,7 @@ class AlbumentationsAdapter:
                 out_classes = np.zeros((len(out_boxes),), dtype=np.int64)
                 
         out_masks = None
-        if "masks" in res and res["masks"]:
+        if "masks" in res and len(res["masks"]) > 0:
             # List of (H, W) -> [N, H, W]
             out_masks = np.stack(res["masks"], axis=0)
 
