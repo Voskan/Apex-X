@@ -34,6 +34,7 @@ from apex_x.model import TeacherModelV3
 from apex_x.train import ApexXTrainer
 from apex_x.train.ddp import DDPWrapper
 from apex_x.train.early_stopping import EarlyStopping
+from apex_x.train.train_losses_v3 import compute_v3_training_losses
 from apex_x.utils import get_logger, seed_all
 
 LOGGER = get_logger(__name__)
@@ -220,11 +221,10 @@ def main():
             with torch.cuda.amp.autocast(enabled=use_amp):
                 outputs = model(images)
                 
-                # Compute losses (simplified - use train_losses_v3 in production)
-                loss = torch.tensor(0.0, device=device)
-                if 'masks' in outputs and outputs['masks'] is not None:
-                    # Dummy loss for now
-                    loss = outputs['masks'].sum() * 0.0 + 1.0
+                # Compute losses with world-class v3 mathematics
+                loss, loss_dict = compute_v3_training_losses(
+                    outputs, targets, model, config
+                )
             
             # Backward pass
             optimizer.zero_grad()
