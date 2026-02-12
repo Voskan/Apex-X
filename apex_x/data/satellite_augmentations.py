@@ -13,14 +13,18 @@ Expected impact: +2-4% mAP on satellite datasets
 from __future__ import annotations
 
 import random
-from typing import Callable
 
 import cv2
 import numpy as np
-import torch
-from torch import Tensor
 
 from apex_x.data.transforms import TransformSample
+
+
+def _to_hwc_uint8(image: np.ndarray) -> np.ndarray:
+    if image.dtype == np.uint8:
+        return image.copy()
+    clipped = np.clip(image, 0, 255)
+    return clipped.astype(np.uint8)
 
 
 class RandomRotation90:
@@ -48,46 +52,40 @@ class RandomRotation90:
         if k == 0:
             return sample  # No rotation
             
-        img = sample.image
-        if isinstance(img, Tensor):
-            img = img.permute(1, 2, 0).numpy()
-            
+        img = _to_hwc_uint8(sample.image)
+        h, w = img.shape[:2]
+
         # Rotate image
-        img = np.rot90(img, k=k)
+        img_rot = np.rot90(img, k=k).copy()
         
-        # Rotate boxes
-        if sample.boxes is not None and len(sample.boxes) > 0:
-            boxes = sample.boxes.clone() if isinstance(sample.boxes, Tensor) else torch.tensor(sample.boxes)
-            h, w = img.shape[:2]
-            
+        boxes = sample.boxes_xyxy.copy()
+        if boxes.shape[0] > 0:
             for _ in range(k):
-                # Rotate 90° clockwise
-                x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
-                boxes = torch.stack([
-                    h - y2,  # new x1
-                    x1,      # new y1  
-                    h - y1,  # new x2
-                    x2,      # new y2
-                ], dim=1)
-                h, w = w, h  # Swap dimensions
-                
-        # Rotate masks
-        masks = None
+                x1 = boxes[:, 0].copy()
+                y1 = boxes[:, 1].copy()
+                x2 = boxes[:, 2].copy()
+                y2 = boxes[:, 3].copy()
+                # CCW rotation by 90 degrees for xyxy boxes.
+                boxes[:, 0] = y1
+                boxes[:, 1] = w - x2
+                boxes[:, 2] = y2
+                boxes[:, 3] = w - x1
+                h, w = w, h
+            boxes[:, 0::2] = np.clip(boxes[:, 0::2], 0.0, float(w))
+            boxes[:, 1::2] = np.clip(boxes[:, 1::2], 0.0, float(h))
+
+        masks = sample.masks
         if sample.masks is not None:
-            masks_np = sample.masks.numpy() if isinstance(sample.masks, Tensor) else sample.masks
-            if masks_np.ndim == 3:
-                masks_np = np.rot90(masks_np, k=k, axes=(1, 2))
-            masks = torch.from_numpy(masks_np)
-            
-        img_tensor = torch.from_numpy(img).permute(2, 0, 1).float() if not isinstance(sample.image, Tensor) else torch.from_numpy(img).permute(2, 0, 1)
+            if masks.ndim == 3:
+                masks = np.rot90(masks, k=k, axes=(1, 2)).copy()
+            else:
+                masks = np.rot90(masks, k=k).copy()
         
         return TransformSample(
-            image=img_tensor,
-            boxes=boxes,
+            image=img_rot,
+            boxes_xyxy=boxes,
             masks=masks,
             class_ids=sample.class_ids,
-            width=img.shape[1],
-            height=img.shape[0],
         )
 
 
@@ -119,11 +117,7 @@ class WeatherAugmentation:
         self.intensity_range = intensity_range
         
     def __call__(self, sample: TransformSample) -> TransformSample:
-        img = sample.image
-        if isinstance(img, Tensor):
-            img = (img.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
-        else:
-            img = img.copy()
+        img = _to_hwc_uint8(sample.image)
             
         # Haze effect
         if random.random() < self.haze_prob:
@@ -171,15 +165,11 @@ class WeatherAugmentation:
                     img[y:y+shadow_h, x:x+shadow_w] * (1 - darkness)
                 ).astype(np.uint8)
                 
-        img_tensor = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
-        
         return TransformSample(
-            image=img_tensor,
-            boxes=sample.boxes,
+            image=img,
+            boxes_xyxy=sample.boxes_xyxy,
             masks=sample.masks,
             class_ids=sample.class_ids,
-            width=sample.width,
-            height=sample.height,
         )
 
 
@@ -206,9 +196,7 @@ class ResolutionDegradation:
         if random.random() > self.prob:
             return sample
             
-        img = sample.image
-        if isinstance(img, Tensor):
-            img = (img.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
+        img = _to_hwc_uint8(sample.image)
             
         h, w = img.shape[:2]
         
@@ -222,15 +210,11 @@ class ResolutionDegradation:
         # Upsample back (with quality loss)
         img_degraded = cv2.resize(img_small, (w, h), interpolation=cv2.INTER_LINEAR)
         
-        img_tensor = torch.from_numpy(img_degraded).permute(2, 0, 1).float() / 255.0
-        
         return TransformSample(
-            image=img_tensor,
-            boxes=sample.boxes,
+            image=img_degraded,
+            boxes_xyxy=sample.boxes_xyxy,
             masks=sample.masks,
             class_ids=sample.class_ids,
-            width=sample.width,
-            height=sample.height,
         )
 
 

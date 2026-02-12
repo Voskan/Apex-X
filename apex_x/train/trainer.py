@@ -50,6 +50,11 @@ LOGGER = get_logger(__name__)
 StageMetricValue = float | int | bool | str | None
 
 
+def _identity_collate(batch: list[Any]) -> list[Any]:
+    """Pickle-safe identity collate used by trainer DataLoaders."""
+    return batch
+
+
 @dataclass(frozen=True, slots=True)
 class StageResult:
     stage_id: int
@@ -126,6 +131,25 @@ class ApexXTrainer:
         self.scaler = torch.cuda.amp.GradScaler() if self.use_amp else None
         if self.use_amp:
             LOGGER.info("AMP enabled: 2-3x speedup, 50% memory reduction")
+
+        # TF32 support for Ampere+ GPUs
+        if self.config.train.tf32_enabled:
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+            LOGGER.info("TF32 enabled: Faster matmul on Ampere+ GPUs")
+
+        # CuDNN benchmark
+        if self.config.train.cudnn_benchmark:
+            torch.backends.cudnn.benchmark = True
+            LOGGER.info("CuDNN benchmark enabled: Optimized kernel selection")
+
+        # torch.compile (PyTorch 2.0+)
+        if self.config.train.torch_compile:
+            if hasattr(torch, "compile"):
+                LOGGER.info("Wrapping teacher model with torch.compile...")
+                self.teacher = torch.compile(self.teacher) # type: ignore
+            else:
+                LOGGER.warning("torch.compile requested but not available in this PyTorch version")
         
         # Checkpoint management
         self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
@@ -501,12 +525,14 @@ class ApexXTrainer:
                 stride=max(train_h // 2, 128),
             )
             if len(dataset) > 0:
-                # Basic PyTorch DataLoader
+                # Basic PyTorch DataLoader with performance tuning
                 dataloader = torch.utils.data.DataLoader(
                      dataset, 
                      batch_size=1, # Single image for now to avoid collage logic complexity here
                      shuffle=True,
-                     collate_fn=lambda x: x, # Return list of samples
+                     num_workers=self.config.train.dataloader_num_workers,
+                     pin_memory=self.config.train.dataloader_pin_memory,
+                     collate_fn=_identity_collate,  # Return list of samples
                 )
                 
         transforms = build_robust_transforms(
@@ -577,9 +603,23 @@ class ApexXTrainer:
                 # Only step optimizer after accumulating enough gradients
                 if should_step:
                     self.scaler.unscale_(optimizer)
+                    
+                    # Gradient clip for stability
                     torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
-                    self.scaler.step(optimizer)
-                    self.scaler.update()
+                    
+                    # Verify gradients are finite before stepping
+                    grads_finite = True
+                    for param in self.teacher.parameters():
+                        if param.grad is not None and not torch.isfinite(param.grad).all():
+                            grads_finite = False
+                            break
+                    
+                    if grads_finite:
+                        self.scaler.step(optimizer)
+                        self.scaler.update()
+                    else:
+                        LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
+                        optimizer.zero_grad(set_to_none=True)
             else:
                 # Zero gradients only at start of cycle
                 if not is_accumulation_step:
@@ -604,7 +644,19 @@ class ApexXTrainer:
                 # Only step optimizer after accumulating enough gradients
                 if should_step:
                     torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
-                    optimizer.step()
+                    
+                    # Verify gradients are finite before stepping
+                    grads_finite = True
+                    for param in self.teacher.parameters():
+                        if param.grad is not None and not torch.isfinite(param.grad).all():
+                            grads_finite = False
+                            break
+                            
+                    if grads_finite:
+                        optimizer.step()
+                    else:
+                        LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
+                        optimizer.zero_grad(set_to_none=True)
             
             # Update scheduler and EMA only when we actually step
             if should_step:
@@ -994,6 +1046,154 @@ class ApexXTrainer:
             routing_diag,
         )
 
+    def _stage_finetune_lora(
+        self,
+        generator: torch.Generator,
+        *,
+        steps: int,
+        dataset_path: str | Path | None = None,
+        lr: float = 1e-4,
+    ) -> tuple[StageResult, float]:
+        """Phase 2: High-precision LoRA fine-tuning stage.
+        
+        Focuses on adapting the frozen DINOv2 backbone (via LoRA) to 
+        domain-specific satellite imagery with a lower learning rate.
+        """
+        LOGGER.info(f"Starting LoRA Fine-tuning with learning_rate={lr}...")
+        
+        # Filter for parameters that actually require gradients (LoRA + Heads)
+        trainable_params = [p for p in self.teacher.parameters() if p.requires_grad]
+        optimizer = torch.optim.AdamW(trainable_params, lr=lr)
+        
+        # Use existing training utilities if possible, or a simplified loop
+        # For this implementation, we replicate the high-perf loop from stage 1
+        # but specialized for the finetuning use case.
+        
+        scheduler = create_lr_scheduler(
+            optimizer=optimizer,
+            scheduler_type="cosine_warmup",
+            total_steps=steps,
+            warmup_ratio=0.1,
+            min_lr=lr * 0.01,
+        )
+
+        train_h = min(self.config.model.input_height, 512)
+        train_w = min(self.config.model.input_width, 512)
+
+        dataloader = None
+        if dataset_path:
+            dataset = SatelliteDataset(
+                root_dir=dataset_path,
+                tile_size=max(train_h, 256),
+                stride=max(train_h // 2, 128),
+            )
+            if len(dataset) > 0:
+                dataloader = torch.utils.data.DataLoader(
+                     dataset,
+                     batch_size=1,
+                     shuffle=True,
+                     num_workers=self.config.train.dataloader_num_workers,
+                     pin_memory=self.config.train.dataloader_pin_memory,
+                     collate_fn=_identity_collate,
+                )
+
+        transforms = build_robust_transforms(
+            height=train_h,
+            width=train_w,
+            blur_prob=0.1,  # Lower augmentation for fine-tuning
+            noise_prob=0.1,
+            distort_prob=0.1
+        )
+        rng = np.random.RandomState(42)
+        loss_last = 0.0
+        iterator = iter(dataloader) if dataloader else None
+
+        for step_idx in range(steps):
+            if iterator:
+                try:
+                    samples = next(iterator)
+                except StopIteration:
+                    iterator = iter(dataloader)
+                    samples = next(iterator)
+
+                batch_images = []
+                for s in samples:
+                    aug = transforms(s, rng=rng)
+                    img_t = torch.from_numpy(aug.image).permute(2, 0, 1).float() / 255.0
+                    batch_images.append(img_t)
+                image = torch.stack(batch_images, dim=0).to(next(self.teacher.parameters()).device)
+            else:
+                image = torch.rand((1, 3, train_h, train_w), generator=generator, dtype=torch.float32).to(next(self.teacher.parameters()).device)
+
+            samples_for_loss = samples if iterator else None
+            is_accumulation_step = (step_idx % self.gradient_accumulation_steps) != 0
+            should_step = (step_idx + 1) % self.gradient_accumulation_steps == 0
+
+            if self.use_amp and self.scaler is not None:
+                if not is_accumulation_step:
+                    optimizer.zero_grad(set_to_none=True)
+                with torch.cuda.amp.autocast():
+                    out = self.teacher(image, use_ema=False)
+                    total_loss, _ = compute_teacher_training_loss(
+                        output=out,
+                        samples=samples_for_loss,
+                        det_weight=1.0,
+                        boundary_weight=0.1,  # Higher boundary focus in finetuning
+                    )
+                    total_loss = total_loss / self.gradient_accumulation_steps
+                self.scaler.scale(total_loss).backward()
+                if should_step:
+                    self.scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=5.0)
+                    
+                    grads_finite = True
+                    for param in trainable_params:
+                        if param.grad is not None and not torch.isfinite(param.grad).all():
+                            grads_finite = False
+                            break
+                    if grads_finite:
+                        self.scaler.step(optimizer)
+                        self.scaler.update()
+                    else:
+                        LOGGER.warning(f"NaN in gradients at finetune step {step_idx}. Skipping.")
+                        optimizer.zero_grad(set_to_none=True)
+            else:
+                if not is_accumulation_step:
+                    optimizer.zero_grad(set_to_none=True)
+                with heavy_ops_autocast_context(self.precision_policy):
+                    out = self.teacher(image, use_ema=False)
+                    total_loss, _ = compute_teacher_training_loss(
+                        output=out,
+                        samples=samples_for_loss,
+                    )
+                    total_loss = total_loss / self.gradient_accumulation_steps
+                total_loss.backward()
+                if should_step:
+                    torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=5.0)
+                    grads_finite = True
+                    for param in trainable_params:
+                        if param.grad is not None and not torch.isfinite(param.grad).all():
+                            grads_finite = False
+                            break
+                    if grads_finite:
+                        optimizer.step()
+                    else:
+                        optimizer.zero_grad(set_to_none=True)
+
+            if should_step:
+                scheduler.step()
+                self.teacher.update_ema()
+            loss_last = float(total_loss.detach().item() * self.gradient_accumulation_steps)
+
+        final_lr = scheduler.get_last_lr()[0]
+        metrics = {
+            "steps": int(steps),
+            "finetune_loss_last": loss_last,
+            "final_lr": float(final_lr),
+            "num_lora_params": len(trainable_params),
+        }
+        return StageResult(stage_id=5, name="lora_finetune", metrics=metrics), loss_last
+
     def run(
         self,
         *,
@@ -1044,6 +1244,16 @@ class ApexXTrainer:
             )
             stage3_loss = 0.0
         stage4, routing_diag = self._stage4_deterministic_emulation(utility_snapshot)
+        stage_results: list[StageResult] = [stage0, stage1, stage2, stage3, stage4]
+        stage5_loss = 0.0
+        if self.config.train.enable_lora_finetune:
+            stage5, stage5_loss = self._stage_finetune_lora(
+                generator,
+                steps=steps_per_stage,
+                dataset_path=dataset_path,
+            )
+            stage_results.append(stage5)
+        
         pcgrad_snapshot = self._pcgrad_monitoring_snapshot()
 
         train_summary = {
@@ -1061,9 +1271,9 @@ class ApexXTrainer:
             },
             "precision": self.precision_policy.to_dict(),
         }
-        loss_proxy = float(stage1_loss + stage2_loss + abs(stage3_loss))
+        loss_proxy = float(stage1_loss + stage2_loss + abs(stage3_loss) + stage5_loss)
         result = StagedTrainResult(
-            stage_results=(stage0, stage1, stage2, stage3, stage4),
+            stage_results=tuple(stage_results),
             routing_diagnostics=routing_diag,
             train_summary=train_summary,
             loss_proxy=loss_proxy,

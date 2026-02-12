@@ -213,6 +213,14 @@ class TrainConfig:
     qat_int8: bool = False
     qat_fp8: bool = False
 
+    # Performance optimizations
+    torch_compile: bool = False
+    tf32_enabled: bool = True
+    cudnn_benchmark: bool = True
+    dataloader_num_workers: int = 12
+    dataloader_pin_memory: bool = True
+    enable_lora_finetune: bool = False
+
     def validate(self) -> None:
         if not self.curriculum_stages:
             raise ValueError("train.curriculum_stages must not be empty")
@@ -243,6 +251,9 @@ class TrainConfig:
 
         if self.save_interval <= 0:
             raise ValueError("train.save_interval must be > 0")
+
+        if self.dataloader_num_workers < 0:
+            raise ValueError("train.dataloader_num_workers must be >= 0")
 
         if (self.qat_int8 or self.qat_fp8) and not self.qat_enable:
             raise ValueError("train.qat_enable must be true when qat_int8 or qat_fp8 is enabled")

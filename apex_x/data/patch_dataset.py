@@ -15,10 +15,8 @@ Expected benefit: 4x larger batch size, better convergence
 from __future__ import annotations
 
 import random
-from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -77,7 +75,7 @@ class PatchDataset(Dataset):
             patch = self._extract_random_patch(sample)
             
             # Check if patch has enough objects
-            if patch.boxes is None or len(patch.boxes) >= self.min_objects_per_patch:
+            if patch.boxes_xyxy.shape[0] >= self.min_objects_per_patch:
                 return patch
                 
         # Fallback: return patch even if not enough objects
@@ -117,17 +115,17 @@ class PatchDataset(Dataset):
         
         # Crop image
         if isinstance(img, Tensor):
-            patch_img = img[:, y1:y2, x1:x2]
+            patch_img = img[:, y1:y2, x1:x2].permute(1, 2, 0).cpu().numpy()
         else:
             patch_img = img[y1:y2, x1:x2]
             
         # Crop and filter boxes
-        patch_boxes = None
+        patch_boxes = torch.zeros((0, 4), dtype=torch.float32)
         patch_masks = None
-        patch_classes = None
+        patch_classes = torch.zeros((0,), dtype=torch.int64)
         
-        if sample.boxes is not None and len(sample.boxes) > 0:
-            boxes = sample.boxes.clone() if isinstance(sample.boxes, Tensor) else torch.tensor(sample.boxes)
+        if sample.boxes_xyxy.shape[0] > 0:
+            boxes = torch.from_numpy(sample.boxes_xyxy).float()
             
             # Translate boxes to patch coordinates
             boxes[:, [0, 2]] -= x1
@@ -147,33 +145,25 @@ class PatchDataset(Dataset):
                 
                 # Filter masks
                 if sample.masks is not None:
-                    masks = sample.masks
-                    if isinstance(masks, Tensor):
-                        masks_np = masks.numpy()
-                    else:
-                        masks_np = masks
+                    masks_np = sample.masks
                         
                     if masks_np.ndim == 3:  # [N, H, W]
-                        patch_masks_np = masks_np[valid.numpy(), y1:y2, x1:x2]
+                        valid_np = valid.cpu().numpy().astype(bool)
+                        patch_masks_np = masks_np[valid_np, y1:y2, x1:x2]
                         patch_masks = torch.from_numpy(patch_masks_np)
                     else:
                         patch_masks_np = masks_np[y1:y2, x1:x2]
                         patch_masks = torch.from_numpy(patch_masks_np)
                         
                 # Filter class IDs
-                if sample.class_ids is not None:
-                    if isinstance(sample.class_ids, Tensor):
-                        patch_classes = sample.class_ids[valid]
-                    else:
-                        patch_classes = torch.tensor(sample.class_ids)[valid]
+                if sample.class_ids.shape[0] > 0:
+                    patch_classes = torch.from_numpy(sample.class_ids).long()[valid]
                         
         return TransformSample(
             image=patch_img,
-            boxes=patch_boxes,
-            masks=patch_masks,
-            class_ids=patch_classes,
-            width=x2 - x1,
-            height=y2 - y1,
+            boxes_xyxy=patch_boxes.cpu().numpy().astype("float32"),
+            masks=patch_masks.cpu().numpy() if patch_masks is not None else None,
+            class_ids=patch_classes.cpu().numpy().astype("int64"),
         )
 
 

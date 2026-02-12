@@ -82,18 +82,17 @@ def compute_teacher_training_loss(
         box_weight = box_weight * (0.5 + 1.5 * progress)  # 0.5 → 2.0
     
     # Extract GT from samples
-    batch_size = len(samples)
     gt_boxes_list = []
     gt_classes_list = []
     
     for sample in samples:
-        if hasattr(sample, 'boxes') and sample.boxes is not None:
-            gt_boxes_list.append(sample.boxes)
+        if sample.boxes_xyxy.shape[0] > 0:
+            gt_boxes_list.append(torch.from_numpy(sample.boxes_xyxy).to(device))
         else:
             gt_boxes_list.append(torch.zeros((0, 4), device=device))
         
-        if hasattr(sample, 'class_ids') and sample.class_ids is not None:
-            gt_classes_list.append(sample.class_ids)
+        if sample.class_ids.shape[0] > 0:
+            gt_classes_list.append(torch.from_numpy(sample.class_ids).to(device))
         else:
             gt_classes_list.append(torch.zeros((0,), dtype=torch.int64, device=device))
     
@@ -196,6 +195,7 @@ def compute_teacher_training_loss(
     
     # Boundary distillation loss
     boundary_loss = output.boundaries.abs().mean()
+    boundary_loss = torch.nan_to_num(boundary_loss, nan=0.0)
     
     # Combine
     total_loss = det_weight * det_loss + boundary_weight * boundary_loss
@@ -215,4 +215,3 @@ def compute_teacher_training_loss(
 __all__ = [
     "compute_teacher_training_loss",
 ]
-

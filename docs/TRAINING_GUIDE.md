@@ -257,6 +257,33 @@ After baseline training:
    - Augmentation probability tuning
    - Loss weight optimization
 
+## Fine-tuning & Active Learning (Phase 2)
+
+Apex-X now supports a semi-automated fine-tuning pipeline to continuously improve accuracy on new satellite imagery.
+
+### 1. Data Mining (Active Learning)
+Identify "hard examples" where the model is uncertain using entropy and quality headers:
+```bash
+python scripts/mine_hard_examples.py \
+    --model-path checkpoints/teacher_latest.pt \
+    --image-path data/new_unlabeled_imagery/ \
+    --output-dir data/mined_examples
+```
+
+### 2. Semi-supervised Training
+The `PseudoLabeler` generates "silver" labels from a high-capacity teacher, filtered by the `MaskQualityHead` to ensure only reliable targets are used.
+
+### 3. Unified Fine-tuning Pipeline
+Run the entire orchestration flow with a single command:
+```bash
+bash scripts/apex_finetune_pipeline.sh \
+    --config configs/satellite_v3_finetune.yaml \
+    --data data/new_imagery \
+    --model checkpoints/teacher_latest.pt
+```
+
+This pipeline leverages **LoRA fine-tuning** to adapt the DINOv2 backbone with minimal trainable parameters, ensuring fast and stable convergence.
+
 ---
 
 ## Support

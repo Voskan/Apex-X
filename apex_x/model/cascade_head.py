@@ -12,11 +12,12 @@ Reference:
 
 from __future__ import annotations
 
-from typing import Any
-
 import torch
 from torch import Tensor, nn
-import torch.nn.functional as F
+
+from apex_x.utils import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 class CascadeStage(nn.Module):
@@ -148,7 +149,7 @@ class CascadeDetHead(nn.Module):
     def forward(
         self,
         features: Tensor,
-        initial_boxes: list[Tensor],
+        initial_boxes: list[Tensor] | Tensor,
     ) -> dict[str, list[list[Tensor]] | list[Tensor]]:
         """Forward pass through cascade stages.
         
@@ -162,12 +163,15 @@ class CascadeDetHead(nn.Module):
                 - 'scores': list[Tensor] Class logits [B*N, num_classes] for each stage
                 - 'box_deltas': list[Tensor] Box deltas [B*N, 4] for each stage
         """
-        B = features.shape[0]
-        all_stage_boxes: list[list[Tensor]] = [initial_boxes]
+        if isinstance(initial_boxes, Tensor):
+            if initial_boxes.ndim != 2 or initial_boxes.shape[1] != 4:
+                raise ValueError("initial_boxes tensor must be [N, 4]")
+            current_boxes: list[Tensor] = [initial_boxes]
+        else:
+            current_boxes = list(initial_boxes)
+        all_stage_boxes: list[list[Tensor]] = [current_boxes]
         all_scores: list[Tensor] = []
         all_deltas: list[Tensor] = []
-        
-        current_boxes = initial_boxes
         
         for stage_idx, stage in enumerate(self.stages):
             # 1. Flatten boxes for efficient batch ROI Align

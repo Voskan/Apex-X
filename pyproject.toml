@@ -50,6 +50,7 @@ include = ["apex_x*"]
 [tool.pytest.ini_options]
 addopts = "-q -ra"
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.black]
 line-length = 100

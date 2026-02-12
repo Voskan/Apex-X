@@ -106,8 +106,8 @@ class SatelliteDataset:
                     SatelliteTile(
                         image_path=img_path,
                         mask_path=mask_path,
-                        x_off=max(0, y_off),
-                        y_off=max(0, x_off),
+                        x_off=max(0, x_off),
+                        y_off=max(0, y_off),
                         width=self.tile_size,
                         height=self.tile_size,
                     )
@@ -168,7 +168,6 @@ class SatelliteDataset:
                 final_classes = np.array([], dtype=np.int64)
 
         else:
-             image_np = np.zeros((self.tile_size, self.tile_size, 3), dtype=np.uint8)
              final_masks = None
              final_boxes = np.zeros((0, 4), dtype=np.float32)
              final_classes = np.array([], dtype=np.int64)
@@ -186,15 +185,26 @@ class SatelliteDataset:
                 window = rasterio.windows.Window(tile.x_off, tile.y_off, tile.width, tile.height)
                 # rasterio reads (C, H, W)
                 data = src.read(window=window)
+                
+                # Sanitize: convert NaNs to 0, handle Inf, and clip to valid range
+                # Use float32 for intermediate processing if not mask
                 if is_mask:
-                     # (1, H, W) -> (H, W)
+                    data = np.nan_to_num(data, nan=0).astype(np.uint8)
                     return cast(np.ndarray, data[0])
+                
+                data = np.nan_to_num(data.astype(np.float32), nan=0.0, posinf=255.0, neginf=0.0)
+                data = np.clip(data, 0, 255).astype(np.uint8)
+                
                 # (3, H, W) -> (H, W, 3)
                 return cast(np.ndarray, np.moveaxis(data, 0, -1))
         else:
             with Image.open(path) as img:
                 crop = img.crop((tile.x_off, tile.y_off, tile.x_off + tile.width, tile.y_off + tile.height))
                 arr = np.array(crop)
+                
+                # Sanitize PIL array
+                arr = np.nan_to_num(arr, nan=0)
+                
                 if is_mask and arr.ndim == 3:
                     return arr[:,:,0] # Take first channel of mask
                 return arr

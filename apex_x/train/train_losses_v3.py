@@ -28,6 +28,17 @@ from apex_x.losses.lovasz_loss import lovasz_instance_loss
 from apex_x.model.mask_quality_head import mask_iou_loss
 
 
+def _to_instance_masks(mask: Tensor | None) -> Tensor | None:
+    """Normalize masks to [N, H, W] format."""
+    if mask is None:
+        return None
+    if mask.ndim == 4 and mask.shape[1] == 1:
+        return mask.squeeze(1)
+    if mask.ndim == 4 and mask.shape[0] == 1:
+        return mask.squeeze(0)
+    return mask
+
+
 def _focal_loss(
     logits: Tensor, targets: Tensor, gamma: float = 2.0, alpha: float = 0.25,
 ) -> Tensor:
@@ -132,14 +143,10 @@ def compute_v3_training_losses(
 
     # ----- 3. segmentation losses (BCE + Dice) -----------------------------
     if "masks" in outputs and outputs["masks"] is not None and "masks" in targets:
-        mask_pred = outputs["masks"]
-        mask_gt = targets["masks"]
+        mask_pred = _to_instance_masks(outputs["masks"])
+        mask_gt = _to_instance_masks(targets["masks"])
         
         if mask_gt is not None and mask_pred.numel() > 0 and mask_gt.numel() > 0:
-            # Model outputs [N_total, 1, H, W] - squeeze channel dimension
-            if mask_pred.ndim == 4 and mask_pred.shape[1] == 1:
-                mask_pred = mask_pred.squeeze(1)  # [N_total, H, W]
-            
             # Ensure 3D format [N, H, W] before adding batch dimension
             if mask_pred.ndim != 3 or mask_gt.ndim != 3:
                 raise ValueError(f"Expected 3D masks but got pred: {mask_pred.shape}, gt: {mask_gt.shape}")
@@ -171,12 +178,9 @@ def compute_v3_training_losses(
     # ----- 4. boundary IoU loss (+0.5-1% AP) -------------------------------
     mask_logits = outputs.get("masks")
     if mask_logits is not None and "masks" in targets:
-        mask_gt_b = targets["masks"]
+        mask_logits = _to_instance_masks(mask_logits)
+        mask_gt_b = _to_instance_masks(targets["masks"])
         if mask_gt_b is not None and mask_logits.numel() > 0 and mask_gt_b.numel() > 0:
-            # Model outputs [N_total, 1, H, W] - squeeze channel dimension
-            if mask_logits.ndim == 4 and mask_logits.shape[1] == 1:
-                mask_logits = mask_logits.squeeze(1)  # [N_total, H, W]
-            
             # Ensure 3D format before adding batch dimension
             if mask_logits.ndim == 3 and mask_gt_b.ndim == 3:
                 # Add batch dimension: [N, H, W] -> [1, N, H, W]
@@ -214,9 +218,8 @@ def compute_v3_training_losses(
         mask_pred_q = outputs["masks"]
         mask_gt_q = targets["masks"]
         if mask_pred_q.numel() > 0 and mask_gt_q.numel() > 0:
-            # Squeeze channel dim: [N, 1, H, W] -> [N, H, W]
-            mp = mask_pred_q.squeeze(1) if mask_pred_q.ndim == 4 and mask_pred_q.shape[1] == 1 else mask_pred_q
-            mg = mask_gt_q.to(device)
+            mp = _to_instance_masks(mask_pred_q)
+            mg = _to_instance_masks(mask_gt_q).to(device)
             # Align spatial dimensions
             if mp.shape[-2:] != mg.shape[-2:]:
                 mg = F.interpolate(
@@ -238,7 +241,7 @@ def compute_v3_training_losses(
     ms_logits = outputs.get("masks")
     if use_ms and ms_logits is not None and "masks" in targets and targets["masks"] is not None:
         ms_pred = ms_logits
-        ms_gt = targets["masks"].to(device)
+        ms_gt = _to_instance_masks(targets["masks"]).to(device)
         if ms_pred.numel() > 0 and ms_gt.numel() > 0:
             # Squeeze channel dim
             if ms_pred.ndim == 4 and ms_pred.shape[1] == 1:

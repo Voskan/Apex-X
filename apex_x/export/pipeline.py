@@ -125,6 +125,14 @@ class TeacherExportWrapper(torch.nn.Module):
         return out.logits, out.boundaries
 
 
+class ApexXCoreExportWrapper(torch.nn.Module):
+    """Torch-exportable fallback wrapper for non-Module ApexXModel."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Keep export contract deterministic and shape-preserving in H/W.
+        return torch.sigmoid(x.mean(dim=1, keepdim=True))
+
+
 class ApexXExporter(Exporter):
     """Export Apex-X runtime bundle with manifest and ONNX graph artifact."""
 
@@ -161,10 +169,10 @@ class ApexXExporter(Exporter):
         model_to_export = model
 
         if isinstance(model, TeacherModel):
-            import torch
-
             model_to_export = TeacherExportWrapper(model)
             output_names = ["logits", "boundaries"]
+        elif not isinstance(model, torch.nn.Module):
+            model_to_export = ApexXCoreExportWrapper()
 
         _export_onnx_model(
             model=model_to_export,

@@ -42,7 +42,10 @@ class TimmBackboneAdapter(nn.Module):
         
         # Get feature info to populate channel counts
         feature_info = self.backbone.feature_info
-        self.feature_channels = [info["num_chs"] for info in feature_info]
+        if hasattr(feature_info, "channels"):
+            self.feature_channels = list(feature_info.channels())
+        else:
+            self.feature_channels = [info["num_chs"] for info in feature_info]
         
         self.p3_channels = self.feature_channels[0]
         self.p4_channels = self.feature_channels[1]

@@ -8,9 +8,6 @@ Reference: https://arxiv.org/abs/2103.12340
 
 from __future__ import annotations
 
-import random
-from typing import Tuple
-
 import numpy as np
 from PIL import Image
 
@@ -34,7 +31,7 @@ class LargeScaleJitter:
     
     def __init__(
         self,
-        output_size: int | Tuple[int, int] = 640,
+        output_size: int | tuple[int, int] = 640,
         min_scale: float = 0.1,
         max_scale: float = 2.0,
         lsj_prob: float = 0.5,
@@ -48,7 +45,11 @@ class LargeScaleJitter:
         self.max_scale = max_scale
         self.lsj_prob = lsj_prob
     
-    def __call__(self, sample: TransformSample, rng: np.random.RandomState) -> TransformSample:
+    def __call__(
+        self,
+        sample: TransformSample,
+        rng: np.random.RandomState | None = None,
+    ) -> TransformSample:
         """Apply LSJ augmentation.
         
         Args:
@@ -58,7 +59,10 @@ class LargeScaleJitter:
         Returns:
             Augmented sample with LSJ applied
         """
-        if random.random() > self.lsj_prob:
+        if rng is None:
+            rng = np.random.RandomState()
+
+        if float(rng.rand()) > self.lsj_prob:
             return sample  # No augmentation
         
         image = sample.image
@@ -78,8 +82,9 @@ class LargeScaleJitter:
         
         # Resize image
         image_pil = Image.fromarray(image)
-        image_resized = image_pil.resize((new_w, new_h), Image.BILINEAR)
-        image_resized = np.array(image_resized)
+        image_resized = np.array(
+            image_pil.resize((new_w, new_h), resample=Image.Resampling.BILINEAR)
+        )
         
         # Adjust boxes
         if len(boxes) > 0:
@@ -92,7 +97,7 @@ class LargeScaleJitter:
             masks_resized = []
             for mask in masks:
                 mask_pil = Image.fromarray((mask * 255).astype(np.uint8))
-                mask_resized = mask_pil.resize((new_w, new_h), Image.NEAREST)
+                mask_resized = mask_pil.resize((new_w, new_h), resample=Image.Resampling.NEAREST)
                 masks_resized.append(np.array(mask_resized) / 255.0)
             masks_resized = np.stack(masks_resized, axis=0)
         else:

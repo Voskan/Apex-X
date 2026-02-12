@@ -119,7 +119,8 @@ def classification_cost(
         raise ValueError("focal_gamma must be >= 0")
 
     prob_pos = torch.sigmoid(logits_mn).clamp(min=eps, max=1.0 - eps)
-    return -focal_alpha * torch.pow(1.0 - prob_pos, focal_gamma) * torch.log(prob_pos)
+    cost = -focal_alpha * torch.pow(1.0 - prob_pos, focal_gamma) * torch.log(prob_pos)
+    return torch.nan_to_num(cost, nan=100.0, posinf=100.0, neginf=0.0)
 
 
 def iou_cost(pred_boxes_xyxy: Tensor, gt_boxes_xyxy: Tensor) -> Tensor:
@@ -162,6 +163,8 @@ def center_prior_cost(
     )  # [M,2]
     norm = gt_wh[:, None, :]  # [M,1,2]
     delta_norm = delta / norm
+    # Stability: clamp normalized delta to prevent huge costs for extreme distant boxes
+    delta_norm = delta_norm.clamp(min=-100.0, max=100.0)
     return torch.sqrt(torch.sum(delta_norm * delta_norm, dim=-1) + eps)
 
 

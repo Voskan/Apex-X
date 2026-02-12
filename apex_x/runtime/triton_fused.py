@@ -207,6 +207,7 @@ def gather_gate_scatter(
     allow_fallback: bool = True,
 ) -> FusedTileScatterResult:
     availability = get_triton_availability()
+    legacy_fallback_reason: str | None = None
     
     # Try Triton path if available and requested
     if prefer_triton and availability.available:
@@ -305,11 +306,16 @@ def gather_gate_scatter(
                 fallback_reason=None,
             )
 
+        except RuntimeError as exc:
+            # Keep backward-compatible behavior for legacy entrypoints: if Triton
+            # reports unavailable from inside kernel path, return reference result.
+            if "Triton is not available" in str(exc):
+                legacy_fallback_reason = "legacy_triton_entrypoint_deprecated_reference_only"
+            elif not allow_fallback:
+                raise
         except Exception:
             if not allow_fallback:
                 raise
-            # Fall through to reference
-            pass
 
     # Fallback to Reference
     availability = get_triton_availability()
@@ -333,7 +339,9 @@ def gather_gate_scatter(
     )
     fallback_reason = None
     if prefer_triton:
-        if availability.available:
+        if legacy_fallback_reason is not None:
+            fallback_reason = legacy_fallback_reason
+        elif availability.available:
             fallback_reason = "triton_attempt_failed" 
         else:
             fallback_reason = availability.reason or "triton_path_not_selected"

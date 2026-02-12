@@ -70,6 +70,10 @@ class AlbumentationsAdapter:
         # Unpack outputs
         out_image = res["image"]
         
+        # Sanitize augmented image: ensure finite and valid range
+        out_image = np.nan_to_num(out_image.astype(np.float32), nan=0.0, posinf=255.0, neginf=0.0)
+        out_image = np.clip(out_image, 0, 255).astype(np.uint8)
+        
         out_boxes = np.zeros((0, 4), dtype=np.float32)
         out_classes = np.zeros((0,), dtype=np.int64)
         

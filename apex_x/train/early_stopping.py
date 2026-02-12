@@ -81,7 +81,7 @@ class EarlyStopping:
             self.wait += 1
             LOGGER.info(f"EarlyStopping: No improvement for {self.wait}/{self.patience} epochs")
             
-            if self.wait >= self.patience:
+            if self.wait > self.patience:
                 self.stopped_epoch = epoch
                 self.should_stop = True
                 LOGGER.info(f"EarlyStopping: Stopping at epoch {epoch}. Best was {self.best_value:.4f} at epoch {self.best_epoch}")
