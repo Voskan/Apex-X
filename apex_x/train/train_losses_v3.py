@@ -227,7 +227,8 @@ def compute_v3_training_losses(
                 )
                 if mg.ndim == 4 and mp.ndim == 3:
                     mg = mg.squeeze(0)
-            n = min(outputs["predicted_quality"].shape[0], mp.shape[0])
+            # Align instance count: predicted_quality and mp are [N_pred], mg is [N_gt]
+            n = min(outputs["predicted_quality"].shape[0], mp.shape[0], mg.shape[0])
             loss_dict["mask_quality"] = mask_iou_loss(
                 outputs["predicted_quality"][:n], mp[:n], mg[:n],
             )
