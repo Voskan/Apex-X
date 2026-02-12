@@ -31,6 +31,7 @@ def compute_teacher_training_loss(
     epoch: int | None = None,
     total_epochs: int | None = None,
     adaptive_boundary: bool = True,
+    box_loss_type: str = "mpdiou",
 ) -> tuple[Tensor, dict[str, float]]:
     """Compute training loss for teacher model using SimOTA.
     
@@ -45,6 +46,7 @@ def compute_teacher_training_loss(
         epoch: Current epoch (for progressive loss balancing)
         total_epochs: Total training epochs (for progressive loss balancing)
         adaptive_boundary: Use adaptive boundary weight scheduling
+        box_loss_type: Type of box loss (iou, giou, diou, ciou, mpdiou)
     
     Returns:
         tuple of (total_loss, loss_dict) with individual components
@@ -177,6 +179,7 @@ def compute_teacher_training_loss(
                 cls_weight=cls_weight,
                 box_weight=box_weight,
                 quality_weight=quality_weight,
+                box_loss_type=box_loss_type,
             )
             
             total_cls_loss += loss_out.cls_loss

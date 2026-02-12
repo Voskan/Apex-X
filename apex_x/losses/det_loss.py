@@ -319,6 +319,7 @@ def det_loss_with_simota(
     focal_gamma: float = 2.0,
     quality_focal_beta: float = 2.0,
     logit_clip: float = 30.0,
+    box_loss_type: str = "mpdiou",
 ) -> DetLossOutput:
     """Compute DET loss with SimOTA dynamic-k target assignment."""
     _validate_pred_shapes(
@@ -398,9 +399,27 @@ def det_loss_with_simota(
     if targets.num_foreground > 0:
         fg_pred_boxes = pred_boxes[fg]
         fg_target_boxes = targets.box_target[fg]
-        fg_iou = _box_iou_diag(fg_pred_boxes, fg_target_boxes).clamp(min=0.0, max=1.0)
+        
+        from apex_x.losses.iou_loss import bbox_iou
+        
+        # Determine IoU loss type flags
+        giou = box_loss_type == "giou"
+        diou = box_loss_type == "diou"
+        ciou = box_loss_type == "ciou"
+        mpdiou = box_loss_type == "mpdiou"
+        
+        iou = bbox_iou(
+            fg_pred_boxes, 
+            fg_target_boxes, 
+            xywh=False, 
+            GIoU=giou, 
+            DIoU=diou, 
+            CIoU=ciou, 
+            MPDIoU=mpdiou
+        ).clamp(min=-1.0, max=1.0)
+        
         fg_w = targets.positive_weights[fg]
-        box_loss = ((1.0 - fg_iou) * fg_w).sum() / fg_w.sum().clamp(min=1.0)
+        box_loss = ((1.0 - iou) * fg_w).sum() / fg_w.sum().clamp(min=1.0)
     else:
         box_loss = pred_boxes.new_zeros(())
 

@@ -19,6 +19,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from apex_x.losses.lovasz_loss import lovasz_instance_loss
+from apex_x.losses.iou_loss import bbox_iou
 from apex_x.losses.seg_loss import (
     boundary_iou_loss,
     mask_bce_loss,
@@ -97,95 +98,33 @@ def _finite_or_zero(loss_value: Tensor, *, key: str, device: torch.device) -> Te
 # GIoU box loss (no external dep required)
 # --------------------------------------------------------------------------- #
 
-def _giou_loss(pred_boxes: Tensor, gt_boxes: Tensor, eps: float = 1e-7) -> Tensor:
-    """Generalised IoU loss for bounding-box regression.
-
-    Both inputs are ``[N, 4]`` in ``(x1, y1, x2, y2)`` format.
-    Returns scalar loss (1 − GIoU), averaged over N.
-    """
-    x1 = torch.max(pred_boxes[:, 0], gt_boxes[:, 0])
-    y1 = torch.max(pred_boxes[:, 1], gt_boxes[:, 1])
-    x2 = torch.min(pred_boxes[:, 2], gt_boxes[:, 2])
-    y2 = torch.min(pred_boxes[:, 3], gt_boxes[:, 3])
-
-    inter = (x2 - x1).clamp(min=0) * (y2 - y1).clamp(min=0)
-
-    area_pred = (pred_boxes[:, 2] - pred_boxes[:, 0]).clamp(min=0) * \
-                (pred_boxes[:, 3] - pred_boxes[:, 1]).clamp(min=0)
-    area_gt = (gt_boxes[:, 2] - gt_boxes[:, 0]).clamp(min=0) * \
-              (gt_boxes[:, 3] - gt_boxes[:, 1]).clamp(min=0)
-
-    union = area_pred + area_gt - inter + eps
-    iou = inter / union
-
-    # enclosing box
-    ex1 = torch.min(pred_boxes[:, 0], gt_boxes[:, 0])
-    ey1 = torch.min(pred_boxes[:, 1], gt_boxes[:, 1])
-    ex2 = torch.max(pred_boxes[:, 2], gt_boxes[:, 2])
-    ey2 = torch.max(pred_boxes[:, 3], gt_boxes[:, 3])
-    enclose_area = (ex2 - ex1).clamp(min=0) * (ey2 - ey1).clamp(min=0) + eps
-
-    giou = iou - (enclose_area - union) / enclose_area
-    return (1.0 - giou).mean()
-
-
-# --------------------------------------------------------------------------- #
-# Main loss function
-# --------------------------------------------------------------------------- #
-
-def compute_v3_training_losses(
-    outputs: dict[str, Tensor],
-    targets: dict[str, Tensor],
-    model: Any,
-    config: Any,
-) -> tuple[Tensor, dict[str, Tensor]]:
-    """Compute all losses for TeacherModelV3.
-
-    Args:
-        outputs: Model predictions dict.
-        targets: Ground truth dict (``labels``, ``boxes``, ``masks``).
-        model: The model (used only to discover device).
-        config: Training config with optional ``.loss`` namespace.
-
-    Returns:
-        ``(total_loss, loss_dict)``
-    """
-    loss_dict: dict[str, Tensor] = {}
-    device = next(model.parameters()).device
-
-    # helper
-    def _w(name: str, default: float) -> float:
-        if hasattr(config, "loss"):
-            return float(getattr(config.loss, f"{name}_weight", default))
-        return default
-
-    # ----- 1. classification loss ------------------------------------------
-    if "scores" in outputs and "labels" in targets:
-        scores = torch.nan_to_num(
-            outputs["scores"],
-            nan=0.0,
-            posinf=_LOGIT_CLIP,
-            neginf=-_LOGIT_CLIP,
-        ).clamp(min=-_LOGIT_CLIP, max=_LOGIT_CLIP)
-        labels = targets["labels"].long().to(device)
-        if scores.numel() > 0 and labels.numel() > 0:
-            # match N dimension
-            if scores.shape[0] != labels.shape[0]:
-                n = min(scores.shape[0], labels.shape[0])
-                scores = scores[:n]
-                labels = labels[:n]
-            # clamp labels to valid range
-            num_cls = scores.shape[-1]
-            labels = labels.clamp(0, num_cls - 1)
-            loss_dict["cls"] = _focal_loss(scores, labels)
-
-    # ----- 2. box regression loss (GIoU) -----------------------------------
+    # ----- 2. box regression loss -----------------------------------------
     if "boxes" in outputs and "boxes" in targets:
         pred_b = _sanitize_boxes(outputs["boxes"])
         gt_b = _sanitize_boxes(targets["boxes"].to(device))
         if pred_b.numel() > 0 and gt_b.numel() > 0:
             n = min(pred_b.shape[0], gt_b.shape[0])
-            loss_dict["box"] = _giou_loss(pred_b[:n], gt_b[:n])
+            
+            box_loss_type = "mpdiou"  # Default
+            if hasattr(config, "train") and hasattr(config.train, "box_loss_type"):
+                box_loss_type = config.train.box_loss_type
+            
+            # Determine IoU loss type flags
+            giou = box_loss_type == "giou"
+            diou = box_loss_type == "diou"
+            ciou = box_loss_type == "ciou"
+            mpdiou = box_loss_type == "mpdiou"
+            
+            iou = bbox_iou(
+                pred_b[:n], 
+                gt_b[:n], 
+                xywh=False, 
+                GIoU=giou, 
+                DIoU=diou, 
+                CIoU=ciou, 
+                MPDIoU=mpdiou
+            )
+            loss_dict[f"box_{box_loss_type}"] = (1.0 - iou).mean()
 
     # ----- 3. segmentation losses (BCE + Dice) -----------------------------
     if "masks" in outputs and outputs["masks"] is not None and "masks" in targets:
@@ -341,9 +280,27 @@ def compute_v3_training_losses(
             stage_boxes = _sanitize_boxes(stage_boxes)
             if stage_boxes.numel() > 0 and gt_b.numel() > 0:
                 n = min(stage_boxes.shape[0], gt_b.shape[0])
-                loss_dict[f"cascade_s{stage_idx}"] = cascade_w * _giou_loss(
-                    stage_boxes[:n], gt_b[:n],
+                
+                box_loss_type = "mpdiou"
+                if hasattr(config, "train") and hasattr(config.train, "box_loss_type"):
+                    box_loss_type = config.train.box_loss_type
+                
+                giou = box_loss_type == "giou"
+                diou = box_loss_type == "diou"
+                ciou = box_loss_type == "ciou"
+                mpdiou = box_loss_type == "mpdiou"
+                
+                iou_stage = bbox_iou(
+                    stage_boxes[:n], 
+                    gt_b[:n],
+                    xywh=False,
+                    GIoU=giou,
+                    DIoU=diou,
+                    CIoU=ciou,
+                    MPDIoU=mpdiou
                 )
+                
+                loss_dict[f"cascade_s{stage_idx}_{box_loss_type}"] = cascade_w * (1.0 - iou_stage).mean()
 
     # ----- weighted total --------------------------------------------------
     default_weights = {

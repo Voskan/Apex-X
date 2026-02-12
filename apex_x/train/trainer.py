@@ -43,6 +43,8 @@ from .pcgrad import apply_pcgradpp, diagnostics_to_dict
 from .train_losses import compute_teacher_training_loss
 from .qat import QuantizationSummary, prepare_int8_ptq, prepare_int8_qat
 from .trainer_utils import add_train_epoch_method
+from .memory_manager import MemoryManager
+from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
 LOGGER = get_logger(__name__)
 
@@ -161,6 +163,11 @@ class ApexXTrainer:
         self.val_interval = 5  # Validate every 5 epochs
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         LOGGER.info(f"Checkpoint directory: {self.checkpoint_dir}")
+        
+        self.memory_manager = MemoryManager()
+        self.swa_model = AveragedModel(self.teacher) if self.config.train.swa_enabled else None
+        if self.swa_model:
+             LOGGER.info("SWA (Stochastic Weight Averaging) enabled.")
 
     def _build_teacher_model(self, *, num_classes: int) -> TeacherModel:
         # Keep the staged trainer CPU-fast by default, or use high-capacity backbone
@@ -546,10 +553,17 @@ class ApexXTrainer:
             warmup_ratio=0.1,  # 10% warmup
             min_lr=1e-6,
         )
+        
+        swa_scheduler = None
+        if self.swa_model:
+            swa_scheduler = SWALR(optimizer, swa_lr=self.config.train.swa_lr)
+            LOGGER.info(f"SWA scheduler initialized (start epoch: {self.config.train.swa_start_epoch})")
         train_h = min(self.config.model.input_height, 512)
         train_w = min(self.config.model.input_width, 512)
         
         dataloader = None
+        steps_per_epoch = 1000  # Default fallback
+        
         if dataset_path:
             dataset = SatelliteDataset(
                 root_dir=dataset_path,
@@ -557,15 +571,28 @@ class ApexXTrainer:
                 stride=max(train_h // 2, 128),
             )
             if len(dataset) > 0:
+                # Auto-tuning batch size
+                batch_size = 1
+                if self.config.train.auto_batch_size:
+                    batch_size = self.memory_manager.optimize_batch_size(
+                        self.teacher, 
+                        (3, train_h, train_w),
+                        max_batch_size=32,
+                        start_batch_size=2,
+                        mode="train"
+                    )
+                    LOGGER.info(f"Using auto-tuned batch size: {batch_size}")
+
                 # Basic PyTorch DataLoader with performance tuning
                 dataloader = torch.utils.data.DataLoader(
                      dataset, 
-                     batch_size=1, # Single image for now to avoid collage logic complexity here
+                     batch_size=batch_size, # Optimized batch size
                      shuffle=True,
                      num_workers=self.config.train.dataloader_num_workers,
                      pin_memory=self.config.train.dataloader_pin_memory,
                      collate_fn=_identity_collate,  # Return list of samples
                 )
+                steps_per_epoch = len(dataloader)
                 
         transforms = build_robust_transforms(
             height=train_h, 
@@ -589,8 +616,6 @@ class ApexXTrainer:
                     iterator = iter(dataloader)
                     samples = next(iterator)
                 
-                # Apply transforms
-                batch_images = []
                 for s in samples:
                     # s is TransformSample. 
                     # Augment
@@ -604,103 +629,133 @@ class ApexXTrainer:
             else:
                 image = torch.rand((1, 3, train_h, train_w), generator=generator, dtype=torch.float32)
 
-            samples_for_loss = samples if iterator else None
-            
-            # Only zero gradients at start of accumulation cycle
-            is_accumulation_step = (step_idx % self.gradient_accumulation_steps) != 0
-            should_step = (step_idx + 1) % self.gradient_accumulation_steps == 0
+            # OOM Recovery Wrapper
+            with self.memory_manager.catch_oom() as oom_triggered:
+                if oom_triggered:
+                     # Skip this step if OOM occurred
+                     optimizer.zero_grad(set_to_none=True)
+                     continue
 
-            if self.use_amp and self.scaler is not None:
-                # Zero gradients only at start of cycle
-                if not is_accumulation_step:
-                    optimizer.zero_grad(set_to_none=True)
-                    
-                with torch.cuda.amp.autocast():
-                    # Forward pass with AMP
-                    out = self.teacher(image, use_ema=False)
-                    # Compute training loss with real detection outputs
-                    total_loss, _ = compute_teacher_training_loss(
-                        output=out,
-                        samples=samples_for_loss,
-                        det_weight=1.0,
-                        boundary_weight=0.05,
-                    )
-                    
-                    # Scale loss by accumulation steps
-                    total_loss = total_loss / self.gradient_accumulation_steps
-                
-                # Backward with scaler (accumulate gradients)
-                self.scaler.scale(total_loss).backward()
-                
-                # Only step optimizer after accumulating enough gradients
-                if should_step:
-                    self.scaler.unscale_(optimizer)
-                    
-                    # Gradient clip for stability
-                    torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
-                    
-                    # Verify gradients are finite before stepping
-                    grads_finite = True
-                    for param in self.teacher.parameters():
-                        if param.grad is not None and not torch.isfinite(param.grad).all():
-                            grads_finite = False
-                            break
-                    
-                    if grads_finite:
-                        self.scaler.step(optimizer)
-                        self.scaler.update()
-                    else:
-                        LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
-                        optimizer.zero_grad(set_to_none=True)
-            else:
-                # Zero gradients only at start of cycle
-                if not is_accumulation_step:
-                    optimizer.zero_grad(set_to_none=True)
-                    
-                with heavy_ops_autocast_context(self.precision_policy):
-                    out = self.teacher(image, use_ema=False)
-                    # Compute training loss with real detection outputs
-                    total_loss, _ = compute_teacher_training_loss(
-                        output=out,
-                        samples=samples_for_loss,
-                        det_weight=1.0,
-                        boundary_weight=0.05,
-                    )
-                    
-                    # Scale loss by accumulation steps
-                    total_loss = total_loss / self.gradient_accumulation_steps
-                
-                # Backward (accumulate gradients)
-                total_loss.backward()
-                
-                # Only step optimizer after accumulating enough gradients
-                if should_step:
-                    torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
-                    
-                    # Verify gradients are finite before stepping
-                    grads_finite = True
-                    for param in self.teacher.parameters():
-                        if param.grad is not None and not torch.isfinite(param.grad).all():
-                            grads_finite = False
-                            break
-                            
-                    if grads_finite:
-                        optimizer.step()
-                    else:
-                        LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
-                        optimizer.zero_grad(set_to_none=True)
+                samples_for_loss = samples if iterator else None
+                # ... rest of the loop content ...
+
             
-            # Update scheduler and EMA only when we actually step
-            if should_step:
-                scheduler.step()
-                self.teacher.update_ema()
+                # Only zero gradients at start of accumulation cycle
+                is_accumulation_step = (step_idx % self.gradient_accumulation_steps) != 0
+                should_step = (step_idx + 1) % self.gradient_accumulation_steps == 0
+
+                if self.use_amp and self.scaler is not None:
+                    # Zero gradients only at start of cycle
+                    if not is_accumulation_step:
+                        optimizer.zero_grad(set_to_none=True)
+                        
+                    with torch.cuda.amp.autocast():
+                        # Forward pass with AMP
+                        out = self.teacher(image, use_ema=False)
+                        # Compute training loss with real detection outputs
+                        total_loss, _ = compute_teacher_training_loss(
+                            output=out,
+                            samples=samples_for_loss,
+                            det_weight=1.0,
+                            boundary_weight=0.05,
+                            box_loss_type=self.config.train.box_loss_type,
+                        )
+                        
+                        # Scale loss by accumulation steps
+                        total_loss = total_loss / self.gradient_accumulation_steps
+                    
+                    # Backward with scaler (accumulate gradients)
+                    self.scaler.scale(total_loss).backward()
+                    
+                    # Only step optimizer after accumulating enough gradients
+                    if should_step:
+                        self.scaler.unscale_(optimizer)
+                        
+                        # Gradient clip for stability
+                        torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
+                        
+                        # Verify gradients are finite before stepping
+                        grads_finite = True
+                        for param in self.teacher.parameters():
+                            if param.grad is not None and not torch.isfinite(param.grad).all():
+                                grads_finite = False
+                                break
+                        
+                        if grads_finite:
+                            self.scaler.step(optimizer)
+                            self.scaler.update()
+                        else:
+                            LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
+                            optimizer.zero_grad(set_to_none=True)
+                else:
+                    # Zero gradients only at start of cycle
+                    if not is_accumulation_step:
+                        optimizer.zero_grad(set_to_none=True)
+                        
+                    with heavy_ops_autocast_context(self.precision_policy):
+                        out = self.teacher(image, use_ema=False)
+                        # Compute training loss with real detection outputs
+                        total_loss, _ = compute_teacher_training_loss(
+                            output=out,
+                            samples=samples_for_loss,
+                            det_weight=1.0,
+                            boundary_weight=0.05,
+                            box_loss_type=self.config.train.box_loss_type,
+                        )
+                        
+                        # Scale loss by accumulation steps
+                        total_loss = total_loss / self.gradient_accumulation_steps
+                    
+                    # Backward (accumulate gradients)
+                    total_loss.backward()
+                    
+                    # Only step optimizer after accumulating enough gradients
+                    if should_step:
+                        torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
+                        
+                        # Verify gradients are finite before stepping
+                        grads_finite = True
+                        for param in self.teacher.parameters():
+                            if param.grad is not None and not torch.isfinite(param.grad).all():
+                                grads_finite = False
+                                break
+                                
+                        if grads_finite:
+                            optimizer.step()
+                        else:
+                            LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
+                            optimizer.zero_grad(set_to_none=True)
                 
-            loss_last = float(total_loss.detach().item() * self.gradient_accumulation_steps)  # Unscale for logging
-            
-            # Log current LR (only do this periodically to avoid spam)
-            if step_idx % 100 == 0:
-                current_lr = scheduler.get_last_lr()[0]
-                LOGGER.debug(f"Step {step_idx}/{steps}: loss={loss_last:.4f}, lr={current_lr:.6f}")
+                # Update scheduler and EMA only when we actually step
+                if should_step:
+                    # SWA Logic
+                    use_swa = False
+                    if self.swa_model and swa_scheduler:
+                        current_epoch = step_idx // steps_per_epoch
+                        if current_epoch >= self.config.train.swa_start_epoch:
+                            use_swa = True
+                            self.swa_model.update_parameters(self.teacher)
+                            swa_scheduler.step()
+                    
+                    if not use_swa:
+                        scheduler.step()
+                        
+                    self.teacher.update_ema()
+                    
+                loss_last = float(total_loss.detach().item() * self.gradient_accumulation_steps)  # Unscale for logging
+                
+                # Log current LR (only do this periodically to avoid spam)
+                if step_idx % 100 == 0:
+                    current_lr = scheduler.get_last_lr()[0]
+                    LOGGER.debug(f"Step {step_idx}/{steps}: loss={loss_last:.4f}, lr={current_lr:.6f}")
+
+
+        # Finalize SWA
+        if self.swa_model and swa_scheduler and dataloader:
+            LOGGER.info("Updating SWA batch norm statistics...")
+            update_bn(dataloader, self.swa_model, device=next(self.teacher.parameters()).device)
+            self.teacher.load_state_dict(self.swa_model.module.state_dict())
+            LOGGER.info("SWA weights loaded into teacher model.")
 
         # Get final LR
         final_lr = scheduler.get_last_lr()[0]

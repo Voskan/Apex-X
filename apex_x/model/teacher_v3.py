@@ -68,17 +68,19 @@ class TeacherModelV3(nn.Module):
         self.fpn_channels = fpn_channels
 
         # --- backbone ---------------------------------------------------------
-        if DINOV2_AVAILABLE:
-            self.backbone = PVModuleDINOv2(
-                model_name=backbone_model,
-                lora_rank=lora_rank,
+        # --- backbone ---------------------------------------------------------
+        if not DINOV2_AVAILABLE:
+            raise ImportError(
+                "DINOv2 is required for Apex-X 'Best in World' mode. "
+                "Please install transformers and torch."
             )
-            # PVModuleDINOv2 produces P3 (256), P4 (512), P5 (1024)
-            backbone_channels = [256, 512, 1024]
-        else:
-            from .pv_module import PVModule
-            self.backbone = PVModule()
-            backbone_channels = [80, 160, 256]
+            
+        self.backbone = PVModuleDINOv2(
+            model_name=backbone_model,
+            lora_rank=lora_rank,
+        )
+        # PVModuleDINOv2 produces P3 (256), P4 (512), P5 (1024)
+        backbone_channels = [256, 512, 1024]
 
         self._num_levels = len(backbone_channels)
 
@@ -102,7 +104,7 @@ class TeacherModelV3(nn.Module):
         self.mask_head = CascadeMaskHead(
             in_channels=fpn_channels,
             num_stages=num_cascade_stages,
-            mask_sizes=[14, 28, 28],
+            mask_sizes=[28, 56, 112],  # High-res masks for "Best in World" targets
         )
 
         # --- quality prediction head -------------------------------------------

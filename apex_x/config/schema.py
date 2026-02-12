@@ -213,6 +213,9 @@ class TrainConfig:
     qat_int8: bool = False
     qat_fp8: bool = False
 
+    # Loss configuration
+    box_loss_type: str = "mpdiou"  # iou, giou, diou, ciou, mpdiou
+
     # Performance optimizations
     torch_compile: bool = False
     tf32_enabled: bool = True
@@ -220,6 +223,13 @@ class TrainConfig:
     dataloader_num_workers: int = 12
     dataloader_pin_memory: bool = True
     enable_lora_finetune: bool = False
+    
+    # Advanced Training
+    auto_batch_size: bool = False
+    swa_enabled: bool = False
+    swa_lr: float = 0.05
+    swa_start_epoch: int = 5
+    tta_enabled: bool = False
 
     def validate(self) -> None:
         if not self.curriculum_stages:
@@ -257,6 +267,15 @@ class TrainConfig:
 
         if (self.qat_int8 or self.qat_fp8) and not self.qat_enable:
             raise ValueError("train.qat_enable must be true when qat_int8 or qat_fp8 is enabled")
+
+        if self.box_loss_type not in {"iou", "giou", "diou", "ciou", "mpdiou"}:
+             raise ValueError("train.box_loss_type must be iou, giou, diou, ciou, or mpdiou")
+
+        if self.swa_enabled:
+            if self.swa_lr <= 0:
+                raise ValueError("train.swa_lr must be > 0")
+            if self.swa_start_epoch < 0:
+                raise ValueError("train.swa_start_epoch must be >= 0")
 
     def distill_enabled(self) -> bool:
         return (not self.disable_distill) and self.distill_weight > 0.0
