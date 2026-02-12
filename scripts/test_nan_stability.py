@@ -1,9 +1,7 @@
 import torch
 import numpy as np
-from pathlib import Path
 from apex_x.train.trainer import ApexXTrainer
 from apex_x.config import ApexXConfig
-from apex_x.data.transforms import TransformSample
 
 def test_nan_stability():
     print("Testing NaN stability...")
@@ -24,7 +22,7 @@ def test_nan_stability():
     try:
         # In actual training, we'd use the model forward
         print("Running forward pass with NaNs...")
-        out = trainer.teacher(image_t)
+        _ = trainer.teacher(image_t)
         print("Forward pass complete.")
     except Exception as e:
         print(f"Forward pass failed as expected without internal guards: {e}")
@@ -32,8 +30,6 @@ def test_nan_stability():
     # 2. Test Gradient Guard
     # We'll simulate a training step where a NaN is injected into the loss
     print("Testing gradient guard skip logic...")
-    
-    optimizer = torch.optim.AdamW(trainer.teacher.parameters(), lr=1e-3)
     
     # Manually inject a NaN into one parameter's gradient
     params = [p for p in trainer.teacher.parameters() if p.requires_grad]

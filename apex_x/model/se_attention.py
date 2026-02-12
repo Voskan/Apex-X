@@ -6,7 +6,6 @@ Expected impact: +1-2% mAP with minimal compute overhead.
 
 from __future__ import annotations
 
-import torch
 from torch import Tensor, nn
 
 

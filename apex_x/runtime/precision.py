@@ -19,9 +19,17 @@ def dtype_name(dtype: torch.dtype) -> str:
     return str(dtype).replace("torch.", "")
 
 
-def _resolve_device(device: str | torch.device | None) -> torch.device:
+def _resolve_device(
+    device: str | torch.device | None,
+    *,
+    preferred_backend: str | None = None,
+) -> torch.device:
     if device is None:
-        if torch.cuda.is_available():
+        if preferred_backend == "cpu":
+            return torch.device("cpu")
+        if preferred_backend in {"torch", "triton", "tensorrt"} and torch.cuda.is_available():
+            return torch.device("cuda", torch.cuda.current_device())
+        if preferred_backend is None and torch.cuda.is_available():
             return torch.device("cuda", torch.cuda.current_device())
         return torch.device("cpu")
     return torch.device(device)
@@ -82,7 +90,7 @@ def resolve_precision_policy(
     *,
     device: str | torch.device | None = None,
 ) -> PrecisionPolicy:
-    resolved_device = _resolve_device(device)
+    resolved_device = _resolve_device(device, preferred_backend=config.runtime.backend)
     profile = config.runtime.precision_profile
     fp8_requested = profile == "balanced" or bool(config.train.qat_fp8)
 

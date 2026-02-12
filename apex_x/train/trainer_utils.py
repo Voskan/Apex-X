@@ -1,7 +1,7 @@
 """Trainer utilities - adds train_epoch method to ApexXTrainer."""
 
+import shutil
 import torch
-from torch import Tensor
 from apex_x.utils import get_logger
 from .train_losses import compute_teacher_training_loss
 
@@ -121,14 +121,26 @@ def add_train_epoch_method(trainer_class):
     def save_checkpoint(self, path, epoch=0, metrics=None):
         """Simple checkpoint wrapper."""
         from pathlib import Path
+
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        previous_checkpoint_dir = getattr(self, "checkpoint_dir", None)
+        self.checkpoint_dir = path.parent
+        trainable_params = [p for p in self.teacher.parameters() if p.requires_grad]
+        if not trainable_params:
+            trainable_params = list(self.teacher.parameters())
+        checkpoint_optimizer = torch.optim.SGD(trainable_params, lr=0.0, momentum=0.0)
         self.save_training_checkpoint(
             epoch=epoch,
             step=0,
-            optimizer=None,
+            optimizer=checkpoint_optimizer,
             metrics=metrics,
+            is_best=path.name == "best.pt",
         )
+        canonical_epoch_path = path.parent / f"epoch_{int(epoch):04d}.pt"
+        if canonical_epoch_path.exists() and canonical_epoch_path.resolve() != path.resolve():
+            shutil.copy2(canonical_epoch_path, path)
+        self.checkpoint_dir = previous_checkpoint_dir
     
     def load_checkpoint(self, path):
         """Simple load wrapper."""

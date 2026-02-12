@@ -306,10 +306,11 @@ def gather_gate_scatter(
                 fallback_reason=None,
             )
 
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             # Keep backward-compatible behavior for legacy entrypoints: if Triton
             # reports unavailable from inside kernel path, return reference result.
-            if "Triton is not available" in str(exc):
+            message = str(exc)
+            if "Triton is not available" in message or "requires CUDA tensors" in message:
                 legacy_fallback_reason = "legacy_triton_entrypoint_deprecated_reference_only"
             elif not allow_fallback:
                 raise

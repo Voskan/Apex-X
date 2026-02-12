@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import torch
 from torch import Tensor
-from typing import Dict, List, Any, Tuple
+from typing import Dict
 
 from apex_x.utils import get_logger
 

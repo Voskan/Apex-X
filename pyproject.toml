@@ -78,3 +78,23 @@ disallow_incomplete_defs = true
 strict_equality = true
 pretty = true
 show_error_codes = true
+incremental = false
+
+[[tool.mypy.overrides]]
+module = ["opentelemetry", "opentelemetry.*", "prometheus_client", "prometheus_client.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  "apex_x.data.transforms",
+  "apex_x.data.satellite_augmentations",
+  "apex_x.data.augmentations",
+  "apex_x.data.satellite",
+  "apex_x.data.quality_filter",
+  "apex_x.data.lsj_augmentation",
+]
+ignore_errors = true

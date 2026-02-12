@@ -34,21 +34,32 @@ That's it! The script will:
 ## Manual Training
 
 ```bash
-python scripts/train_baseline_coco.py \
+python scripts/train.py \
     --config configs/coco_baseline.yaml \
-    --data-root /data/coco \
+    --dataset-path /data/coco \
     --output-dir ./outputs/baseline \
-    --num-workers 4
+    --num-classes 80 \
+    --steps-per-stage 100
+```
+
+Canonical CLI equivalent:
+
+```bash
+python -m apex_x.cli train configs/coco_baseline.yaml \
+    --dataset-path /data/coco \
+    --set train.output_dir=./outputs/baseline \
+    --num-classes 80 \
+    --steps-per-stage 100
 ```
 
 ### Command-Line Options
 
 - `--config`: Path to YAML config file (default: `configs/coco_baseline.yaml`)
-- `--data-root`: COCO dataset root directory
+- `--dataset-path`: Dataset root path used by staged trainer
 - `--output-dir`: Where to save checkpoints and logs
 - `--resume`: Resume from checkpoint path
-- `--device`: Device to use (`cuda` or `cpu`)
-- `--num-workers`: Data loading workers (default: 4)
+- `--checkpoint-dir`: Explicit checkpoint directory override
+- `--seed`: Random seed for deterministic run
 
 ---
 
@@ -160,7 +171,7 @@ best.pt        # Best mAP so far
 If training interrupted:
 
 ```bash
-python scripts/train_baseline_coco.py \
+python scripts/train.py \
     --config configs/coco_baseline.yaml \
     --resume outputs/baseline/checkpoints/last.pt
 ```
@@ -168,7 +179,8 @@ python scripts/train_baseline_coco.py \
 Or resume from specific epoch:
 
 ```bash
-python scripts/train_baseline_coco.py \
+python scripts/train.py \
+    --config configs/coco_baseline.yaml \
     --resume outputs/baseline/checkpoints/epoch_0150.pt
 ```
 

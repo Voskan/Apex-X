@@ -9,7 +9,7 @@ Expected impact: +2-3% mask AP
 from __future__ import annotations
 
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 import torch.nn.functional as F
 
 

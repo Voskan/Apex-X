@@ -5,15 +5,12 @@ Reads YOLO-format .txt labels with polygon coordinates and data.yaml config.
 
 from __future__ import annotations
 
-import os
 import yaml
 from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
-import torch
-from torch import Tensor
 from torch.utils.data import Dataset
 
 from apex_x.data.transforms import TransformSample

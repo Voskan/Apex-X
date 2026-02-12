@@ -12,7 +12,9 @@ from apex_x.config import ApexXConfig
 
 from .det_head import DetHead, DetHeadOutput
 from .fpn import DualPathFPN
+from .inst_seg_head import PrototypeInstanceSegHead
 from .pv_module import PVModule, PVModuleOutput
+from .post_process import compute_anchor_centers
 
 _LOGIT_LEVEL_ORDER: Final[tuple[str, ...]] = ("P3", "P4", "P5", "P6", "P7")
 ModuleT = TypeVar("ModuleT", bound=nn.Module)
@@ -79,6 +81,8 @@ class TeacherModel(nn.Module):
         use_ema: bool = False,
         ema_decay: float = 0.999,
         use_ema_for_forward: bool = True,
+        enable_seg_head: bool = True,
+        seg_num_instances: int = 16,
     ) -> None:
         super().__init__()
         if num_classes <= 0:
@@ -96,6 +100,7 @@ class TeacherModel(nn.Module):
         self.use_ema = bool(use_ema)
         self.ema_decay = float(ema_decay)
         self.use_ema_for_forward = bool(use_ema_for_forward)
+        self.seg_num_instances = max(1, int(seg_num_instances))
 
         if pv_module is None or fpn is None or det_head is None:
             model_cfg = self.config.model
@@ -120,10 +125,28 @@ class TeacherModel(nn.Module):
                 num_classes=self.num_classes,
                 hidden_channels=out_c,
             )
+            self.seg_head = (
+                PrototypeInstanceSegHead(
+                    in_channels=out_c,
+                    num_prototypes=16,
+                    coeff_hidden_dim=max(64, out_c),
+                )
+                if enable_seg_head
+                else None
+            )
         else:
             self.pv_module = pv_module
             self.fpn = fpn
             self.det_head = det_head
+            self.seg_head = (
+                PrototypeInstanceSegHead(
+                    in_channels=self.det_head.in_channels,
+                    num_prototypes=16,
+                    coeff_hidden_dim=max(64, self.det_head.in_channels),
+                )
+                if enable_seg_head
+                else None
+            )
 
         self.ema_pv_module: PVModule | None = None
         self.ema_fpn: DualPathFPN | None = None
@@ -187,6 +210,61 @@ class TeacherModel(nn.Module):
             selected[layer] = features[layer]
         return selected
 
+    def _propose_segmentation_boxes(
+        self,
+        *,
+        det_out: DetHeadOutput,
+        image: Tensor,
+    ) -> Tensor | None:
+        if "P3" not in det_out.cls_logits or "P3" not in det_out.box_reg or "P3" not in det_out.quality:
+            return None
+
+        cls_logits = det_out.cls_logits["P3"]
+        box_reg = det_out.box_reg["P3"]
+        quality = det_out.quality["P3"]
+        if cls_logits.ndim != 4 or box_reg.ndim != 4 or quality.ndim != 4:
+            return None
+
+        bsz, num_classes, feat_h, feat_w = cls_logits.shape
+        num_anchors = feat_h * feat_w
+        if num_anchors <= 0:
+            return None
+
+        topk = min(self.seg_num_instances, num_anchors)
+        anchor_centers = compute_anchor_centers((feat_h, feat_w), stride=8, device=cls_logits.device)
+        anchor_centers = anchor_centers.to(dtype=cls_logits.dtype)
+
+        image_h = float(image.shape[2])
+        image_w = float(image.shape[3])
+        batch_boxes: list[Tensor] = []
+
+        for batch_idx in range(bsz):
+            cls_flat = cls_logits[batch_idx].permute(1, 2, 0).reshape(num_anchors, num_classes)
+            box_flat = box_reg[batch_idx].permute(1, 2, 0).reshape(num_anchors, 4)
+            quality_flat = quality[batch_idx].permute(1, 2, 0).reshape(num_anchors).sigmoid()
+
+            score_flat = cls_flat.sigmoid().amax(dim=1) * quality_flat
+            topk_indices = torch.topk(score_flat, k=topk, largest=True, sorted=True).indices
+
+            selected_box = box_flat[topk_indices]
+            selected_center = anchor_centers[topk_indices]
+            distances = selected_box * 8.0
+            x1 = selected_center[:, 0] - distances[:, 0]
+            y1 = selected_center[:, 1] - distances[:, 1]
+            x2 = selected_center[:, 0] + distances[:, 2]
+            y2 = selected_center[:, 1] + distances[:, 3]
+
+            boxes_xyxy = torch.stack((x1, y1, x2, y2), dim=1)
+            boxes_xyxy[:, 0] = boxes_xyxy[:, 0].clamp(0.0, image_w)
+            boxes_xyxy[:, 2] = boxes_xyxy[:, 2].clamp(0.0, image_w)
+            boxes_xyxy[:, 1] = boxes_xyxy[:, 1].clamp(0.0, image_h)
+            boxes_xyxy[:, 3] = boxes_xyxy[:, 3].clamp(0.0, image_h)
+            batch_boxes.append(boxes_xyxy)
+
+        if not batch_boxes:
+            return None
+        return torch.stack(batch_boxes, dim=0)
+
     def forward(self, image: Tensor, *, use_ema: bool | None = None) -> TeacherDistillOutput:
         if image.ndim != 4:
             raise ValueError("image must be [B,3,H,W]")
@@ -222,14 +300,20 @@ class TeacherModel(nn.Module):
         logits_flat = flatten_logits_for_distill(det_out.cls_logits)
         selected_features = self._select_features(fpn_features)
 
-        # Optional: Add segmentation head output if available
         masks = None
-        if hasattr(self, 'seg_head') and self.seg_head is not None:
-            # Run segmentation head if configured
-            # Would need boxes from detection for instance segmentation
-            # For now, keep as None - can be added when needed
-            pass
-        
+        if self.seg_head is not None:
+            seg_boxes = self._propose_segmentation_boxes(det_out=det_out, image=image)
+            if seg_boxes is not None and seg_boxes.shape[1] > 0:
+                seg_output = self.seg_head(
+                    features=fpn_features,
+                    boxes_xyxy=seg_boxes,
+                    image_size=(int(image.shape[2]), int(image.shape[3])),
+                    output_size=(int(image.shape[2]), int(image.shape[3])),
+                    normalized_boxes=False,
+                    crop_to_boxes=True,
+                )
+                masks = seg_output.masks
+
         return TeacherDistillOutput(
             logits=logits_flat,
             logits_by_level=det_out.cls_logits,

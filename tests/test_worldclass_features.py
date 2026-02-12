@@ -12,7 +12,6 @@ Tests all advanced modules:
 import pytest
 import torch
 import numpy as np
-from pathlib import Path
 
 
 class TestDINOv2Backbone:
@@ -20,7 +19,7 @@ class TestDINOv2Backbone:
     
     def test_dinov2_import(self):
         """Test DINOv2 module imports."""
-        from apex_x.model import PVModuleDINOv2, DINOV2_AVAILABLE, LoRAAdapter
+        from apex_x.model import PVModuleDINOv2, LoRAAdapter
         
         assert PVModuleDINOv2 is not None
         assert LoRAAdapter is not None
@@ -262,8 +261,8 @@ class TestDDPWrapper:
         from apex_x.train.ddp import DDPWrapper
         
         # Can't actually initialize without distributed environment
-        # Just verify class exists
-        assert DDPWrapper is object().__class__.__bases__[0]
+        # Just verify class exists and is a class type
+        assert isinstance(DDPWrapper, type)
 
 
 if __name__ == '__main__':

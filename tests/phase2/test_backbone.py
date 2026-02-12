@@ -5,15 +5,9 @@ from apex_x.model.timm_backbone import TimmBackboneAdapter
 
 
 def test_timm_backbone_shapes():
-    if not torch.cuda.is_available() and not torch.backends.mps.is_available():
-        # Run on CPU if needed, assuming timm works on CPU
-        device = "cpu"
-    else:
-        device = "cpu" # Force CPU for simple shape test to avoid VRAM issues during test
-
     # Test with a small efficientnet
     try:
-        import timm
+        __import__("timm")
     except ImportError:
         pytest.skip("timm not installed")
 
@@ -64,7 +58,7 @@ def test_timm_backbone_shapes():
 
 def test_timm_backbone_resnet():
     try:
-        import timm
+        __import__("timm")
     except ImportError:
         pytest.skip("timm not installed")
 

@@ -8,10 +8,9 @@ Identifies 'hard' examples from unlabeled satellite imagery by analyzing:
 
 from __future__ import annotations
 
-import numpy as np
 import torch
 from torch import Tensor
-from typing import Dict, List, Any
+from typing import Dict, List
 
 from apex_x.utils import get_logger
 

@@ -6,7 +6,6 @@ and ground truth annotations.
 
 from __future__ import annotations
 
-from typing import Any
 
 import torch
 from torch import Tensor
@@ -17,6 +16,7 @@ from apex_x.losses.det_loss import (
     build_simota_targets_for_anchors,
     det_loss_with_simota,
 )
+from apex_x.losses.seg_loss import instance_segmentation_losses
 
 
 def compute_teacher_training_loss(
@@ -196,9 +196,49 @@ def compute_teacher_training_loss(
     # Boundary distillation loss
     boundary_loss = output.boundaries.abs().mean()
     boundary_loss = torch.nan_to_num(boundary_loss, nan=0.0)
+
+    # Instance segmentation loss when masks are available from both prediction and GT.
+    seg_loss = torch.tensor(0.0, device=device)
+    seg_batches = 0
+    if output.masks is not None and output.masks.ndim == 4:
+        pred_masks = output.masks
+        for batch_idx, sample in enumerate(samples[: pred_masks.shape[0]]):
+            if sample.masks is None or sample.masks.shape[0] <= 0:
+                continue
+            pred_batch = pred_masks[batch_idx]
+            if pred_batch.ndim != 3 or pred_batch.shape[0] <= 0:
+                continue
+            gt_masks = torch.from_numpy(sample.masks).to(device=device, dtype=pred_batch.dtype)
+            if gt_masks.ndim == 2:
+                gt_masks = gt_masks.unsqueeze(0)
+            num_instances = min(int(pred_batch.shape[0]), int(gt_masks.shape[0]))
+            if num_instances <= 0:
+                continue
+
+            pred_used = pred_batch[:num_instances]
+            gt_used = gt_masks[:num_instances]
+            if gt_used.shape[-2:] != pred_used.shape[-2:]:
+                gt_used = torch.nn.functional.interpolate(
+                    gt_used.unsqueeze(1),
+                    size=pred_used.shape[-2:],
+                    mode="nearest",
+                ).squeeze(1)
+
+            pred_logits = torch.logit(pred_used.clamp(min=1e-4, max=1.0 - 1e-4))
+            seg_out = instance_segmentation_losses(
+                mask_logits=pred_logits.unsqueeze(0),
+                target_masks=gt_used.unsqueeze(0),
+                bce_weight=1.0,
+                dice_weight=1.0,
+                boundary_weight=1.0,
+            )
+            seg_loss += seg_out.total_loss
+            seg_batches += 1
+    if seg_batches > 0:
+        seg_loss = seg_loss / seg_batches
     
     # Combine
-    total_loss = det_weight * det_loss + boundary_weight * boundary_loss
+    total_loss = det_weight * det_loss + boundary_weight * boundary_loss + seg_loss
     
     # Record components
     loss_dict["cls_loss"] = float(total_cls_loss.item())
@@ -206,6 +246,7 @@ def compute_teacher_training_loss(
     loss_dict["quality_loss"] = float(total_quality_loss.item())
     loss_dict["det_loss"] = float(det_loss.item())
     loss_dict["boundary_loss"] = float(boundary_loss.item())
+    loss_dict["seg_loss"] = float(seg_loss.item())
     loss_dict["total_loss"] = float(total_loss.item())
     loss_dict["num_levels"] = num_levels_used
     

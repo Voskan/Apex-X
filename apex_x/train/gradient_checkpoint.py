@@ -8,9 +8,8 @@ Expected benefit: 50% memory reduction with ~15% slowdown.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 
-import torch
 from torch import Tensor, nn
 from torch.utils.checkpoint import checkpoint
 

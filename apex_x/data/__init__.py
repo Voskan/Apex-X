@@ -49,6 +49,7 @@ __all__ = [
     "CocoPolygon",
     "CocoRLE",
     "CocoSegmentation",
+    "CocoBBox",
     "CocoCategory",
     "CocoImage",
     "CocoAnnotation",
@@ -67,6 +68,7 @@ __all__ = [
     "SatelliteTile",
     "AlbumentationsAdapter",
     "build_robust_transforms",
+    "sanitize_sample",
     "CocoDetectionDataset",
     "coco_collate_fn",
     "PYCOCOTOOLS_AVAILABLE",
@@ -77,5 +79,4 @@ __all__ = [
     "YOLOSegmentationDataset",
     "yolo_collate_fn",
 ]
-
 

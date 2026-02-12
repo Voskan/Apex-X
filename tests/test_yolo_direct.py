@@ -1,5 +1,3 @@
-import os
-import torch
 from apex_x.data import YOLOSegmentationDataset
 
 def test_yolo_dataset():

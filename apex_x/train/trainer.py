@@ -36,7 +36,6 @@ from apex_x.runtime import heavy_ops_autocast_context, resolve_precision_policy
 from apex_x.tiles import tile_grid_shape
 from apex_x.utils import get_logger, log_event, seed_all
 
-from apex_x.eval import COCOEvaluator, PYCOCOTOOLS_AVAILABLE
 
 from .checkpoint import CheckpointMetadata, cleanup_old_checkpoints, load_checkpoint, save_checkpoint
 from .lr_scheduler import create_lr_scheduler
@@ -152,14 +151,16 @@ class ApexXTrainer:
                 LOGGER.warning("torch.compile requested but not available in this PyTorch version")
         
         # Checkpoint management
-        self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
+        if checkpoint_dir is not None:
+            self.checkpoint_dir = Path(checkpoint_dir)
+        else:
+            self.checkpoint_dir = Path(self.config.train.output_dir) / "checkpoints"
         self.best_metric = float('-inf')  # Higher is better for AP
         self.best_metric_name = "mAP_segm"  # Track mask AP
         self.current_epoch = 0
         self.val_interval = 5  # Validate every 5 epochs
-        if self.checkpoint_dir:
-            self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-            LOGGER.info(f"Checkpoint directory: {self.checkpoint_dir}")
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        LOGGER.info(f"Checkpoint directory: {self.checkpoint_dir}")
 
     def _build_teacher_model(self, *, num_classes: int) -> TeacherModel:
         # Keep the staged trainer CPU-fast by default, or use high-capacity backbone
@@ -391,7 +392,7 @@ class ApexXTrainer:
             try:
                 # Try to get COCO annotations from dataset
                 if hasattr(val_dataloader.dataset, 'coco'):
-                    evaluator = COCOEvaluator(val_dataloader.dataset.coco)
+                    evaluator = COCOEvaluator(val_dataloader.dataset.coco, iou_types=["bbox", "segm"])
                     LOGGER.info("Initialized COCO evaluator for mAP computation")
             except Exception as e:
                 LOGGER.warning(f"Could not initialize COCO evaluator: {e}")
@@ -449,21 +450,52 @@ class ApexXTrainer:
                     for det_idx, detection in enumerate(detections):
                         if det_idx < len(image_ids):
                             img_id = image_ids[det_idx]
+                            pred_masks = None
+                            if output.masks is not None and output.masks.ndim == 4 and det_idx < output.masks.shape[0]:
+                                pred_masks = output.masks[det_idx]
                             
                             # Convert to COCO format
                             coco_dets = []
                             boxes = detection['boxes'].cpu().numpy()
                             scores = detection['scores'].cpu().numpy()
                             classes = detection['classes'].cpu().numpy()
+                            image_h = int(images.shape[2])
+                            image_w = int(images.shape[3])
                             
-                            for box, score, cls_id in zip(boxes, scores, classes):
+                            for inst_idx, (box, score, cls_id) in enumerate(zip(boxes, scores, classes)):
                                 x1, y1, x2, y2 = box
-                                coco_dets.append({
+                                payload = {
                                     'image_id': int(img_id),
                                     'category_id': int(cls_id),
                                     'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
                                     'score': float(score),
-                                })
+                                }
+
+                                mask_np = None
+                                if pred_masks is not None and inst_idx < pred_masks.shape[0]:
+                                    candidate = pred_masks[inst_idx].detach().cpu().numpy()
+                                    mask_np = (candidate > 0.5).astype(np.uint8)
+                                else:
+                                    x1i = int(max(0, min(image_w, np.floor(x1))))
+                                    y1i = int(max(0, min(image_h, np.floor(y1))))
+                                    x2i = int(max(0, min(image_w, np.ceil(x2))))
+                                    y2i = int(max(0, min(image_h, np.ceil(y2))))
+                                    fallback_mask = np.zeros((image_h, image_w), dtype=np.uint8)
+                                    if x2i > x1i and y2i > y1i:
+                                        fallback_mask[y1i:y2i, x1i:x2i] = 1
+                                    mask_np = fallback_mask
+
+                                if mask_np is not None:
+                                    try:
+                                        from pycocotools import mask as mask_utils
+
+                                        rle = mask_utils.encode(np.asfortranarray(mask_np))
+                                        rle["counts"] = rle["counts"].decode("utf-8")
+                                        payload["segmentation"] = rle
+                                    except Exception:
+                                        pass
+
+                                coco_dets.append(payload)
                             
                             evaluator.update(coco_dets)
                             all_image_ids.append(img_id)
@@ -1290,29 +1322,46 @@ class ApexXTrainer:
             },
         )
 
-        # Save checkpoint and config
+        # Save checkpoints and config artifacts.
         output_dir = Path(self.config.train.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        checkpoint_path = output_dir / "teacher_checkpoint.pt"
-        torch.save(self.teacher.state_dict(), checkpoint_path)
+        # Keep legacy state_dict artifact for backward compatibility with existing tooling.
+        legacy_checkpoint_path = output_dir / "teacher_checkpoint.pt"
+        torch.save(self.teacher.state_dict(), legacy_checkpoint_path)
 
-        # config_path = output_dir / "config.yaml"
-        # Simple dict dump for now; proper YAML requires extra deps
-
-        # We'll use json for config to avoid extra deps if needed, but the plan said config.yaml
-        # Let's try to just write the dict as json for simplicity and robustness in this env
         import json
 
-        with open(output_dir / "config.json", "w") as f:
+        config_path = output_dir / "config.json"
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(self.config.to_dict(), f, indent=2)
+
+        # Canonical checkpoint lifecycle (epoch_*.pt + best.pt + last.pt + metadata).
+        trainable_params = [p for p in self.teacher.parameters() if p.requires_grad]
+        if not trainable_params:
+            trainable_params = list(self.teacher.parameters())
+        checkpoint_optimizer = torch.optim.SGD(trainable_params, lr=0.0, momentum=0.0)
+        self.best_metric_name = "loss_proxy"
+        self.best_metric = float(result.loss_proxy)
+        self.save_training_checkpoint(
+            epoch=self.current_epoch,
+            step=0,
+            optimizer=checkpoint_optimizer,
+            metrics={
+                "loss_proxy": float(result.loss_proxy),
+                "final_mu": float(result.final_mu),
+            },
+            is_best=True,
+        )
 
         log_event(
             LOGGER,
             "training_artifacts_saved",
             fields={
-                "checkpoint": str(checkpoint_path),
-                "config": str(output_dir / "config.json"),
+                "checkpoint_legacy": str(legacy_checkpoint_path),
+                "checkpoint_best": str(self.checkpoint_dir / "best.pt"),
+                "checkpoint_last": str(self.checkpoint_dir / "last.pt"),
+                "config": str(config_path),
             },
         )
 

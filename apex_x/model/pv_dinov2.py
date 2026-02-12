@@ -14,7 +14,7 @@ import torch
 from torch import Tensor, nn
 
 try:
-    from transformers import Dinov2Model, Dinov2Config
+    from transformers import Dinov2Model
     DINOV2_AVAILABLE = True
 except ImportError:
     DINOV2_AVAILABLE = False
@@ -137,6 +137,27 @@ class PVModuleDINOv2(nn.Module):
         # DINOv2 outputs: [B, N_patches, D] where N_patches = (H/14) * (W/14)
         # We need to reshape to [B, D, H', W']
         self.patch_size = 14  # DINOv2 uses 14x14 patches
+
+    def _resolve_feature_layers(self, max_index: int) -> tuple[int, int, int]:
+        if max_index < 0:
+            raise ValueError("DINOv2 hidden_states is empty")
+
+        requested = [int(v) for v in self.feature_layers]
+        resolved: list[int] = []
+        for idx in requested:
+            if idx < 0:
+                idx = max_index + idx
+            resolved.append(max(0, min(max_index, idx)))
+
+        # Keep pyramid semantics stable (early < mid < deep).
+        if not (resolved[0] < resolved[1] < resolved[2]):
+            if max_index >= 2:
+                resolved = [max_index // 3, (2 * max_index) // 3, max_index]
+            elif max_index == 1:
+                resolved = [0, 0, 1]
+            else:
+                resolved = [0, 0, 0]
+        return (resolved[0], resolved[1], resolved[2])
     
     def _reshape_vit_output(self, x: Tensor) -> Tensor:
         """Reshape ViT sequence output to 2D feature map.
@@ -192,10 +213,12 @@ class PVModuleDINOv2(nn.Module):
             )
 
         hidden_states = outputs.hidden_states
+        max_index = len(hidden_states) - 1
+        l_early, l_mid, l_deep = self._resolve_feature_layers(max_index)
 
-        feat_l8  = hidden_states[self.feature_layers[0]]   # early
-        feat_l16 = hidden_states[self.feature_layers[1]]   # mid
-        feat_l23 = hidden_states[self.feature_layers[2]]   # deep
+        feat_l8 = hidden_states[l_early]   # early
+        feat_l16 = hidden_states[l_mid]    # mid
+        feat_l23 = hidden_states[l_deep]   # deep
 
         # Reshape to 2-D feature maps  ── all share the same spatial grid
         feat_l8_2d  = self._reshape_vit_output(feat_l8)    # [B, D, h, w]

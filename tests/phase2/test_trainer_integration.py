@@ -48,7 +48,7 @@ def test_trainer_timm_backbone(dummy_dataset_path):
          pass # OK on CPU
 
     try:
-        import timm
+        __import__("timm")
     except ImportError:
         pytest.skip("timm not installed")
         

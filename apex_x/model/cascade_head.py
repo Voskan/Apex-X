@@ -270,15 +270,12 @@ class CascadeDetHead(nn.Module):
         """Fallback RoI pooling using grid_sample."""
         # Simplified fallback - not as accurate as RoI Align
         b, c, h_feat, w_feat = features.shape
-        n_boxes = boxes.shape[0]
         h_out, w_out = output_size
         
         roi_features = []
         
         for box in boxes:
             x1, y1, x2, y2 = box
-            w_box = x2 - x1
-            h_box = y2 - y1
             
             # Normalize to [-1, 1] for grid_sample
             grid_x = torch.linspace(-1, 1, w_out, device=features.device)

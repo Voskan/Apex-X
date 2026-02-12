@@ -93,7 +93,6 @@ class TestTimeAugmentation:
                 - labels: [N] class labels
                 - masks: [N, H, W] instance masks (if available)
         """
-        device = image.device
         b, c, h, w = image.shape
         
         if b != 1:

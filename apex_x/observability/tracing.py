@@ -14,12 +14,12 @@ try:
 
     _OTEL_AVAILABLE = True
 except Exception:  # pragma: no cover - optional dependency
-    trace = None  # type: ignore[assignment]
-    extract = None  # type: ignore[assignment]
-    Resource = None  # type: ignore[assignment]
-    TracerProvider = None  # type: ignore[assignment]
-    BatchSpanProcessor = None  # type: ignore[assignment]
-    ConsoleSpanExporter = None  # type: ignore[assignment]
+    trace = None
+    extract = None
+    Resource = None
+    TracerProvider = None
+    BatchSpanProcessor = None
+    ConsoleSpanExporter = None
     _OTEL_AVAILABLE = False
 
 # Configure OTEL

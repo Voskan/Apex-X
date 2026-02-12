@@ -195,13 +195,29 @@ def train_cmd(
     config: str,
     set_values: list[str] | None = None,
     steps_per_stage: int = 1,
+    seed: int = 0,
+    num_classes: int = 3,
+    checkpoint_dir: str | None = None,
+    resume: str | None = None,
+    dataset_path: str | None = None,
 ) -> None:
     overrides = set_values or []
     cfg = _load_config(Path(config), overrides)
-    seed_all(0, deterministic=cfg.runtime.deterministic)
+    seed_all(seed, deterministic=cfg.runtime.deterministic)
 
-    trainer = ApexXTrainer(config=cfg)
-    result = trainer.run(steps_per_stage=steps_per_stage, seed=0)
+    trainer = ApexXTrainer(
+        config=cfg,
+        num_classes=num_classes,
+        checkpoint_dir=Path(checkpoint_dir) if checkpoint_dir else None,
+    )
+    if resume:
+        trainer.load_training_checkpoint(checkpoint_path=resume, device="cpu")
+
+    result = trainer.run(
+        steps_per_stage=steps_per_stage,
+        seed=seed,
+        dataset_path=dataset_path,
+    )
     train_summary = result.train_summary
     routing_diag = train_summary.get("routing_diagnostics", {})
     selected_ratio_l0 = (
@@ -223,6 +239,9 @@ def train_cmd(
             "selected_ratio_l0": round(selected_ratio_l0, 6),
             "mu_last": round(mu_last, 6),
             "mu_steps": len(mu_history) if isinstance(mu_history, list) else 0,
+            "seed": seed,
+            "num_classes": num_classes,
+            "dataset_path": dataset_path or "",
         },
     )
     print(
@@ -232,7 +251,8 @@ def train_cmd(
         f"loss={result.loss_proxy:.4f} "
         f"stage_count={stage_count} "
         f"selected_ratio_l0={selected_ratio_l0:.4f} "
-        f"mu_last={mu_last:.4f}"
+        f"mu_last={mu_last:.4f} "
+        f"seed={seed}"
     )
 
 
@@ -650,6 +670,11 @@ def main() -> None:
     train_parser.add_argument("config", help="Path to config")
     train_parser.add_argument("--set", "-s", action="append", dest="set_values")
     train_parser.add_argument("--steps-per-stage", type=int, default=1)
+    train_parser.add_argument("--seed", type=int, default=0)
+    train_parser.add_argument("--num-classes", type=int, default=3)
+    train_parser.add_argument("--checkpoint-dir")
+    train_parser.add_argument("--resume")
+    train_parser.add_argument("--dataset-path")
 
     # Eval
     eval_parser = subparsers.add_parser("eval")
@@ -710,7 +735,16 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "train":
-        train_cmd(args.config, args.set_values, args.steps_per_stage)
+        train_cmd(
+            args.config,
+            args.set_values,
+            args.steps_per_stage,
+            args.seed,
+            args.num_classes,
+            args.checkpoint_dir,
+            args.resume,
+            args.dataset_path,
+        )
     elif args.command == "eval":
         eval_cmd(
             args.config,

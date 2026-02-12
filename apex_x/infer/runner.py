@@ -533,7 +533,17 @@ def run_model_inference(
             execution_backend = "cpu"
             execution_fallback_reason = f"torch_executor_error:{type(exc).__name__}"
     elif selected_backend == "triton":
-        if not runtime_caps.cuda.available or not runtime_caps.triton.available:
+        triton_execution_enabled = _is_truthy_env(
+            os.environ.get("APEXX_ENABLE_TRITON_EXECUTION"),
+            default=False,
+        )
+        if not triton_execution_enabled:
+            if fallback_policy == "strict":
+                raise RuntimeError("triton backend is unavailable for execution")
+            model_output = _run_with_timing(lambda: model.forward(input_batch))
+            execution_backend = "cpu"
+            execution_fallback_reason = "triton_execution_not_enabled_reference_fallback"
+        elif not runtime_caps.cuda.available or not runtime_caps.triton.available:
             if fallback_policy == "strict":
                 raise RuntimeError("triton backend is unavailable for execution")
             model_output = _run_with_timing(lambda: model.forward(input_batch))

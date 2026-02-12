@@ -17,6 +17,7 @@ def _configure_structlog(level_name: str, force_json: bool = False) -> None:
     
     # Determine if we should output JSON or human-readable
     # Default to JSON for production safety, unless in TTY or explicitly requested human
+    renderer: Any
     if force_json or os.environ.get("APEX_X_LOG_FORMAT", "").lower() == "json":
         renderer = structlog.processors.JSONRenderer()
     elif sys.stderr.isatty() and os.environ.get("APEX_X_LOG_FORMAT", "").lower() != "json":
@@ -24,7 +25,7 @@ def _configure_structlog(level_name: str, force_json: bool = False) -> None:
     else:
         renderer = structlog.processors.JSONRenderer()
 
-    processors = [
+    processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),

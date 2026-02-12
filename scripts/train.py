@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compatibility wrapper for canonical satellite training."""
+"""Canonical train entrypoint for Apex-X."""
 
 from __future__ import annotations
 
@@ -12,20 +12,15 @@ from apex_x.cli import train_cmd
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Satellite training wrapper. "
-            "Canonical path: python -m apex_x.cli train <config> ..."
-        )
-    )
-    parser.add_argument("--config", default="configs/satellite_1024.yaml")
-    parser.add_argument("--data-root", required=True)
+    parser = argparse.ArgumentParser(description="Canonical Apex-X training entrypoint")
+    parser.add_argument("--config", default="configs/coco_baseline.yaml")
+    parser.add_argument("--dataset-path", default=None)
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--checkpoint-dir", default=None)
     parser.add_argument("--resume", default=None)
-    parser.add_argument("--steps-per-stage", type=int, default=500)
+    parser.add_argument("--steps-per-stage", type=int, default=100)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--num-classes", type=int, default=80)
+    parser.add_argument("--num-classes", type=int, default=3)
     parser.add_argument("--set", "-s", action="append", dest="set_values")
     return parser.parse_args()
 
@@ -44,7 +39,7 @@ def main() -> None:
         num_classes=args.num_classes,
         checkpoint_dir=args.checkpoint_dir,
         resume=args.resume,
-        dataset_path=args.data_root,
+        dataset_path=args.dataset_path,
     )
 
 

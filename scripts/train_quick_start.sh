@@ -43,11 +43,12 @@ echo "Config: configs/coco_baseline.yaml"
 echo "Output: ./outputs/baseline"
 echo ""
 
-python scripts/train_baseline_coco.py \
+python scripts/train.py \
     --config configs/coco_baseline.yaml \
-    --data-root "$COCO_ROOT" \
+    --dataset-path "$COCO_ROOT" \
     --output-dir ./outputs/baseline \
-    --num-workers 4
+    --num-classes 80 \
+    --steps-per-stage 100
 
 echo ""
 echo "======================================"

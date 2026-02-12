@@ -1,135 +1,62 @@
-# Satellite 1024x1024 Training Configuration
-# Optimized for Google Maps low-quality JPEG satellite imagery
-# Target: World-class segmentation (52-58 mask AP)
-
-# Model Configuration
 model:
-  num_classes: 80  # Adjust for your dataset
-  image_size: 1024
-  use_dinov2: true  # DINOv2 backbone (+5-8% mAP)
-  dinov2_model: "facebook/dinov2-large"
-  lora_rank: 8
-  use_image_enhancer: true  # Learnable preprocessing for low-quality images
+  profile: base
+  input_height: 1024
+  input_width: 1024
+  nesting_depth: 1
+  kmax_l0: 64
+  kmax_l1: 128
+  kmax_l2: 0
 
-# Training Configuration
-epochs: 300
-batch_size: 4  # Per GPU with 512x512 patches
-val_batch_size: 4
-val_interval: 5
+routing:
+  budget_total: 64.0
+  budget_b1: 32.0
+  budget_b2: 16.0
+  budget_b3: 0.0
+  cost_heavy: 1.0
+  cost_cheap: 0.2
+  theta_on: 0.6
+  theta_off: 0.45
+  theta_split: 0.5
 
-# Optimizer Configuration
-base_lr: 0.005  # Lower for 1024x1024
-weight_decay: 0.0005
-warmup_epochs: 10  # Longer warmup for large images
-gradient_clip: 10.0
+train:
+  curriculum_stages:
+    - det_stability
+    - seg_boundary
+  output_dir: outputs/satellite_1024
+  save_interval: 1
+  distill_weight: 1.0
+  seg_boundary_weight: 1.0
+  use_pcgradpp: true
+  disable_distill: false
+  disable_pcgradpp: false
+  qat_enable: false
+  qat_int8: false
+  qat_fp8: false
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+  torch_compile: false
+  tf32_enabled: true
+  cudnn_benchmark: true
+  enable_lora_finetune: true
 
-# Learning Rate Schedule
-lr_schedule:
-  type: "cosine"
-  warmup_epochs: 10
-  eta_min: 0.00005
-
-# Data Configuration
 data:
-  dataset_type: "satellite"
-  patch_size: 512  # Extract 512x512 patches from 1024x1024
-  num_patches_per_image: 4  # 4 patches per image per epoch
-  min_objects_per_patch: 1
-  use_sliding_window_inference: true
-  sliding_window_stride: 384  # 25% overlap
-
-# Augmentation Configuration (Satellite-Specific)
-augmentation:
-  # Satellite augmentations
-  satellite_augmentations: true
-  rotation_prob: 0.5  # 90° rotations
-  weather_prob: 0.3  # Haze, clouds, shadows
-  resolution_prob: 0.3  # Zoom level simulation
-  
-  # Standard augmentations
-  mosaic: true
-  mosaic_prob: 0.5
-  mixup: true
-  mixup_alpha: 0.5
-  mixup_prob: 0.15
-  copypaste: true
-  copypaste_prob: 0.3
-  
-  # Albumentations
-  albumentations: true
+  coco_train_images: ""
+  coco_train_annotations: ""
+  coco_val_images: ""
+  coco_val_annotations: ""
   flip_prob: 0.5
-  color_jitter: true
+  hsv_prob: 0.5
+  mosaic_prob: 0.4
+  scale_min: 0.7
+  scale_max: 1.3
 
-# Loss Configuration
-loss:
-  # Progressive loss balancing
-  progressive: true
-  adaptive_boundary: true
-  
-  # Multi-scale mask supervision (+1-2% mask AP)
-  multi_scale_supervision: true
-  supervision_scales: [1.0, 0.5, 0.25]  # Full, half, quarter resolution
-  scale_weights: [0.5, 0.3, 0.2]  # Higher weight on full resolution
-  
-  # Loss weights
-  cls_weight: 1.0
-  box_weight: 2.0
-  quality_weight: 1.0
-  boundary_weight: 0.05  # Will increase to 0.5 during training
-  
-  # Use Lovász loss for better boundaries
-  use_lovasz: true
-  lovasz_weight: 0.5
-  
-  # SimOTA with small object boost (critical for buildings)
-  simota:
-    dynamic_topk: 10
-    small_object_boost: 2.0  # 4x priority for tiny buildings
-    topk_center: 10
-    cls_weight: 1.0
-    iou_weight: 3.0
-    center_weight: 1.0
-
-# Post-Processing Configuration
-post_process:
-  conf_threshold: 0.001
-  nms_threshold: 0.65
-  max_detections: 300
-
-# Memory Optimization (Critical for 1024x1024)
-optimization:
-  mixed_precision: true  # AMP: 2-3x speedup, 50% memory reduction
-  gradient_checkpointing: true  # 50% more memory reduction
-  gradient_accumulation_steps: 4  # Effective batch_size = 4 * 4 = 16 per GPU
-
-# Checkpoint Configuration
-checkpoint:
-  save_interval: 10
-  keep_last_n: 5
-  save_best: true
-
-# Logging Configuration
-logging:
-  log_interval: 50
-  tensorboard: true
-  wandb: false
-
-# Hardware Configuration
-num_workers: 4
-pin_memory: true
-
-# Multi-GPU Configuration (DDP)
-distributed:
-  enabled: true
-  backend: "nccl"
-  find_unused_parameters: false
-  gradient_as_bucket_view: true
-
-# Expected Results (after 300 epochs)
-# - Baseline (ResNet): 38 mask AP
-# - +DINOv2: +5-8% → 43-46 AP
-# - +Satellite augs: +2-4% → 45-50 AP
-# - +Lovász loss: +1-3% → 46-53 AP
-# - +Adaptive boundary: +1-2% → 47-55 AP
-# - +Image enhancer: +3-5% → 50-60 AP
-# - Target: 52-58 mask AP (world-class!)
+runtime:
+  backend: cpu
+  fallback_policy: permissive
+  precision_profile: balanced
+  enable_export: true
+  enable_runtime_plugins: false
+  export_format: onnx
+  trt_enable: false
+  ort_enable: true
+  deterministic: true

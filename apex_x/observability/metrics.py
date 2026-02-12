@@ -1,23 +1,51 @@
 from __future__ import annotations
 
+from typing import Any, cast
 from warnings import filterwarnings
 
 # Suppress prometheus_client warnings about existing metrics registration
 filterwarnings("ignore", module="prometheus_client")
 
 try:
-    from prometheus_client import REGISTRY, Counter, Gauge, Histogram, start_http_server
+    from prometheus_client import (
+        REGISTRY as PROM_REGISTRY,
+        Counter as PROM_COUNTER,
+        Gauge as PROM_GAUGE,
+        Histogram as PROM_HISTOGRAM,
+        start_http_server as PROM_START_HTTP_SERVER,
+    )
+    Counter = PROM_COUNTER
+    Gauge = PROM_GAUGE
+    Histogram = PROM_HISTOGRAM
+    REGISTRY = PROM_REGISTRY
+    start_http_server = PROM_START_HTTP_SERVER
 except ImportError:
     # Dummy implementation for environments without prometheus_client
     class DummyMetric:
-        def inc(self, amount: float = 1.0) -> None: pass
-        def set(self, value: float) -> None: pass
-        def observe(self, value: float) -> None: pass
-        def labels(self, **kwargs) -> DummyMetric: return self
-    
-    Counter = Gauge = Histogram = lambda *args, **kwargs: DummyMetric() # type: ignore
-    REGISTRY = None # type: ignore
-    start_http_server = lambda port: None # type: ignore
+        def inc(self, amount: float = 1.0) -> None:
+            _ = amount
+
+        def set(self, value: float) -> None:
+            _ = value
+
+        def observe(self, value: float) -> None:
+            _ = value
+
+        def labels(self, **kwargs: object) -> "DummyMetric":
+            _ = kwargs
+            return self
+
+    def _dummy_metric_factory(*_args: object, **_kwargs: object) -> DummyMetric:
+        return DummyMetric()
+
+    def _dummy_start_http_server(_port: int) -> None:
+        return None
+
+    Counter = cast(Any, _dummy_metric_factory)
+    Gauge = cast(Any, _dummy_metric_factory)
+    Histogram = cast(Any, _dummy_metric_factory)
+    REGISTRY = cast(Any, None)
+    start_http_server = cast(Any, _dummy_start_http_server)
 
 
 # Application Constants

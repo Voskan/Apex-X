@@ -18,7 +18,6 @@ from typing import Any
 
 import torch
 from torch import Tensor, nn
-import torch.nn.functional as F
 
 from .pv_dinov2 import PVModuleDINOv2, DINOV2_AVAILABLE
 from .bifpn import BiFPN
@@ -137,7 +136,7 @@ class TeacherModelV3(nn.Module):
         B, _, fH, fW = feat.shape
 
         objectness = self.rpn_objectness(feat)          # [B, 3, fH, fW]
-        bbox_pred = self.rpn_bbox_pred(feat)            # [B, 12, fH, fW]
+        _ = self.rpn_bbox_pred(feat)                    # [B, 12, fH, fW]
 
         stride = image_size[0] / fH                     # effective stride
 
@@ -240,10 +239,9 @@ class TeacherModelV3(nn.Module):
 
         # 6. mask quality prediction -------------------------------------------
         if final_masks_flat is not None:
-            n_total_proposals = final_masks_flat.shape[0]
             # We need to map mask_feat [B, C, H, W] to each proposal.
             # We'll use the counts from the last boxes stage to expand.
-            flat_boxes, box_counts = self.det_head.flatten_boxes_for_roi(final_boxes_list, images.device)
+            flat_boxes, _ = self.det_head.flatten_boxes_for_roi(final_boxes_list, images.device)
             
             # Efficiently expand features: for each proposal, we need its corresponding batch image's features
             # flat_boxes[:, 0] contains batch indices

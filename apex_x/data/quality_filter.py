@@ -10,8 +10,6 @@ Filters low-quality images based on:
 from __future__ import annotations
 
 import numpy as np
-import torch
-from torch import Tensor
 from PIL import Image
 import cv2
 
