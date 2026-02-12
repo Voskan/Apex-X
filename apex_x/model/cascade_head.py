@@ -148,65 +148,93 @@ class CascadeDetHead(nn.Module):
     def forward(
         self,
         features: Tensor,
-        initial_boxes: Tensor,
-    ) -> dict[str, list[Tensor]]:
+        initial_boxes: list[Tensor],
+    ) -> dict[str, list[list[Tensor]] | list[Tensor]]:
         """Forward pass through cascade stages.
         
         Args:
             features: Feature maps [B, C, H, W]
-            initial_boxes: Initial box proposals [N, 4] in (x1, y1, x2, y2) format
+            initial_boxes: List of boxes per batch element [B, N_i, 4]
             
         Returns:
             Dict with cascade outputs:
-                - 'boxes': List of refined boxes from each stage
-                - 'scores': List of class scores from each stage
-                - 'box_deltas': List of box refinements from each stage
+                - 'boxes': list[list[Tensor]] Refined boxes for each stage for each batch element
+                - 'scores': list[Tensor] Class logits [B*N, num_classes] for each stage
+                - 'box_deltas': list[Tensor] Box deltas [B*N, 4] for each stage
         """
-        all_boxes = [initial_boxes]
-        all_scores = []
-        all_deltas = []
+        B = features.shape[0]
+        all_stage_boxes: list[list[Tensor]] = [initial_boxes]
+        all_scores: list[Tensor] = []
+        all_deltas: list[Tensor] = []
         
         current_boxes = initial_boxes
         
         for stage_idx, stage in enumerate(self.stages):
-            # RoI Align on current boxes
+            # 1. Flatten boxes for efficient batch ROI Align
+            flat_boxes, box_counts = self.flatten_boxes_for_roi(current_boxes, features.device)
+            
+            # 2. RoI Align
             roi_features = self._roi_align(
                 features,
-                current_boxes,
+                flat_boxes,
                 output_size=(7, 7),
             )
             
-            # Forward through stage
+            # 3. Forward through stage
             box_deltas, class_logits = stage(roi_features)
             
-            # Apply box deltas to refine boxes
-            refined_boxes = self._apply_deltas(current_boxes, box_deltas)
+            # 4. Apply box deltas and unflatten
+            refined_flat_boxes = self._apply_deltas(flat_boxes[:, 1:], box_deltas)
+            
+            refined_boxes_list = []
+            start = 0
+            for count in box_counts:
+                refined_boxes_list.append(refined_flat_boxes[start : start + count])
+                start += count
             
             # Store outputs
-            all_boxes.append(refined_boxes)
+            all_stage_boxes.append(refined_boxes_list)
             all_scores.append(class_logits)
             all_deltas.append(box_deltas)
             
             # Use refined boxes for next stage
-            current_boxes = refined_boxes
+            current_boxes = refined_boxes_list
         
         return {
-            'boxes': all_boxes,
+            'boxes': all_stage_boxes,
             'scores': all_scores,
             'box_deltas': all_deltas,
         }
-    
+
+    def flatten_boxes_for_roi(self, boxes_list: list[Tensor], device: torch.device) -> tuple[Tensor, list[int]]:
+        """Helpers to flatten list of boxes into [N_total, 5] (batch_idx, x1, y1, x2, y2)."""
+        flat_boxes = []
+        counts = []
+        for i, boxes in enumerate(boxes_list):
+            if boxes.numel() == 0:
+                counts.append(0)
+                continue
+            batch_idx = torch.full((boxes.shape[0], 1), i, dtype=boxes.dtype, device=device)
+            flat_boxes.append(torch.cat([batch_idx, boxes], dim=1))
+            counts.append(boxes.shape[0])
+        
+        if not flat_boxes:
+            # Empty fallback
+            return torch.zeros((0, 5), dtype=torch.float32, device=device), counts
+            
+        return torch.cat(flat_boxes, dim=0), counts
+
     def _roi_align(
         self,
         features: Tensor,
-        boxes: Tensor,
+        boxes_with_batch: Tensor,
         output_size: tuple[int, int] = (7, 7),
     ) -> Tensor:
         """RoI Align pooling.
         
         Args:
             features: Feature maps [B, C, H, W]
-            boxes: Boxes [N, 4] in (x1, y1, x2, y2) format
+            boxes_with_batch: Boxes [N, 5] (batch_idx, x1, y1, x2, y2)
             output_size: Output spatial size
             
         Returns:
@@ -214,17 +242,7 @@ class CascadeDetHead(nn.Module):
         """
         try:
             from torchvision.ops import roi_align
-            
-            # Add batch index (assume all boxes from batch 0)
-            batch_indices = torch.zeros(
-                (boxes.shape[0], 1),
-                dtype=boxes.dtype,
-                device=boxes.device,
-            )
-            boxes_with_batch = torch.cat([batch_indices, boxes], dim=1)
-            
-            # RoI Align
-            roi_features = roi_align(
+            return roi_align(
                 features,
                 boxes_with_batch,
                 output_size=output_size,
@@ -232,12 +250,12 @@ class CascadeDetHead(nn.Module):
                 sampling_ratio=2,
                 aligned=True,
             )
-            
-            return roi_features
-            
         except ImportError:
-            # Fallback to grid_sample
-            return self._roi_align_fallback(features, boxes, output_size)
+            # Fallback (simplified)
+            LOGGER.warning("torchvision.ops.roi_align not found, using zero fallback")
+            B, C, _, _ = features.shape
+            N = boxes_with_batch.shape[0]
+            return torch.zeros((N, C, *output_size), device=features.device, dtype=features.dtype)
     
     def _roi_align_fallback(
         self,

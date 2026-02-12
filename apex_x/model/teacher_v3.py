@@ -217,44 +217,50 @@ class TeacherModelV3(nn.Module):
         # 3. generate proposals ------------------------------------------------
         proposals_batch = self._generate_proposals(fpn_features, (H, W))
 
-        # We process the first image only for now (extend for batch later).
-        initial_boxes = proposals_batch[0]                # [N, 4]
-
         # 4. cascade detection -------------------------------------------------
         # use the 2nd-finest FPN level (P4-equivalent)
         det_feat_idx = min(1, len(fpn_features) - 1)
-        det_output = self.det_head(fpn_features[det_feat_idx], initial_boxes)
+        det_output = self.det_head(fpn_features[det_feat_idx], proposals_batch)
 
-        all_boxes = det_output["boxes"]       # [initial, s1, s2, s3]
-        all_scores = det_output["scores"]     # [s1, s2, s3]
+        all_boxes = det_output["boxes"]       # list[list[Tensor]] -> [Stage][Batch]
+        all_scores = det_output["scores"]     # list[Tensor] -> [Stage][B*N, C]
 
-        final_boxes = all_boxes[-1]           # last cascade stage
-        final_scores = all_scores[-1]
+        # Extract final boxes per stage (last element of stage list)
+        # all_boxes[-1] is a list[Tensor] of length B
+        final_boxes_list = all_boxes[-1]
+        final_scores_flat = all_scores[-1]
 
         # 5. cascade mask prediction -------------------------------------------
         # CascadeMaskHead expects `features` as a *single* tensor and
-        # boxes as a list.  We pass the P4-level feature map.
+        # boxes as a list of stages, each being a list of boxes per batch element.
         mask_feat = fpn_features[det_feat_idx]
-        all_masks = self.mask_head(mask_feat, all_boxes[1:])
+        all_masks = self.mask_head(mask_feat, all_boxes[1:])  # Skip initial proposals
 
-        final_masks = all_masks[-1] if all_masks else None
+        final_masks_flat = all_masks[-1] if all_masks else None
 
         # 6. mask quality prediction -------------------------------------------
-        # Use global feature pooling for quality prediction — this is simpler
-        # and more robust than roi_align, and fully differentiable.
-        # The quality head takes [N, C, H, W] and does adaptive_avg_pool2d
-        # internally.  We expand the feature map for each proposal.
-        n_proposals = final_boxes.shape[0]
-        quality_input = mask_feat.expand(n_proposals, -1, -1, -1)   # [N, C, Hf, Wf]
-        predicted_quality = self.quality_head(quality_input)          # [N]
-
-        # 7. quality-adjusted scores -------------------------------------------
-        adjusted_scores = final_scores * predicted_quality.unsqueeze(-1)
+        if final_masks_flat is not None:
+            n_total_proposals = final_masks_flat.shape[0]
+            # We need to map mask_feat [B, C, H, W] to each proposal.
+            # We'll use the counts from the last boxes stage to expand.
+            flat_boxes, box_counts = self.det_head.flatten_boxes_for_roi(final_boxes_list, images.device)
+            
+            # Efficiently expand features: for each proposal, we need its corresponding batch image's features
+            # flat_boxes[:, 0] contains batch indices
+            batch_indices = flat_boxes[:, 0].long()
+            quality_input_feats = mask_feat[batch_indices] # [N_total, C, H, W]
+            predicted_quality = self.quality_head(quality_input_feats)
+            
+            # 7. quality-adjusted scores -------------------------------------------
+            adjusted_scores_flat = final_scores_flat * predicted_quality.unsqueeze(-1)
+        else:
+            predicted_quality = None
+            adjusted_scores_flat = final_scores_flat
 
         return {
-            "boxes": final_boxes,
-            "masks": final_masks,
-            "scores": adjusted_scores,
+            "boxes": final_boxes_list,           # list[Tensor] (len B)
+            "masks": final_masks_flat,           # Tensor [N_total, 1, 28, 28]
+            "scores": adjusted_scores_flat,      # Tensor [N_total, num_classes]
             "predicted_quality": predicted_quality,
             "all_boxes": all_boxes,
             "all_masks": all_masks,

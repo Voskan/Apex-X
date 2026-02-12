@@ -106,53 +106,62 @@ class CascadeMaskHead(nn.Module):
     def forward(
         self,
         features: Tensor,
-        boxes: list[Tensor],
+        boxes: list[list[Tensor]],
     ) -> list[Tensor]:
-        """Progressive mask refinement.
+        """Progressive mask refinement for batches.
         
         Args:
             features: Feature maps [B, C, H, W]
-            boxes: Refined boxes from each cascade detection stage
+            boxes: List of stages, each containing a list of boxes per batch element [S, B, N_i, 4]
             
         Returns:
-            List of mask logits from each stage
+            List of mask logits from each stage [S, N_total, 1, H_mask, W_mask]
         """
         all_masks = []
         
-        for stage_idx, (stage, stage_boxes) in enumerate(zip(self.stages, boxes)):
-            # RoI Align on current boxes
+        for stage_idx, (stage, stage_boxes_list) in enumerate(zip(self.stages, boxes)):
+            # 1. Flatten boxes for this stage
+            flat_boxes, _ = self.flatten_boxes_for_roi(stage_boxes_list, features.device)
+            
+            # 2. RoI Align
             roi_features = self._roi_align(
                 features,
-                stage_boxes,
-                output_size=(14, 14),  # Standard RoI size
+                flat_boxes,
+                output_size=(14, 14),
             )
             
-            # Predict masks
+            # 3. Predict masks
             mask_logits = stage(roi_features)
             all_masks.append(mask_logits)
         
         return all_masks
-    
+
+    def flatten_boxes_for_roi(self, boxes_list: list[Tensor], device: torch.device) -> tuple[Tensor, list[int]]:
+        flat_boxes = []
+        counts = []
+        for i, boxes in enumerate(boxes_list):
+            if boxes.numel() == 0:
+                counts.append(0)
+                continue
+            batch_idx = torch.full((boxes.shape[0], 1), i, dtype=boxes.dtype, device=device)
+            flat_boxes.append(torch.cat([batch_idx, boxes], dim=1))
+            counts.append(boxes.shape[0])
+        
+        if not flat_boxes:
+            return torch.zeros((0, 5), dtype=torch.float32, device=device), counts
+            
+        return torch.cat(flat_boxes, dim=0), counts
+
     def _roi_align(
         self,
         features: Tensor,
-        boxes: Tensor,
+        boxes_with_batch: Tensor,
         output_size: tuple[int, int] = (14, 14),
     ) -> Tensor:
         """RoI Align for mask features."""
         try:
             from torchvision.ops import roi_align
-            
-            # Add batch index
-            batch_indices = torch.zeros(
-                (boxes.shape[0], 1),
-                dtype=boxes.dtype,
-                device=boxes.device,
-            )
-            boxes_with_batch = torch.cat([batch_indices, boxes], dim=1)
-            
-            # RoI Align
-            roi_features = roi_align(
+            return roi_align(
                 features,
                 boxes_with_batch,
                 output_size=output_size,
@@ -160,18 +169,11 @@ class CascadeMaskHead(nn.Module):
                 sampling_ratio=2,
                 aligned=True,
             )
-            
-            return roi_features
-            
         except ImportError:
             # Fallback
-            b, c, h, w = features.shape
-            n = boxes.shape[0]
-            return torch.zeros(
-                (n, c, *output_size),
-                dtype=features.dtype,
-                device=features.device,
-            )
+            B, C, _, _ = features.shape
+            N = boxes_with_batch.shape[0]
+            return torch.zeros((N, C, *output_size), device=features.device, dtype=features.dtype)
 
 
 __all__ = ['CascadeMaskHead', 'CascadeMaskStage']
