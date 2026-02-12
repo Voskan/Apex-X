@@ -15,17 +15,23 @@ from __future__ import annotations
 from typing import Any
 
 import torch
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
 
+from apex_x.losses.lovasz_loss import lovasz_instance_loss
 from apex_x.losses.seg_loss import (
+    boundary_iou_loss,
     mask_bce_loss,
     mask_dice_loss,
-    boundary_iou_loss,
     multi_scale_instance_segmentation_losses,
 )
-from apex_x.losses.lovasz_loss import lovasz_instance_loss
 from apex_x.model.mask_quality_head import mask_iou_loss
+from apex_x.utils import get_logger
+
+LOGGER = get_logger(__name__)
+
+_LOGIT_CLIP = 30.0
+_BOX_CLIP = 1e6
 
 
 def _to_instance_masks(mask: Tensor | None) -> Tensor | None:
@@ -46,10 +52,45 @@ def _focal_loss(
 
     Lin et al., "Focal Loss for Dense Object Detection", ICCV 2017.
     """
+    logits = torch.nan_to_num(logits, nan=0.0, posinf=_LOGIT_CLIP, neginf=-_LOGIT_CLIP).clamp(
+        min=-_LOGIT_CLIP,
+        max=_LOGIT_CLIP,
+    )
     ce = F.cross_entropy(logits, targets, reduction="none")
     pt = torch.exp(-ce)
     focal = alpha * (1 - pt) ** gamma * ce
     return focal.mean()
+
+
+def _sanitize_boxes(boxes: Tensor) -> Tensor:
+    clean = torch.nan_to_num(boxes, nan=0.0, posinf=_BOX_CLIP, neginf=-_BOX_CLIP)
+    if clean.ndim != 2 or clean.shape[-1] != 4:
+        return clean
+    x1 = torch.minimum(clean[:, 0], clean[:, 2])
+    y1 = torch.minimum(clean[:, 1], clean[:, 3])
+    x2 = torch.maximum(clean[:, 0], clean[:, 2])
+    y2 = torch.maximum(clean[:, 1], clean[:, 3])
+    return torch.stack((x1, y1, x2, y2), dim=1)
+
+
+def _sanitize_mask_logits(mask_logits: Tensor) -> Tensor:
+    return torch.nan_to_num(mask_logits, nan=0.0, posinf=_LOGIT_CLIP, neginf=-_LOGIT_CLIP).clamp(
+        min=-_LOGIT_CLIP,
+        max=_LOGIT_CLIP,
+    )
+
+
+def _sanitize_binary_mask(mask: Tensor) -> Tensor:
+    return torch.nan_to_num(mask, nan=0.0, posinf=1.0, neginf=0.0).clamp(min=0.0, max=1.0)
+
+
+def _finite_or_zero(loss_value: Tensor, *, key: str, device: torch.device) -> Tensor:
+    if loss_value.ndim != 0:
+        loss_value = loss_value.mean()
+    if torch.isfinite(loss_value).all():
+        return loss_value
+    LOGGER.warning("Non-finite loss component %s detected; forcing to 0.", key)
+    return torch.zeros((), device=device, dtype=loss_value.dtype)
 
 
 # --------------------------------------------------------------------------- #
@@ -120,7 +161,12 @@ def compute_v3_training_losses(
 
     # ----- 1. classification loss ------------------------------------------
     if "scores" in outputs and "labels" in targets:
-        scores = outputs["scores"]
+        scores = torch.nan_to_num(
+            outputs["scores"],
+            nan=0.0,
+            posinf=_LOGIT_CLIP,
+            neginf=-_LOGIT_CLIP,
+        ).clamp(min=-_LOGIT_CLIP, max=_LOGIT_CLIP)
         labels = targets["labels"].long().to(device)
         if scores.numel() > 0 and labels.numel() > 0:
             # match N dimension
@@ -135,27 +181,29 @@ def compute_v3_training_losses(
 
     # ----- 2. box regression loss (GIoU) -----------------------------------
     if "boxes" in outputs and "boxes" in targets:
-        pred_b = outputs["boxes"]
-        gt_b = targets["boxes"].to(device)
+        pred_b = _sanitize_boxes(outputs["boxes"])
+        gt_b = _sanitize_boxes(targets["boxes"].to(device))
         if pred_b.numel() > 0 and gt_b.numel() > 0:
             n = min(pred_b.shape[0], gt_b.shape[0])
             loss_dict["box"] = _giou_loss(pred_b[:n], gt_b[:n])
 
     # ----- 3. segmentation losses (BCE + Dice) -----------------------------
     if "masks" in outputs and outputs["masks"] is not None and "masks" in targets:
-        mask_pred = _to_instance_masks(outputs["masks"])
+        mask_pred = _to_instance_masks(_sanitize_mask_logits(outputs["masks"]))
         mask_gt = _to_instance_masks(targets["masks"])
         
         if mask_gt is not None and mask_pred.numel() > 0 and mask_gt.numel() > 0:
             # Ensure 3D format [N, H, W] before adding batch dimension
             if mask_pred.ndim != 3 or mask_gt.ndim != 3:
-                raise ValueError(f"Expected 3D masks but got pred: {mask_pred.shape}, gt: {mask_gt.shape}")
+                raise ValueError(
+                    f"Expected 3D masks but got pred: {mask_pred.shape}, gt: {mask_gt.shape}",
+                )
             
             # Add batch dimension: [N, H, W] -> [1, N, H, W]
             mask_pred = mask_pred.unsqueeze(0)
             mask_gt = mask_gt.unsqueeze(0)
             
-            mask_gt = mask_gt.to(device)
+            mask_gt = _sanitize_binary_mask(mask_gt.to(device))
             
             # Align spatial dimensions
             if mask_pred.shape[-2:] != mask_gt.shape[-2:]:
@@ -178,34 +226,41 @@ def compute_v3_training_losses(
     # ----- 4. boundary IoU loss (+0.5-1% AP) -------------------------------
     mask_logits = outputs.get("masks")
     if mask_logits is not None and "masks" in targets:
-        mask_logits = _to_instance_masks(mask_logits)
+        mask_logits = _to_instance_masks(_sanitize_mask_logits(mask_logits))
         mask_gt_b = _to_instance_masks(targets["masks"])
-        if mask_gt_b is not None and mask_logits.numel() > 0 and mask_gt_b.numel() > 0:
-            # Ensure 3D format before adding batch dimension
-            if mask_logits.ndim == 3 and mask_gt_b.ndim == 3:
-                # Add batch dimension: [N, H, W] -> [1, N, H, W]
-                mask_logits = mask_logits.unsqueeze(0)
-                mask_gt_b = mask_gt_b.unsqueeze(0)
-                
-                mask_gt_b = mask_gt_b.to(device)
-                
-                # Align spatial dimensions
-                if mask_logits.shape[-2:] != mask_gt_b.shape[-2:]:
-                    mask_gt_b = F.interpolate(
-                        mask_gt_b.float(),
-                        size=mask_logits.shape[-2:],
-                        mode="bilinear",
-                        align_corners=False,
-                    )
-                
-                # Align instance count
-                n = min(mask_logits.shape[1], mask_gt_b.shape[1])
-                mask_logits = mask_logits[:, :n]
-                mask_gt_b = mask_gt_b[:, :n]
-                
-                loss_dict["boundary_iou"] = boundary_iou_loss(
-                    mask_logits, mask_gt_b, boundary_width=3, reduction="mean",
+        if (
+            mask_gt_b is not None
+            and mask_logits.numel() > 0
+            and mask_gt_b.numel() > 0
+            and mask_logits.ndim == 3
+            and mask_gt_b.ndim == 3
+        ):
+            # Add batch dimension: [N, H, W] -> [1, N, H, W]
+            mask_logits = mask_logits.unsqueeze(0)
+            mask_gt_b = mask_gt_b.unsqueeze(0)
+
+            mask_gt_b = _sanitize_binary_mask(mask_gt_b.to(device))
+
+            # Align spatial dimensions
+            if mask_logits.shape[-2:] != mask_gt_b.shape[-2:]:
+                mask_gt_b = F.interpolate(
+                    mask_gt_b.float(),
+                    size=mask_logits.shape[-2:],
+                    mode="bilinear",
+                    align_corners=False,
                 )
+
+            # Align instance count
+            n = min(mask_logits.shape[1], mask_gt_b.shape[1])
+            mask_logits = mask_logits[:, :n]
+            mask_gt_b = mask_gt_b[:, :n]
+
+            loss_dict["boundary_iou"] = boundary_iou_loss(
+                mask_logits,
+                mask_gt_b,
+                boundary_width=3,
+                reduction="mean",
+            )
 
     # ----- 5. mask quality loss (+1-2% AP) ---------------------------------
     if (
@@ -215,11 +270,11 @@ def compute_v3_training_losses(
         and "masks" in targets
         and targets["masks"] is not None
     ):
-        mask_pred_q = outputs["masks"]
+        mask_pred_q = _sanitize_mask_logits(outputs["masks"])
         mask_gt_q = targets["masks"]
         if mask_pred_q.numel() > 0 and mask_gt_q.numel() > 0:
             mp = _to_instance_masks(mask_pred_q)
-            mg = _to_instance_masks(mask_gt_q).to(device)
+            mg = _sanitize_binary_mask(_to_instance_masks(mask_gt_q).to(device))
             # Align spatial dimensions
             if mp.shape[-2:] != mg.shape[-2:]:
                 mg = F.interpolate(
@@ -232,16 +287,24 @@ def compute_v3_training_losses(
                     mg = mg.squeeze(0)
             # Align instance count: predicted_quality and mp are [N_pred], mg is [N_gt]
             n = min(outputs["predicted_quality"].shape[0], mp.shape[0], mg.shape[0])
+            predicted_quality = torch.nan_to_num(
+                outputs["predicted_quality"],
+                nan=0.5,
+                posinf=1.0,
+                neginf=0.0,
+            ).clamp(min=0.0, max=1.0)
             loss_dict["mask_quality"] = mask_iou_loss(
-                outputs["predicted_quality"][:n], mp[:n], mg[:n],
+                predicted_quality[:n],
+                mp[:n],
+                mg[:n],
             )
 
     # ----- 6. multi-scale supervision (+0.5-1% AP) -------------------------
     use_ms = hasattr(config, "loss") and getattr(config.loss, "multi_scale_supervision", False)
     ms_logits = outputs.get("masks")
     if use_ms and ms_logits is not None and "masks" in targets and targets["masks"] is not None:
-        ms_pred = ms_logits
-        ms_gt = _to_instance_masks(targets["masks"]).to(device)
+        ms_pred = _sanitize_mask_logits(ms_logits)
+        ms_gt = _sanitize_binary_mask(_to_instance_masks(targets["masks"]).to(device))
         if ms_pred.numel() > 0 and ms_gt.numel() > 0:
             # Squeeze channel dim
             if ms_pred.ndim == 4 and ms_pred.shape[1] == 1:
@@ -261,16 +324,21 @@ def compute_v3_training_losses(
 
     # ----- 7. cascade stage losses -----------------------------------------
     if "all_boxes" in outputs and "boxes" in targets:
-        gt_b = targets["boxes"].to(device)
+        gt_b = _sanitize_boxes(targets["boxes"].to(device))
         cascade_w = 0.3
         # outputs["all_boxes"] is list[list[Tensor]] -> [Stage][Batch]
         for stage_idx, stage_boxes_list in enumerate(outputs["all_boxes"][1:]):
             if isinstance(stage_boxes_list, list):
                 # Flatten the list of tensors per batch image into one tensor for matching gt_b
-                stage_boxes = torch.cat([b for b in stage_boxes_list if b.numel() > 0]) if any(b.numel() > 0 for b in stage_boxes_list) else torch.zeros((0, 4), device=device)
+                stage_boxes = (
+                    torch.cat([b for b in stage_boxes_list if b.numel() > 0])
+                    if any(b.numel() > 0 for b in stage_boxes_list)
+                    else torch.zeros((0, 4), device=device)
+                )
             else:
                 stage_boxes = stage_boxes_list
 
+            stage_boxes = _sanitize_boxes(stage_boxes)
             if stage_boxes.numel() > 0 and gt_b.numel() > 0:
                 n = min(stage_boxes.shape[0], gt_b.shape[0])
                 loss_dict[f"cascade_s{stage_idx}"] = cascade_w * _giou_loss(
@@ -289,12 +357,16 @@ def compute_v3_training_losses(
         "multi_scale": 1.0,
     }
 
+    safe_loss_dict: dict[str, Tensor] = {}
     total = torch.tensor(0.0, device=device)
     for key, val in loss_dict.items():
+        safe_val = _finite_or_zero(val, key=key, device=device)
+        safe_loss_dict[key] = safe_val
         w = default_weights.get(key, 1.0)
-        total = total + w * val
+        total = total + w * safe_val
 
-    return total, loss_dict
+    total = torch.nan_to_num(total, nan=0.0, posinf=1e4, neginf=0.0)
+    return total, safe_loss_dict
 
 
 __all__ = ["compute_v3_training_losses"]

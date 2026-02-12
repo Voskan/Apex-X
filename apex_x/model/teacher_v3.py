@@ -19,11 +19,11 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 
-from .pv_dinov2 import PVModuleDINOv2, DINOV2_AVAILABLE
 from .bifpn import BiFPN
 from .cascade_head import CascadeDetHead
 from .cascade_mask_head import CascadeMaskHead
 from .mask_quality_head import MaskQualityHead
+from .pv_dinov2 import DINOV2_AVAILABLE, PVModuleDINOv2
 
 
 class TeacherModelV3(nn.Module):
@@ -227,7 +227,13 @@ class TeacherModelV3(nn.Module):
         # Extract final boxes per stage (last element of stage list)
         # all_boxes[-1] is a list[Tensor] of length B
         final_boxes_list = all_boxes[-1]
-        final_scores_flat = all_scores[-1]
+        final_scores_flat = torch.nan_to_num(
+            all_scores[-1],
+            nan=0.0,
+            posinf=30.0,
+            neginf=-30.0,
+        ).clamp(min=-30.0, max=30.0)
+        flat_boxes, _ = self.det_head.flatten_boxes_for_roi(final_boxes_list, images.device)
 
         # 5. cascade mask prediction -------------------------------------------
         # CascadeMaskHead expects `features` as a *single* tensor and
@@ -236,18 +242,25 @@ class TeacherModelV3(nn.Module):
         all_masks = self.mask_head(mask_feat, all_boxes[1:])  # Skip initial proposals
 
         final_masks_flat = all_masks[-1] if all_masks else None
+        if final_masks_flat is not None:
+            final_masks_flat = torch.nan_to_num(
+                final_masks_flat,
+                nan=0.0,
+                posinf=30.0,
+                neginf=-30.0,
+            ).clamp(min=-30.0, max=30.0)
 
         # 6. mask quality prediction -------------------------------------------
         if final_masks_flat is not None:
-            # We need to map mask_feat [B, C, H, W] to each proposal.
-            # We'll use the counts from the last boxes stage to expand.
-            flat_boxes, _ = self.det_head.flatten_boxes_for_roi(final_boxes_list, images.device)
-            
-            # Efficiently expand features: for each proposal, we need its corresponding batch image's features
-            # flat_boxes[:, 0] contains batch indices
+            # flat_boxes[:, 0] contains batch indices.
             batch_indices = flat_boxes[:, 0].long()
-            quality_input_feats = mask_feat[batch_indices] # [N_total, C, H, W]
-            predicted_quality = self.quality_head(quality_input_feats)
+            quality_input_feats = mask_feat[batch_indices]  # [N_total, C, H, W]
+            predicted_quality = torch.nan_to_num(
+                self.quality_head(quality_input_feats),
+                nan=0.5,
+                posinf=1.0,
+                neginf=0.0,
+            ).clamp(min=0.0, max=1.0)
             
             # 7. quality-adjusted scores -------------------------------------------
             adjusted_scores_flat = final_scores_flat * predicted_quality.unsqueeze(-1)
@@ -255,8 +268,16 @@ class TeacherModelV3(nn.Module):
             predicted_quality = None
             adjusted_scores_flat = final_scores_flat
 
+        adjusted_scores_flat = torch.nan_to_num(
+            adjusted_scores_flat,
+            nan=0.0,
+            posinf=30.0,
+            neginf=-30.0,
+        ).clamp(min=-30.0, max=30.0)
+        boxes_xyxy = torch.nan_to_num(flat_boxes[:, 1:], nan=0.0, posinf=1e6, neginf=-1e6)
+
         return {
-            "boxes": flat_boxes[:, 1:],          # Tensor [N_total, 4]
+            "boxes": boxes_xyxy,                # Tensor [N_total, 4]
             "masks": final_masks_flat,           # Tensor [N_total, 1, 28, 28]
             "scores": adjusted_scores_flat,      # Tensor [N_total, num_classes]
             "predicted_quality": predicted_quality,

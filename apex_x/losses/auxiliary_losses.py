@@ -9,8 +9,8 @@ Expected impact: +2-3% mask AP
 from __future__ import annotations
 
 import torch
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
 
 
 def auxiliary_mask_loss(
@@ -33,6 +33,7 @@ def auxiliary_mask_loss(
     """
     if len(aux_mask_outputs) == 0:
         return torch.tensor(0.0, device=target_masks.device)
+    target_masks = torch.nan_to_num(target_masks, nan=0.0, posinf=1.0, neginf=0.0).clamp(0.0, 1.0)
     
     # Default weights: decreasing from early to late layers
     if weights is None:
@@ -41,7 +42,11 @@ def auxiliary_mask_loss(
     
     total_loss = torch.tensor(0.0, device=target_masks.device)
     
-    for aux_output, weight in zip(aux_mask_outputs, weights):
+    for aux_output, weight in zip(aux_mask_outputs, weights, strict=False):
+        aux_output = torch.nan_to_num(aux_output, nan=0.0, posinf=30.0, neginf=-30.0).clamp(
+            -30.0,
+            30.0,
+        )
         # Resize auxiliary output to match target size
         if aux_output.shape[-2:] != target_masks.shape[-2:]:
             aux_output = F.interpolate(
@@ -67,7 +72,7 @@ def auxiliary_mask_loss(
         
         total_loss = total_loss + weight * loss
     
-    return total_loss
+    return torch.nan_to_num(total_loss, nan=0.0, posinf=1e4, neginf=0.0)
 
 
 def dice_loss(
@@ -85,6 +90,11 @@ def dice_loss(
     Returns:
         Dice loss scalar
     """
+    pred_logits = torch.nan_to_num(pred_logits, nan=0.0, posinf=30.0, neginf=-30.0).clamp(
+        -30.0,
+        30.0,
+    )
+    target = torch.nan_to_num(target, nan=0.0, posinf=1.0, neginf=0.0).clamp(0.0, 1.0)
     pred = torch.sigmoid(pred_logits)
     
     # Flatten
@@ -97,7 +107,7 @@ def dice_loss(
     
     dice = (2.0 * intersection + smooth) / (union + smooth)
     
-    return 1.0 - dice
+    return torch.nan_to_num(1.0 - dice, nan=0.0, posinf=1.0, neginf=0.0)
 
 
 def focal_loss(
@@ -117,6 +127,11 @@ def focal_loss(
     Returns:
         Focal loss scalar
     """
+    pred_logits = torch.nan_to_num(pred_logits, nan=0.0, posinf=30.0, neginf=-30.0).clamp(
+        -30.0,
+        30.0,
+    )
+    target = torch.nan_to_num(target, nan=0.0, posinf=1.0, neginf=0.0).clamp(0.0, 1.0)
     pred = torch.sigmoid(pred_logits)
     
     # Binary cross entropy
@@ -135,7 +150,7 @@ def focal_loss(
     
     loss = alpha_t * focal_weight * bce
     
-    return loss.mean()
+    return torch.nan_to_num(loss.mean(), nan=0.0, posinf=1e4, neginf=0.0)
 
 
 __all__ = [

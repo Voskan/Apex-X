@@ -12,7 +12,10 @@ Reference:
 
 from __future__ import annotations
 
+import math
+
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
 
 from apex_x.utils import get_logger
@@ -126,6 +129,11 @@ class CascadeDetHead(nn.Module):
         self.in_channels = in_channels
         self.num_classes = num_classes
         self.num_stages = num_stages
+        # Clamp (Faster R-CNN convention): log(1000 / 16) ~= 4.135.
+        self._bbox_scale_clip = float(math.log(1000.0 / 16.0))
+        self._center_shift_clip = 10.0
+        self._min_box_size = 1e-6
+        self._max_box_size = 1e6
         
         # Default IoU thresholds: [0.5, 0.6, 0.7]
         if iou_thresholds is None:
@@ -173,7 +181,7 @@ class CascadeDetHead(nn.Module):
         all_scores: list[Tensor] = []
         all_deltas: list[Tensor] = []
         
-        for stage_idx, stage in enumerate(self.stages):
+        for _stage_idx, stage in enumerate(self.stages):
             # 1. Flatten boxes for efficient batch ROI Align
             flat_boxes, box_counts = self.flatten_boxes_for_roi(current_boxes, features.device)
             
@@ -210,7 +218,11 @@ class CascadeDetHead(nn.Module):
             'box_deltas': all_deltas,
         }
 
-    def flatten_boxes_for_roi(self, boxes_list: list[Tensor], device: torch.device) -> tuple[Tensor, list[int]]:
+    def flatten_boxes_for_roi(
+        self,
+        boxes_list: list[Tensor],
+        device: torch.device,
+    ) -> tuple[Tensor, list[int]]:
         """Helpers to flatten list of boxes into [N_total, 5] (batch_idx, x1, y1, x2, y2)."""
         flat_boxes = []
         counts = []
@@ -310,20 +322,41 @@ class CascadeDetHead(nn.Module):
         Returns:
             Refined boxes [N, 4]
         """
+        if boxes.numel() == 0:
+            return boxes.new_zeros((0, 4))
+
+        # Protect downstream ops from non-finite values.
+        boxes = torch.nan_to_num(
+            boxes,
+            nan=0.0,
+            posinf=self._max_box_size,
+            neginf=-self._max_box_size,
+        )
+        deltas = torch.nan_to_num(
+            deltas,
+            nan=0.0,
+            posinf=self._center_shift_clip,
+            neginf=-self._center_shift_clip,
+        )
+
         # Convert to center format
-        widths = boxes[:, 2] - boxes[:, 0]
-        heights = boxes[:, 3] - boxes[:, 1]
+        widths = (boxes[:, 2] - boxes[:, 0]).clamp(min=self._min_box_size)
+        heights = (boxes[:, 3] - boxes[:, 1]).clamp(min=self._min_box_size)
         ctr_x = boxes[:, 0] + 0.5 * widths
         ctr_y = boxes[:, 1] + 0.5 * heights
         
         # Apply deltas
         dx, dy, dw, dh = deltas.unbind(dim=1)
+        dx = dx.clamp(min=-self._center_shift_clip, max=self._center_shift_clip)
+        dy = dy.clamp(min=-self._center_shift_clip, max=self._center_shift_clip)
+        dw = dw.clamp(min=-self._bbox_scale_clip, max=self._bbox_scale_clip)
+        dh = dh.clamp(min=-self._bbox_scale_clip, max=self._bbox_scale_clip)
         
         # Predict new center and size
         pred_ctr_x = ctr_x + dx * widths
         pred_ctr_y = ctr_y + dy * heights
-        pred_w = widths * torch.exp(dw)
-        pred_h = heights * torch.exp(dh)
+        pred_w = (widths * torch.exp(dw)).clamp(min=self._min_box_size, max=self._max_box_size)
+        pred_h = (heights * torch.exp(dh)).clamp(min=self._min_box_size, max=self._max_box_size)
         
         # Convert back to (x1, y1, x2, y2)
         pred_boxes = torch.stack([
@@ -332,8 +365,19 @@ class CascadeDetHead(nn.Module):
             pred_ctr_x + 0.5 * pred_w,
             pred_ctr_y + 0.5 * pred_h,
         ], dim=1)
-        
-        return pred_boxes
+        pred_boxes = torch.nan_to_num(
+            pred_boxes,
+            nan=0.0,
+            posinf=self._max_box_size,
+            neginf=-self._max_box_size,
+        )
+
+        # Guarantee valid coordinate ordering.
+        x1 = torch.minimum(pred_boxes[:, 0], pred_boxes[:, 2])
+        y1 = torch.minimum(pred_boxes[:, 1], pred_boxes[:, 3])
+        x2 = torch.maximum(pred_boxes[:, 0], pred_boxes[:, 2])
+        y2 = torch.maximum(pred_boxes[:, 1], pred_boxes[:, 3])
+        return torch.stack([x1, y1, x2, y2], dim=1)
 
 
 __all__ = ['CascadeDetHead', 'CascadeStage']
