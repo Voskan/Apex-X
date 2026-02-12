@@ -161,13 +161,7 @@ class YOLOSegmentationDataset(Dataset):
         )
         
         if self.transforms:
-            # Note: Transform classes in apex_x typically expect a 'rng' argument.
-            # TransformPipeline handles this, but individual calls might need it.
-            try:
-                sample = self.transforms(sample)
-            except TypeError:
-                # If transforms is a function that doesn't take rng
-                sample = self.transforms(sample)
+            sample = self.transforms(sample)
             
         return sample
 

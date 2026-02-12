@@ -1,9 +1,9 @@
 """Enhanced training losses for TeacherModelV3.
 
 Integrates all v2.0 loss functions:
-- Classification loss (cross-entropy / focal)
+- Classification loss (Focal Loss — better class imbalance handling)
 - Box regression (GIoU)
-- Mask BCE + Dice
+- Mask BCE + Dice + Lovász (world-class boundary quality)
 - Boundary IoU loss   (+0.5-1% AP)
 - Mask quality loss   (+1-2% AP)
 - Multi-scale mask supervision (+0.5-1% AP)
@@ -24,7 +24,21 @@ from apex_x.losses.seg_loss import (
     boundary_iou_loss,
     multi_scale_instance_segmentation_losses,
 )
+from apex_x.losses.lovasz_loss import lovasz_instance_loss
 from apex_x.model.mask_quality_head import mask_iou_loss
+
+
+def _focal_loss(
+    logits: Tensor, targets: Tensor, gamma: float = 2.0, alpha: float = 0.25,
+) -> Tensor:
+    """Focal Loss for classification — handles class imbalance better than CE.
+
+    Lin et al., "Focal Loss for Dense Object Detection", ICCV 2017.
+    """
+    ce = F.cross_entropy(logits, targets, reduction="none")
+    pt = torch.exp(-ce)
+    focal = alpha * (1 - pt) ** gamma * ce
+    return focal.mean()
 
 
 # --------------------------------------------------------------------------- #
@@ -106,7 +120,7 @@ def compute_v3_training_losses(
             # clamp labels to valid range
             num_cls = scores.shape[-1]
             labels = labels.clamp(0, num_cls - 1)
-            loss_dict["cls"] = F.cross_entropy(scores, labels)
+            loss_dict["cls"] = _focal_loss(scores, labels)
 
     # ----- 2. box regression loss (GIoU) -----------------------------------
     if "boxes" in outputs and "boxes" in targets:
@@ -147,6 +161,7 @@ def compute_v3_training_losses(
             
             loss_dict["mask_bce"] = mask_bce_loss(mask_pred, mask_gt)
             loss_dict["mask_dice"] = mask_dice_loss(mask_pred, mask_gt)
+            loss_dict["lovasz"] = lovasz_instance_loss(mask_pred, mask_gt)
 
     # ----- 4. boundary IoU loss (+0.5-1% AP) -------------------------------
     mask_logits = outputs.get("masks")
@@ -184,35 +199,51 @@ def compute_v3_training_losses(
         and "masks" in outputs
         and outputs["masks"] is not None
         and "masks" in targets
+        and targets["masks"] is not None
     ):
         mask_pred_q = outputs["masks"]
-        mask_gt_q = targets["masks"].to(device)
-        if mask_pred_q.shape != mask_gt_q.shape:
-            mask_gt_q = F.interpolate(
-                mask_gt_q.float(),
-                size=mask_pred_q.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
+        mask_gt_q = targets["masks"]
+        if mask_pred_q.numel() > 0 and mask_gt_q.numel() > 0:
+            # Squeeze channel dim: [N, 1, H, W] -> [N, H, W]
+            mp = mask_pred_q.squeeze(1) if mask_pred_q.ndim == 4 and mask_pred_q.shape[1] == 1 else mask_pred_q
+            mg = mask_gt_q.to(device)
+            # Align spatial dimensions
+            if mp.shape[-2:] != mg.shape[-2:]:
+                mg = F.interpolate(
+                    mg.float().unsqueeze(0) if mg.ndim == 3 else mg.float(),
+                    size=mp.shape[-2:],
+                    mode="bilinear",
+                    align_corners=False,
+                )
+                if mg.ndim == 4 and mp.ndim == 3:
+                    mg = mg.squeeze(0)
+            n = min(outputs["predicted_quality"].shape[0], mp.shape[0])
+            loss_dict["mask_quality"] = mask_iou_loss(
+                outputs["predicted_quality"][:n], mp[:n], mg[:n],
             )
-        # mask_iou_loss expects [N, H, W] — squeeze channel dim if present
-        mp = mask_pred_q.squeeze(1) if mask_pred_q.dim() == 4 else mask_pred_q
-        mg = mask_gt_q.squeeze(1) if mask_gt_q.dim() == 4 else mask_gt_q
-        n = min(outputs["predicted_quality"].shape[0], mp.shape[0])
-        loss_dict["mask_quality"] = mask_iou_loss(
-            outputs["predicted_quality"][:n], mp[:n], mg[:n],
-        )
 
     # ----- 6. multi-scale supervision (+0.5-1% AP) -------------------------
     use_ms = hasattr(config, "loss") and getattr(config.loss, "multi_scale_supervision", False)
-    if use_ms and mask_logits is not None and "masks" in targets:
+    ms_logits = outputs.get("masks")
+    if use_ms and ms_logits is not None and "masks" in targets and targets["masks"] is not None:
+        ms_pred = ms_logits
         ms_gt = targets["masks"].to(device)
-        if mask_logits.shape != ms_gt.shape:
-            ms_gt = F.interpolate(
-                ms_gt.float(), size=mask_logits.shape[-2:],
-                mode="bilinear", align_corners=False,
-            )
-        ms_out = multi_scale_instance_segmentation_losses(mask_logits, ms_gt)
-        loss_dict["multi_scale"] = ms_out.total_loss
+        if ms_pred.numel() > 0 and ms_gt.numel() > 0:
+            # Squeeze channel dim
+            if ms_pred.ndim == 4 and ms_pred.shape[1] == 1:
+                ms_pred = ms_pred.squeeze(1)
+            # Both to [1, N, H, W]
+            if ms_pred.ndim == 3:
+                ms_pred = ms_pred.unsqueeze(0)
+            if ms_gt.ndim == 3:
+                ms_gt = ms_gt.unsqueeze(0)
+            if ms_pred.shape[-2:] != ms_gt.shape[-2:]:
+                ms_gt = F.interpolate(
+                    ms_gt.float(), size=ms_pred.shape[-2:],
+                    mode="bilinear", align_corners=False,
+                )
+            ms_out = multi_scale_instance_segmentation_losses(ms_pred, ms_gt)
+            loss_dict["multi_scale"] = ms_out.total_loss
 
     # ----- 7. cascade stage losses -----------------------------------------
     if "all_boxes" in outputs and "boxes" in targets:
@@ -238,6 +269,7 @@ def compute_v3_training_losses(
         "box": 2.0,
         "mask_bce": 1.0,
         "mask_dice": 1.0,
+        "lovasz": _w("lovasz", 0.5),
         "boundary_iou": _w("boundary", 0.5),
         "mask_quality": _w("quality", 1.0),
         "multi_scale": 1.0,

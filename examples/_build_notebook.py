@@ -197,10 +197,11 @@ cells.append(code([
 cells.append(md(["## 7. 🏋️ The 1024px Flagship Training Flow"]))
 
 cells.append(code([
-    "import time, copy\n",
+    "import time, copy, os\n",
     "from tqdm.auto import tqdm\n",
     "from apex_x.train.train_losses_v3 import compute_v3_training_losses\n",
     "from apex_x.train.lr_scheduler import LinearWarmupCosineAnnealingLR\n",
+    "from apex_x.train.validation import validate_epoch\n",
     "\n",
     "# Setup EMA\n",
     "ema_model = copy.deepcopy(model).eval()\n",
@@ -214,8 +215,14 @@ cells.append(code([
     "scheduler = LinearWarmupCosineAnnealingLR(optimizer, len(train_loader)*WARMUP_EPOCHS, len(train_loader)*EPOCHS)\n",
     "scaler    = torch.amp.GradScaler('cuda')\n",
     "\n",
-    "history = {'loss': [], 'vram': []}\n",
+    "# Create val loader\n",
+    "val_dataset = YOLOSegmentationDataset(DATASET_ROOT, split='val', transforms=val_tf, image_size=IMAGE_SIZE)\n",
+    "val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, collate_fn=yolo_collate_fn)\n",
+    "print(f'Val set: {len(val_dataset)} images')\n",
+    "\n",
+    "history = {'train_loss': [], 'val_loss': [], 'vram': []}\n",
     "best_val, counter = float('inf'), 0\n",
+    "MAX_GRAD_NORM = 1.0\n",
     "\n",
     "for epoch in range(EPOCHS):\n",
     "    model.train(); enhancer.train()\n",
@@ -239,33 +246,99 @@ cells.append(code([
     "        with torch.amp.autocast('cuda'):\n",
     "            imgs = enhancer(imgs)\n",
     "            output = model(imgs)\n",
-    "            loss, _ = compute_v3_training_losses(output, targets, model, config)\n",
+    "            loss, loss_dict = compute_v3_training_losses(output, targets, model, config)\n",
     "            loss = loss / GRAD_ACCUM\n",
     "            \n",
     "        scaler.scale(loss).backward()\n",
     "        if (i+1) % GRAD_ACCUM == 0:\n",
+    "            scaler.unscale_(optimizer)\n",
+    "            torch.nn.utils.clip_grad_norm_(list(model.parameters())+list(enhancer.parameters()), MAX_GRAD_NORM)\n",
     "            scaler.step(optimizer); scaler.update(); optimizer.zero_grad()\n",
     "            scheduler.step(); update_ema(model, ema_model, EMA_DECAY)\n",
     "            \n",
     "        epoch_loss += loss.item() * GRAD_ACCUM\n",
     "        pbar.set_postfix({'loss': f'{epoch_loss/(i+1):.4f}', 'vram': f'{torch.cuda.max_memory_allocated()/1e9:.1f}G'})\n",
     "    \n",
-    "    # Save Best\n",
-    "    val_loss = epoch_loss/len(train_loader) # Mock for brevity, replace with actual val loop\n",
+    "    avg_train_loss = epoch_loss / len(train_loader)\n",
+    "    history['train_loss'].append(avg_train_loss)\n",
+    "    \n",
+    "    # Real validation on val split\n",
+    "    val_metrics = validate_epoch(model, val_loader, device=DEVICE, loss_fn=compute_v3_training_losses, config=config)\n",
+    "    val_loss = val_metrics.get('val_loss', float('inf'))\n",
+    "    history['val_loss'].append(val_loss)\n",
+    "    history['vram'].append(torch.cuda.max_memory_allocated()/1e9)\n",
+    "    \n",
+    "    print(f'  Train loss: {avg_train_loss:.4f} | Val loss: {val_loss:.4f}')\n",
+    "    \n",
+    "    # Save last checkpoint (always, for resumability)\n",
+    "    torch.save({\n",
+    "        'epoch': epoch, 'model': ema_model.state_dict(), 'enhancer': enhancer.state_dict(),\n",
+    "        'optimizer': optimizer.state_dict(), 'scheduler': scheduler.state_dict(),\n",
+    "        'best_val': best_val, 'history': history,\n",
+    "    }, f'{OUTPUT_DIR}/last.pt')\n",
+    "    \n",
+    "    # Save best checkpoint\n",
     "    if val_loss < best_val:\n",
     "        best_val = val_loss; counter = 0\n",
-    "        torch.save({'model': ema_model.state_dict(), 'enhancer': enhancer.state_dict()}, f'{OUTPUT_DIR}/best_1024.pt')\n",
+    "        torch.save({'model': ema_model.state_dict(), 'enhancer': enhancer.state_dict(), 'epoch': epoch, 'val_loss': val_loss}, f'{OUTPUT_DIR}/best_1024.pt')\n",
+    "        print(f'  ⭐ New best saved (val_loss={val_loss:.4f})')\n",
     "    else: \n",
     "        counter += 1\n",
-    "        if counter >= PATIENCE: break\n"
+    "        if counter >= PATIENCE:\n",
+    "            print(f'  ⏹ Early stopping at epoch {epoch}')\n",
+    "            break\n",
+    "print(f'\\n✅ Training complete. Best val loss: {best_val:.4f}')\n",
 ]))
 
 # ═════════════════════════════════════════════
-# CELL 9 — Summary & Visuals
+# CELL 9 — ONNX Export
 # ═════════════════════════════════════════════
-cells.append(md(["## 🏁 Summary", "Best model saved to outputs. Use `export_to_onnx` with input size 1024 for production."]))
+cells.append(md(["## 8. 📦 ONNX Export for Production"]))
+
+cells.append(code([
+    "# Export best model to ONNX for production deployment\n",
+    "best_ckpt = torch.load(f'{OUTPUT_DIR}/best_1024.pt', map_location=DEVICE)\n",
+    "model.load_state_dict(best_ckpt['model'])\n",
+    "model.eval()\n",
+    "\n",
+    "dummy_input = torch.randn(1, 3, IMAGE_SIZE, IMAGE_SIZE, device=DEVICE)\n",
+    "onnx_path = f'{OUTPUT_DIR}/apex_x_1024.onnx'\n",
+    "\n",
+    "try:\n",
+    "    torch.onnx.export(\n",
+    "        model, dummy_input, onnx_path,\n",
+    "        input_names=['images'], output_names=['boxes', 'masks', 'scores'],\n",
+    "        dynamic_axes={'images': {0: 'batch'}, 'boxes': {0: 'detections'}, 'masks': {0: 'detections'}, 'scores': {0: 'detections'}},\n",
+    "        opset_version=17,\n",
+    "    )\n",
+    "    print(f'✅ ONNX model exported to {onnx_path}')\n",
+    "except Exception as e:\n",
+    "    print(f'⚠️ ONNX export failed (model may have dynamic ops): {e}')\n",
+    "    print('The best .pt checkpoint is still available for inference.')\n",
+]))
+
+# ═════════════════════════════════════════════
+# CELL 10 — Summary & Visuals
+# ═════════════════════════════════════════════
+cells.append(md(["## 🏁 Summary"]))
+cells.append(code([
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "fig, ax = plt.subplots(1, 1, figsize=(10, 5))\n",
+    "ax.plot(history['train_loss'], label='Train Loss', color='#4A90D9')\n",
+    "ax.plot(history['val_loss'], label='Val Loss', color='#E74C3C')\n",
+    "ax.set_xlabel('Epoch'); ax.set_ylabel('Loss')\n",
+    "ax.set_title('Apex-X 1024px Training Curves')\n",
+    "ax.legend(); ax.grid(True, alpha=0.3)\n",
+    "plt.tight_layout()\n",
+    "plt.savefig(f'{OUTPUT_DIR}/training_curves.png', dpi=150)\n",
+    "plt.show()\n",
+    "print(f'Best val loss: {best_val:.4f}')\n",
+    "print(f'Checkpoints: {OUTPUT_DIR}/best_1024.pt, {OUTPUT_DIR}/last.pt')\n",
+]))
 
 notebook = {"cells": cells, "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
 with open("train_a100_sxm.ipynb", "w") as f:
     json.dump(notebook, f, indent=1)
 print("✅ 1024px WORLD-CLASS train_a100_sxm.ipynb generated.")
+
