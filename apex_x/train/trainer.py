@@ -129,10 +129,13 @@ class ApexXTrainer:
         
         # Checkpoint management
         self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
-        self.best_metric = float('inf')  # Lower is better for loss
-        self.best_metric_name = "loss"
+        self.best_metric = float('-inf')  # Higher is better for AP
+        self.best_metric_name = "mAP_segm"  # Track mask AP
+        self.current_epoch = 0
+        self.val_interval = 5  # Validate every 5 epochs
         if self.checkpoint_dir:
             self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+            LOGGER.info(f"Checkpoint directory: {self.checkpoint_dir}")
 
     def _build_teacher_model(self, *, num_classes: int) -> TeacherModel:
         # Keep the staged trainer CPU-fast by default, or use high-capacity backbone
