@@ -519,10 +519,9 @@ def compute_v3_training_losses(
             dpf_criterion = DislocationPotentialLoss()
             loss_dict["bff"] = dpf_criterion(bff_pred, gt_bff)
             
-            # --- Differentiable Contour Integrator (Geometric Consistency) ---
             # Converts force field to mask probability via divergence integration
             integrator = DifferentiableContourIntegrator()
-            pred_mask_from_bff = integrator(bff_pred.unsqueeze(0)).squeeze(0) # [B, 1, H, W]
+            pred_mask_from_bff = integrator(bff_pred) # [B, 1, H, W]
             
             # Binary Cross Entropy between BFF-derived mask and GT
             loss_dict["bff_mask_consistency"] = F.binary_cross_entropy_with_logits(

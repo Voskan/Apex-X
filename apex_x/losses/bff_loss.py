@@ -103,21 +103,22 @@ class DifferentiableContourIntegrator(nn.Module):
         Returns:
             mask_probs: [N, 1, H, W] derived mask probability.
         """
-        # Divergence = dFx/dx + dFy/dy
-        # Using finite differences
-        dx = bff[:, 0, :, 1:] - bff[:, 0, :, :-1]
-        dy = bff[:, 1, 1:, :] - bff[:, 1, :-1, :]
+        # fx, fy: [N, 1, H, W]
+        fx = bff[:, 0:1, :, :]
+        fy = bff[:, 1:2, :, :]
         
-        # Pad to keep size
+        # Finite differences
+        dx = fx[:, :, :, 1:] - fx[:, :, :, :-1]  # [N, 1, H, W-1]
+        dy = fy[:, :, 1:, :] - fy[:, :, :-1, :]  # [N, 1, H-1, W]
+        
+        # Pad back to original resolution [N, 1, H, W]
         dx = F.pad(dx, (0, 1, 0, 0))
         dy = F.pad(dy, (0, 0, 0, 1))
         
         div = dx + dy
         
         # Sinks (negative divergence) are interior. 
-        # Source (positive divergence) are boundaries.
-        # Simple mapping: sigmoid(-div * scale)
-        return torch.sigmoid(-div * 5.0).unsqueeze(1)
+        return torch.sigmoid(-div * 5.0)
 
 class DislocationPotentialLoss(nn.Module):
     """God-Tier Physics-Informed Loss (PIL).
