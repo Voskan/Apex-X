@@ -311,18 +311,35 @@ def compute_v3_training_losses(
         mask_pred = outputs["masks"]
         mask_gt = targets["masks"].to(device)
         if mask_pred is not None and mask_gt is not None:
-             B = getattr(config.train, "batch_size", 1)
+             # Determine actual batch size B from pred or batch_idx
+             if mask_pred.ndim == 4:
+                 B = mask_pred.shape[0] 
+                 # Wait, if mask_pred is [TotalInst, 1, H, W], we need a way to know B.
+                 # Usually, TeacherModelV5 (as edited) returns [B, 1, H, W].
+                 # But if it returns instances, B is smaller.
+                 # Let's check batch_idx if available.
+                 batch_idx = targets.get("batch_idx")
+                 if batch_idx is not None:
+                     B = int(batch_idx.max().item() + 1)
+                 else:
+                     B = getattr(config.train, "batch_size", mask_pred.shape[0])
+             else:
+                 B = 1
              
              # Collapse Predictions to Global Occupancy [B, 1, H, W]
+             # If mask_pred is already [B, 1, H, W], we use it directly.
+             # If it's [TotalInst, 1, H, W], we collapse.
              if mask_pred.ndim == 4:
-                 try:
-                     N_pred = mask_pred.shape[0] // B
-                     pred_global = mask_pred.view(B, N_pred, *mask_pred.shape[2:]).max(dim=1)[0].unsqueeze(1)
-                 except:
-                     # Fallback for uneven splits
-                     pred_global = mask_pred[:B] if mask_pred.shape[0] >= B else mask_pred
+                 if mask_pred.shape[0] == B:
+                     pred_global = mask_pred
+                 else:
+                     try:
+                         N_inst = mask_pred.shape[0] // B
+                         pred_global = mask_pred.view(B, N_inst, *mask_pred.shape[2:]).max(dim=1)[0].unsqueeze(1)
+                     except:
+                         pred_global = mask_pred[:B]
              else:
-                 pred_global = mask_pred
+                 pred_global = mask_pred.unsqueeze(1) if mask_pred.ndim == 3 else mask_pred
              
              # Collapse Ground Truth to Global Occupancy [B, 1, H, W]
              batch_idx = targets.get("batch_idx")
@@ -332,14 +349,23 @@ def compute_v3_training_losses(
                  for b in range(B):
                      mask_selector = (batch_idx == b)
                      if mask_selector.any():
-                         # mask_gt might be [N, 1, H, W] or [N, H, W]
                          gt_subset = mask_gt[mask_selector]
                          if gt_subset.ndim == 4:
                              gt_global[b, 0] = gt_subset.max(dim=0)[0].squeeze(0)
                          else:
                              gt_global[b, 0] = gt_subset.max(dim=0)[0]
              else:
-                 gt_global = mask_gt # Fallback
+                 # If no batch_idx, we assume mask_gt is already per-batch or we can't collapse
+                 gt_global = mask_gt[:B] if mask_gt.shape[0] >= B else mask_gt
+                 if gt_global.ndim == 3:
+                     gt_global = gt_global.unsqueeze(1)
+
+             # Final check to ensure shapes match exactly for the MSE loss
+             if pred_global.shape[0] != gt_global.shape[0]:
+                 # Crop or pad to match (should be rare)
+                 min_b = min(pred_global.shape[0], gt_global.shape[0])
+                 pred_global = pred_global[:min_b]
+                 gt_global = gt_global[:min_b]
 
              # Ensure same resolution
              if pred_global.shape[-2:] != gt_global.shape[-2:]:
