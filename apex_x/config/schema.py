@@ -240,6 +240,11 @@ class TrainConfig:
     distill_weight: float = 1.0
     seg_boundary_weight: float = 1.0
 
+    batch_size: int = 1
+    lr: float = 1e-4
+    weight_decay: float = 0.05
+    grad_accum: int = 1
+
     use_pcgradpp: bool = True
     disable_distill: bool = False
     disable_pcgradpp: bool = False
@@ -317,6 +322,15 @@ class TrainConfig:
             raise ValueError("train.val_interval must be > 0")
         if not str(self.primary_metric).strip():
             raise ValueError("train.primary_metric must be a non-empty string")
+
+        if self.batch_size <= 0:
+            raise ValueError("train.batch_size must be > 0")
+        if self.lr <= 0:
+            raise ValueError("train.lr must be > 0")
+        if self.weight_decay < 0:
+            raise ValueError("train.weight_decay must be >= 0")
+        if self.grad_accum <= 0:
+            raise ValueError("train.grad_accum must be > 0")
 
         if self.dataloader_num_workers < 0:
             raise ValueError("train.dataloader_num_workers must be >= 0")
