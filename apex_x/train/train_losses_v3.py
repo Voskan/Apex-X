@@ -307,19 +307,45 @@ def compute_v3_training_losses(
     # 7) SOTA: Topological Persistence Loss
     if getattr(config.loss, "topological_persistence", False) and "masks" in outputs and "masks" in targets:
         topo_criterion = TopologicalPersistenceLoss()
-        # [B*N, 1, H, W]
+        # [TotalInst, 1, H, W]
         mask_pred = outputs["masks"]
         mask_gt = targets["masks"].to(device)
         if mask_pred is not None and mask_gt is not None:
-             # Ensure same resolution
-             if mask_pred.shape[-2:] != mask_gt.shape[-2:]:
-                 if mask_gt.ndim == 3:
-                     mask_gt = mask_gt.unsqueeze(1)
-                 mask_gt = F.interpolate(mask_gt.float(), size=mask_pred.shape[-2:], mode="nearest")
+             B = getattr(config.train, "batch_size", 1)
              
-             if mask_gt.ndim == 3:
-                 mask_gt = mask_gt.unsqueeze(1)
-             loss_dict["topological"] = topo_criterion(mask_pred, mask_gt)
+             # Collapse Predictions to Global Occupancy [B, 1, H, W]
+             if mask_pred.ndim == 4:
+                 try:
+                     N_pred = mask_pred.shape[0] // B
+                     pred_global = mask_pred.view(B, N_pred, *mask_pred.shape[2:]).max(dim=1)[0].unsqueeze(1)
+                 except:
+                     # Fallback for uneven splits
+                     pred_global = mask_pred[:B] if mask_pred.shape[0] >= B else mask_pred
+             else:
+                 pred_global = mask_pred
+             
+             # Collapse Ground Truth to Global Occupancy [B, 1, H, W]
+             batch_idx = targets.get("batch_idx")
+             if batch_idx is not None:
+                 H_gt, W_gt = mask_gt.shape[-2:]
+                 gt_global = torch.zeros((B, 1, H_gt, W_gt), device=device)
+                 for b in range(B):
+                     mask_selector = (batch_idx == b)
+                     if mask_selector.any():
+                         # mask_gt might be [N, 1, H, W] or [N, H, W]
+                         gt_subset = mask_gt[mask_selector]
+                         if gt_subset.ndim == 4:
+                             gt_global[b, 0] = gt_subset.max(dim=0)[0].squeeze(0)
+                         else:
+                             gt_global[b, 0] = gt_subset.max(dim=0)[0]
+             else:
+                 gt_global = mask_gt # Fallback
+
+             # Ensure same resolution
+             if pred_global.shape[-2:] != gt_global.shape[-2:]:
+                 gt_global = F.interpolate(gt_global.float(), size=pred_global.shape[-2:], mode="nearest")
+             
+             loss_dict["topological"] = topo_criterion(pred_global, gt_global)
 
     # 8) SOTA: Flow Symmetry Loss (Energy-based physics)
     if getattr(config.loss, "flow_symmetry", False) and "masks" in targets:

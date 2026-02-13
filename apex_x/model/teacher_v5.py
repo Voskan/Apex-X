@@ -59,9 +59,8 @@ class TeacherModelV5(nn.Module):
         routing = self.router(global_feat) # [B, 2]
         
         # Detection & Coarse Masks
-        # In Ascension V5, we fuse standard detection with SOTA heads
-        # Use initial zero-seeds per batch element
-        initial_boxes = [torch.zeros((1, 4), device=images.device) for _ in range(B)]
+        # In Ascension V5, we use 100 seeds per image as standard for multi-instance detection
+        initial_boxes = [torch.zeros((100, 4), device=images.device) for _ in range(B)]
         det_out = self.det_head(feats, initial_boxes, image_size=images.shape[2:])
         final_boxes = det_out["boxes"][-1]
         
