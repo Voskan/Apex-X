@@ -17,17 +17,17 @@ from __future__ import annotations
 from typing import Any
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
 
 from .bifpn import BiFPN
 from .cascade_head import CascadeDetHead
 from .cascade_mask_head import CascadeMaskHead
 from .mask_quality_head import MaskQualityHead
+from .point_rend import PointRendModule  # New import
 from .pv_dinov2 import PVModuleDINOv2
 from .worldclass_deps import ensure_worldclass_dependencies
 
-
-from .point_rend import PointRendModule  # New import
 
 class TeacherModelV3(nn.Module):
     """World-class teacher model with all v2.0 optimizations.
@@ -457,12 +457,13 @@ class TeacherModelV3(nn.Module):
                  # `point_sample` works for [N_total, 1, 28, 28] and [N_total, P, 2] (relative)
                  # because B covers N_total there.
                  from .point_rend import point_sample
-                 coarse_logits_sampled = point_sample(final_masks_flat, points_relative) # [N_total, 1, 1, P]
+                 # Sampling: [N_total, 1, 1, P]
+                 coarse_logits_sampled = point_sample(final_masks_flat, points_relative)
                  coarse_logits_sampled = coarse_logits_sampled.squeeze(2) # [N_total, 1, P]
                  
                  # Manually call MLP part of PointRend (skip its forward which does sampling)
                  # Our internal PointRendModule assumes we pass features?
-                 # My implementation of PointRendModule.forward TAKES coarse_logits, fine_features, point_coords
+                 # PointRendModule.forward TAKES [logits, features, coords]
                  # and does the sampling internally.
                  # BUT it assumes B matches N.
                  # So I should add a method `predict_sampled` to PointRendModule.

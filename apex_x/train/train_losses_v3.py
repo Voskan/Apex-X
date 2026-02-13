@@ -453,22 +453,14 @@ def compute_v3_training_losses(
              n = min(N_pred, N_gt)
              
              if n > 0:
-                 # Slice
+                 # Slice matched predictions and ground truth
                  p_logits = point_logits[:n]         # [n, 1, P]
-            if n > 0:
-                # Slice
-                p_logits = point_logits[:n]         # [n, 1, P]
-                p_coords = point_coords[:n]         # [n, P, 2]
-                gt = gt_masks[:n].unsqueeze(1).float() # [n, 1, H, W]
-                
-                from apex_x.losses.seg_loss import point_rend_loss
-                # point_rend_loss expects [N, 1, P], [N, P, 2], [N, 1, H, W]
-                
-                loss_dict["point_rend"] = point_rend_loss(
-                    p_logits,
-                    p_coords,
-                    gt
-                )
+                 p_coords = point_coords[:n]         # [n, P, 2]
+                 gt = gt_masks[:n].unsqueeze(1).float() # [n, 1, H, W]
+                 
+                 from apex_x.losses.seg_loss import point_rend_loss
+                 # point_rend_loss expects [N, 1, P], [N, P, 2], [N, 1, H, W]
+                 loss_dict["point_rend"] = point_rend_loss(p_logits, p_coords, gt)
 
     # 9) Boundary Force Field (BFF) Loss
     bff_pred = outputs.get("bff")
@@ -490,7 +482,11 @@ def compute_v3_training_losses(
                     mode="nearest"
                 ).squeeze(1)
             
-            from apex_x.losses.bff_loss import BFFLoss, DislocationPotentialLoss, DifferentiableContourIntegrator
+            from apex_x.losses.bff_loss import (
+                BFFLoss,
+                DifferentiableContourIntegrator,
+                DislocationPotentialLoss,
+            )
             
             # 1. Generate Ground Truth BFF using standard helper
             bff_helper = BFFLoss()

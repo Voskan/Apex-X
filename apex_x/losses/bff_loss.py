@@ -13,8 +13,8 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 try:
-    from scipy.ndimage import distance_transform_edt
     import numpy as np
+    from scipy.ndimage import distance_transform_edt
 except ImportError:
     distance_transform_edt = None
 

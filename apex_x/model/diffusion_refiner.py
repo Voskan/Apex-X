@@ -10,6 +10,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+
 class MaskDiffusionBlock(nn.Module):
     """A lightweight residual block for mask denoising."""
     def __init__(self, channels: int):
