@@ -136,6 +136,14 @@ class TeacherModelV3(nn.Module):
             nn.Conv2d(fpn_channels // 2, 2, 1) # [dx, dy] outputs
         )
 
+        # --- God-Tier: Mask Diffusion Refiner (IMD) ---------------------------
+        from apex_x.model.diffusion_refiner import MaskDiffusionRefiner
+        self.mask_diffusion = MaskDiffusionRefiner(
+            feature_channels=fpn_channels,
+            hidden_channels=64,
+            num_iterations=2
+        )
+
     # ------------------------------------------------------------------
     # helpers
     # ------------------------------------------------------------------
@@ -481,8 +489,8 @@ class TeacherModelV3(nn.Module):
                 )
                 final_masks_flat = refined_masks
 
-
-        return {
+        # 8. God-Tier: Global Path ----------------------------------------------
+        bff_out, diffused_mask = self._get_global_segmentation(fpn_features)
             "boxes": boxes_xyxy,                # Tensor [N_total, 4]
             "batch_indices": flat_boxes[:, 0].long(), # Tensor [N_total]
             "masks": final_masks_flat,           # Tensor [N_total, 1, 28, 28]
@@ -496,8 +504,28 @@ class TeacherModelV3(nn.Module):
             "point_logits": point_logits,
             "point_coords": point_coords,
             # Boundary Force Field (BFF) Output
-            "bff": self.bff_head(fpn_features[0]), # [B, 2, H/4, W/4]
+            "bff": bff_out,
+            # God-Tier: Global Diffusion Mask
+            "diffused_mask": diffused_mask,
         }
+
+    def _get_global_segmentation(self, fpn_features: list[Tensor]) -> tuple[Tensor, Tensor]:
+        """God-Tier Global Refinement Path: BFF -> Divergence -> IMD."""
+        p2_feats = fpn_features[0]
+        bff_out = self.bff_head(p2_feats) # [B, 2, H/4, W/4]
+        
+        # 1. Divergence Integration (Quick Sink detection)
+        dx = bff_out[:, 0, :, 1:] - bff_out[:, 0, :, :-1]
+        dy = bff_out[:, 1, 1:, :] - bff_out[:, 1, :-1, :]
+        dx = F.pad(dx, (0, 1, 0, 0))
+        dy = F.pad(dy, (0, 0, 0, 1))
+        div = dx + dy
+        coarse_global_mask = torch.sigmoid(-div * 5.0).unsqueeze(1)
+        
+        # 2. Diffusion Denoising
+        diffused_mask = self.mask_diffusion(coarse_global_mask, p2_feats)
+        
+        return bff_out, diffused_mask
 
 
 __all__ = ["TeacherModelV3"]

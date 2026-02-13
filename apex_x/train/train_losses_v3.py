@@ -432,8 +432,6 @@ def compute_v3_training_losses(
         # Variables `mask_gt_4d` might not be in scope if Section 3 didn't run (e.g. no masks output).
         # We should guard this.
         
-        pass # To be implemented safely below
-        
     # Safe implementation of PointRend loss
     if isinstance(point_logits, Tensor) and isinstance(point_coords, Tensor) and isinstance(target_masks, Tensor):
         # We need the Ground Truth masks corresponding to the predictions.
@@ -492,9 +490,15 @@ def compute_v3_training_losses(
                     mode="nearest"
                 ).squeeze(1)
             
-            from apex_x.losses.bff_loss import BFFLoss, DifferentiableContourIntegrator
-            bff_criterion = BFFLoss()
-            loss_dict["bff"] = bff_criterion(bff_pred, semantic_gt)
+            from apex_x.losses.bff_loss import BFFLoss, DislocationPotentialLoss, DifferentiableContourIntegrator
+            
+            # 1. Generate Ground Truth BFF using standard helper
+            bff_helper = BFFLoss()
+            gt_bff = bff_helper.compute_gt_bff(semantic_gt)
+            
+            # 2. Apply Dislocation Potential Loss (The God-Tier Physics Loss)
+            dpf_criterion = DislocationPotentialLoss()
+            loss_dict["bff"] = dpf_criterion(bff_pred, gt_bff)
             
             # --- Differentiable Contour Integrator (Geometric Consistency) ---
             # Converts force field to mask probability via divergence integration
@@ -507,6 +511,20 @@ def compute_v3_training_losses(
                 semantic_gt.unsqueeze(1).expand_as(pred_mask_from_bff)
             )
 
+            # 3. Supervise God-Tier Diffused Mask
+            diffused_mask = outputs.get("diffused_mask")
+            if diffused_mask is not None:
+                # BCE + Dice for absolute precision
+                loss_dict["diffusion_bce"] = F.binary_cross_entropy_with_logits(
+                    diffused_mask, 
+                    semantic_gt.unsqueeze(1).expand_as(diffused_mask)
+                )
+                from apex_x.losses.seg_loss import dice_loss
+                loss_dict["diffusion_dice"] = dice_loss(
+                    torch.sigmoid(diffused_mask), 
+                    semantic_gt.unsqueeze(1).expand_as(diffused_mask)
+                )
+
     default_weights = {
         "cls": 1.0,
         "mask_bce": 1.0,
@@ -517,6 +535,9 @@ def compute_v3_training_losses(
         "multi_scale": 1.0,
         "point_rend": 1.0,
         "bff": _loss_weight(config, "bff", 0.5), # New default
+        "bff_mask_consistency": 0.5,
+        "diffusion_bce": 1.0,
+        "diffusion_dice": 1.0,
     }
 
     box_weight = _loss_weight(config, "box", 2.0)

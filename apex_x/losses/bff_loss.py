@@ -118,3 +118,49 @@ class DifferentiableContourIntegrator(nn.Module):
         # Source (positive divergence) are boundaries.
         # Simple mapping: sigmoid(-div * scale)
         return torch.sigmoid(-div * 5.0).unsqueeze(1)
+
+class DislocationPotentialLoss(nn.Module):
+    """God-Tier Physics-Informed Loss (PIL).
+    
+    Models the boundary as a dislocation line where the BFF is the gradient 
+    of a potential field. It penalizes the 'Curl' of the field (swirling noise)
+    and enforces long-range geometric consistency.
+    """
+    
+    def __init__(self, curl_weight: float = 0.5, potential_weight: float = 1.0):
+        super().__init__()
+        self.curl_weight = curl_weight
+        self.potential_weight = potential_weight
+
+    def calculate_curl(self, bff: Tensor) -> Tensor:
+        """Calculate the 2D Curl (Vorticity) of the vector field.
+        
+        Curl = dFy/dx - dFx/dy. 
+        A 'perfect' boundary field should be curl-free (irrotational).
+        """
+        # Finite differences for derivatives
+        dfy_dx = bff[:, 1, :, 1:] - bff[:, 1, :, :-1]
+        dfx_dy = bff[:, 0, 1:, :] - bff[:, 0, :-1, :]
+        
+        # Pad to keep size
+        dfy_dx = F.pad(dfy_dx, (0, 1, 0, 0))
+        dfx_dy = F.pad(dfx_dy, (0, 0, 0, 1))
+        
+        return dfy_dx - dfx_dy
+
+    def forward(self, pred_bff: Tensor, gt_bff: Tensor) -> Tensor:
+        """
+        Args:
+            pred_bff: [N, 2, H, W]
+            gt_bff: [N, 2, H, W]
+        """
+        # 1. Physics Regularization: Minimize Curl (Swirl)
+        # Random noise in boundaries creates curl. Physics-informed edges are gradient-pure.
+        pred_curl = self.calculate_curl(pred_bff)
+        curl_loss = torch.mean(pred_curl**2)
+        
+        # 2. Potential Alignment: Mean Squared Error with GT
+        # This acts as the 'interaction energy' between predicted and GT potentials.
+        potential_loss = F.mse_loss(pred_bff, gt_bff)
+        
+        return (self.potential_weight * potential_loss) + (self.curl_weight * curl_loss)
