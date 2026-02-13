@@ -17,7 +17,9 @@ class SelectiveSSMLayer(nn.Module):
         self.in_proj = nn.Linear(d_model, self.d_inner * 2, bias=False)
         self.conv1d = nn.Conv1d(self.d_inner, self.d_inner, kernel_size=4, groups=self.d_inner, padding=3)
         
-        # Selective scan parameters
+        # Selective scan parameters: dt (32) + B (d_state) + C (d_state)
+        # We ensure the projection matches the split logic in forward
+        self.d_state = d_state
         self.x_proj = nn.Linear(self.d_inner, 32 + d_state * 2, bias=False)
         self.dt_proj = nn.Linear(32, self.d_inner, bias=True)
         
@@ -44,7 +46,7 @@ class SelectiveSSMLayer(nn.Module):
         # We derive dynamic A, B, C parameters from the projected features
         # [B, L, D_inner] -> [B, L, 32 + d_state * 2]
         x_proj = self.x_proj(x_conv)
-        dt, b, c = torch.split(x_proj, [32, self.d_inner // 32, self.d_inner // 32], dim=-1)
+        dt, b, c = torch.split(x_proj, [32, self.d_state, self.d_state], dim=-1)
         
         # Selectivity Decay (A)
         a = F.softplus(self.dt_proj(dt)) # [B, L, D_inner]
@@ -95,27 +97,34 @@ class HybridBackboneV5(nn.Module):
         self.fusion = nn.Conv2d(ssm_dim * 2, ssm_dim, kernel_size=1)
 
     def forward(self, x: Tensor) -> list[Tensor]:
-        # DINOv2 usually expects 224x224 or multiples of 14
-        # We assume input is already prepared.
+        # DINOv2 expects multiples of 14 for Vit-B/14
+        PATCH_SIZE = 14
+        B, C, H, W = x.shape
         
-        # Semantic Path (Global features)
-        # [B, C, H, W] -> patches -> DINOv2
-        # For simplicity, we assume we extract intermediate layers
+        # 1. Calculate Padding
+        H_padded = (H + PATCH_SIZE - 1) // PATCH_SIZE * PATCH_SIZE
+        W_padded = (W + PATCH_SIZE - 1) // PATCH_SIZE * PATCH_SIZE
+        
+        if H_padded != H or W_padded != W:
+            # Pad bottom and right
+            x = F.pad(x, (0, W_padded - W, 0, H_padded - H))
+        
+        # 2. Semantic Path (Global features)
+        # Result sem_feats shape: [B, L, D] where L = (H_padded/14) * (W_padded/14)
         sem_feats = self.semantic_core.get_intermediate_layers(x, n=1)[0]
-        # [B, L, D]
         
-        # Geometric Path (Structural relations)
+        # 3. Geometric Path (Structural relations)
         geo_feats = self.ssm_branch(sem_feats)
         
-        # Fuse and Reshape to 2D
-        B, L, D = sem_feats.shape
-        H = W = int(L**0.5)
+        # 4. Fuse and Reshape to 2D
+        # Explicitly calculate H_feat, W_feat
+        H_feat = H_padded // PATCH_SIZE
+        W_feat = W_padded // PATCH_SIZE
         
-        fused = torch.cat([sem_feats, geo_feats], dim=-1)
-        fused = fused.transpose(1, 2).reshape(B, -1, H, W)
+        fused = torch.cat([sem_feats, geo_feats], dim=-1) # [B, L, D*2]
+        fused = fused.transpose(1, 2).reshape(B, -1, H_feat, W_feat)
         
         out = self.fusion(fused)
         
-        # Return as FPN-like pyramid (for now just one high-res feature)
-        # In full V5, we'd have multiple levels.
+        # Return as FPN-like pyramid (one high-res feature)
         return [out]
