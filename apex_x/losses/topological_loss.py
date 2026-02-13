@@ -25,6 +25,11 @@ class TopologicalPersistenceLoss(nn.Module):
             pred_probs: [B, 1, H, W] sigmoid probabilities
             gt_masks: [B, 1, H, W] binary ground truth
         """
+        if pred_probs.ndim == 3:
+            pred_probs = pred_probs.unsqueeze(1)
+        if gt_masks.ndim == 3:
+            gt_masks = gt_masks.unsqueeze(1)
+            
         B, C, H, W = pred_probs.shape
         num_pixels = H * W
         eps = 1e-6

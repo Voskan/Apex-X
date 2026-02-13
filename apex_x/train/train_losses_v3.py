@@ -313,7 +313,12 @@ def compute_v3_training_losses(
         if mask_pred is not None and mask_gt is not None:
              # Ensure same resolution
              if mask_pred.shape[-2:] != mask_gt.shape[-2:]:
-                 mask_gt = F.interpolate(mask_gt.unsqueeze(1).float(), size=mask_pred.shape[-2:], mode="nearest").squeeze(1)
+                 if mask_gt.ndim == 3:
+                     mask_gt = mask_gt.unsqueeze(1)
+                 mask_gt = F.interpolate(mask_gt.float(), size=mask_pred.shape[-2:], mode="nearest")
+             
+             if mask_gt.ndim == 3:
+                 mask_gt = mask_gt.unsqueeze(1)
              loss_dict["topological"] = topo_criterion(mask_pred, mask_gt)
 
     # 8) SOTA: Flow Symmetry Loss (Energy-based physics)
