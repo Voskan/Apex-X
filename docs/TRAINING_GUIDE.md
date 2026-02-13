@@ -157,3 +157,19 @@ If training fails with synthetic fallback disabled, either:
 The repository uses a centralized checkpoint loader that prefers secure loading behavior.
 If you load checkpoints manually in custom code, use the same helper APIs from
 `apex_x.train.checkpoint`.
+
+## 8. Notebook Inference Smoke Artifact (CPU/CUDA)
+
+Use this reproducible smoke runner before manual notebook checks:
+
+```bash
+python scripts/notebook_checkpoint_smoke.py \
+  --checkpoint outputs/a100_v3_1024px/best_1024.pt \
+  --image /path/to/image.png \
+  --devices cpu,cuda \
+  --output-json artifacts/notebook_smoke/report.json
+```
+
+Notes:
+- If `cuda` is unavailable, the CUDA run is marked as `skip` in JSON.
+- For DINOv2 token-grid reshape failures, the runner retries with square resize.

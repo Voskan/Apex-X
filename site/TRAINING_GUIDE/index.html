@@ -1815,6 +1815,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-notebook-inference-smoke-artifact-cpucuda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Notebook Inference Smoke Artifact (CPU/CUDA)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1945,6 +1956,17 @@ when supported by your PyTorch version.</p>
 <p>The repository uses a centralized checkpoint loader that prefers secure loading behavior.
 If you load checkpoints manually in custom code, use the same helper APIs from
 <code>apex_x.train.checkpoint</code>.</p>
+<h2 id="8-notebook-inference-smoke-artifact-cpucuda">8. Notebook Inference Smoke Artifact (CPU/CUDA)</h2>
+<p>Use this reproducible smoke runner before manual notebook checks:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>scripts/notebook_checkpoint_smoke.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--checkpoint<span class="w"> </span>outputs/a100_v3_1024px/best_1024.pt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--image<span class="w"> </span>/path/to/image.png<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--devices<span class="w"> </span>cpu,cuda<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--output-json<span class="w"> </span>artifacts/notebook_smoke/report.json
+</code></pre></div>
+<p>Notes:
+- If <code>cuda</code> is unavailable, the CUDA run is marked as <code>skip</code> in JSON.
+- For DINOv2 token-grid reshape failures, the runner retries with square resize.</p>
 
 
 

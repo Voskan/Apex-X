@@ -109,6 +109,15 @@ The notebook supports:
 - strict/non-strict loading
 - secure checkpoint loading path (`weights_only` when available)
 
+Smoke artifact command:
+
+```bash
+python scripts/notebook_checkpoint_smoke.py \
+  --checkpoint outputs/a100_v3_1024px/best_1024.pt \
+  --devices cpu,cuda \
+  --output-json artifacts/notebook_smoke/report.json
+```
+
 ## Testing
 
 ```bash
@@ -120,6 +129,7 @@ For focused checks:
 ```bash
 pytest -q tests/test_train_stages_smoke.py
 pytest -q tests/test_routing_diagnostics.py
+mypy --no-incremental --cache-dir=/dev/null
 ```
 
 ## Documentation

@@ -193,10 +193,12 @@ Progress (2026-02-13):
   - `black --check .` -> 84 files would be reformatted
   - `mypy ...` -> internal tool crash on current environment (`NotImplementedError: Cannot serialize TypeGuardedType instance`)
 - ensured changed critical files in this batch pass `ruff check` on scoped paths
+- added deterministic mypy execution workaround in CI:
+  - `mypy --no-incremental --cache-dir=/dev/null`
+  - removes cache-serialization crash class from gate path
 
 Remaining:
 - close full-repo lint debt in controlled batches
-- add mypy version pin/workaround to avoid internal crash and get deterministic type gate
 
 Problem:
 - lint/type gates are not clean.
@@ -233,9 +235,14 @@ Progress (2026-02-13):
 - added manual `Align` override for checkpoint inference (`auto|14|16|28|32`)
 - added retry path for teacher_v3 token-grid reshape failures (fallback square resize)
 - added notebook contract test (`tests/test_checkpoint_notebook_contract.py`)
+- added reproducible smoke runner:
+  - `scripts/notebook_checkpoint_smoke.py`
+  - matrix run artifact: `artifacts/notebook_smoke/report.json`
+  - device matrix supports `cpu,cuda` with explicit `skip` reason for unavailable CUDA
+  - runner emits deterministic JSON diagnostics for CI/manual evidence
 
 Remaining:
-- CPU + CUDA manual smoke capture in reproducible artifact form
+- run same smoke script on CUDA-capable host to collect non-skip CUDA evidence
 
 Problem:
 - notebook must reliably support upload checkpoint + image and run inference.
