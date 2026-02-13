@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import json
 import shutil
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO, cast
 
 import torch
 from torch import nn
@@ -20,6 +21,80 @@ from torch.optim.lr_scheduler import _LRScheduler
 from apex_x.utils import get_logger
 
 LOGGER = get_logger(__name__)
+
+
+_STATE_DICT_CANDIDATE_KEYS: tuple[str, ...] = (
+    "model_state_dict",
+    "state_dict",
+    "model",
+    "teacher",
+    "ema_model",
+    "ema",
+)
+
+
+def safe_torch_load(
+    source: Path | str | BinaryIO,
+    *,
+    map_location: str | torch.device = "cpu",
+) -> Any:
+    """Load checkpoint payload with secure defaults.
+
+    Uses ``weights_only=True`` when supported by the current PyTorch version.
+    Falls back to the legacy behavior for older versions.
+    """
+    try:
+        return torch.load(source, map_location=map_location, weights_only=True)
+    except TypeError:
+        return torch.load(source, map_location=map_location)
+
+
+def is_tensor_state_dict(candidate: Any) -> bool:
+    """Return ``True`` when payload looks like a tensor state_dict."""
+    return (
+        isinstance(candidate, Mapping)
+        and bool(candidate)
+        and all(isinstance(k, str) and isinstance(v, torch.Tensor) for k, v in candidate.items())
+    )
+
+
+def extract_model_state_dict(
+    payload: Any,
+    *,
+    candidate_keys: tuple[str, ...] = _STATE_DICT_CANDIDATE_KEYS,
+) -> tuple[dict[str, torch.Tensor], str]:
+    """Extract model state_dict from common checkpoint formats.
+
+    Returns:
+        ``(state_dict, checkpoint_format)`` where format is either
+        ``raw_state_dict`` or one of the candidate key names.
+    """
+    if is_tensor_state_dict(payload):
+        return cast(dict[str, torch.Tensor], payload), "raw_state_dict"
+
+    if isinstance(payload, Mapping):
+        for key in candidate_keys:
+            candidate = payload.get(key)
+            if is_tensor_state_dict(candidate):
+                return cast(dict[str, torch.Tensor], candidate), key
+
+    expected = ", ".join(candidate_keys)
+    raise ValueError(
+        "Unsupported checkpoint format. Expected a raw tensor state_dict or a mapping "
+        f"containing one of: {expected}."
+    )
+
+
+def load_checkpoint_payload(
+    path: Path | str,
+    *,
+    map_location: str | torch.device = "cpu",
+) -> Any:
+    """Load checkpoint payload from filesystem with secure defaults."""
+    ckpt_path = Path(path)
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
+    return safe_torch_load(ckpt_path, map_location=map_location)
 
 
 @dataclass
@@ -158,7 +233,7 @@ def load_checkpoint(
         raise FileNotFoundError(f"Checkpoint not found: {path}")
     
     LOGGER.info(f"Loading checkpoint from {path}")
-    checkpoint = torch.load(path, map_location=device)
+    checkpoint = safe_torch_load(path, map_location=device)
     
     # Load model state
     model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
@@ -225,10 +300,7 @@ def cleanup_old_checkpoints(
     best_path = checkpoint_dir / "best.pt"
     best_target = None
     if keep_best and best_path.exists():
-        if best_path.is_symlink():
-            best_target = best_path.resolve()
-        else:
-            best_target = best_path
+        best_target = best_path.resolve() if best_path.is_symlink() else best_path
     
     # Keep last N + best
     to_remove = checkpoint_files[keep_last_n:]
@@ -249,6 +321,10 @@ def cleanup_old_checkpoints(
 
 __all__ = [
     "CheckpointMetadata",
+    "safe_torch_load",
+    "is_tensor_state_dict",
+    "extract_model_state_dict",
+    "load_checkpoint_payload",
     "save_checkpoint",
     "load_checkpoint",
     "cleanup_old_checkpoints",

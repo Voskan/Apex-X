@@ -9,7 +9,6 @@ from typing import cast
 
 import numpy as np
 
-from apex_x.bench import bench_placeholder
 from apex_x.config import ApexXConfig, load_yaml_config
 from apex_x.data import dummy_batch
 from apex_x.export import ApexXExporter, ShapeMode
@@ -29,6 +28,7 @@ from apex_x.model import (
     PVModule,
     TeacherModel,
 )
+from apex_x.model.worldclass_deps import missing_worldclass_dependencies, worldclass_install_hint
 from apex_x.runtime import RuntimeCaps, detect_runtime_caps
 from apex_x.train import (
     ApexXTrainer,
@@ -37,6 +37,7 @@ from apex_x.train import (
     run_ablation_grid,
     write_ablation_reports,
 )
+from apex_x.train.checkpoint import extract_model_state_dict, safe_torch_load
 from apex_x.utils import get_logger, log_event, seed_all
 
 LOGGER = get_logger(__name__)
@@ -502,7 +503,6 @@ def bench_cmd(
         model.forward(x)
         timings_ms.append((perf_counter() - t0) * 1000.0)
 
-    bench_placeholder()
     p50 = float(np.median(np.asarray(timings_ms)))
     p95 = float(np.percentile(np.asarray(timings_ms), 95))
 
@@ -644,27 +644,8 @@ def export_cmd(
 
         ckpt_path = Path(checkpoint)
         log_event(LOGGER, "export_loading_checkpoint", fields={"path": str(ckpt_path)})
-        checkpoint_payload = torch.load(ckpt_path, map_location="cpu")
-        state_dict: dict[str, torch.Tensor] | None = None
-        checkpoint_format = "unknown"
-        if isinstance(checkpoint_payload, dict):
-            if isinstance(checkpoint_payload.get("model_state_dict"), dict):
-                state_dict = checkpoint_payload["model_state_dict"]
-                checkpoint_format = "structured_checkpoint"
-            elif isinstance(checkpoint_payload.get("state_dict"), dict):
-                state_dict = checkpoint_payload["state_dict"]
-                checkpoint_format = "state_dict_field"
-            elif checkpoint_payload and all(
-                isinstance(key, str) and isinstance(value, torch.Tensor)
-                for key, value in checkpoint_payload.items()
-            ):
-                state_dict = checkpoint_payload
-                checkpoint_format = "raw_state_dict"
-        if state_dict is None:
-            raise ValueError(
-                f"Unsupported checkpoint format at {ckpt_path}. "
-                "Expected raw state_dict or dict containing 'model_state_dict'."
-            )
+        checkpoint_payload = safe_torch_load(ckpt_path, map_location="cpu")
+        state_dict, checkpoint_format = extract_model_state_dict(checkpoint_payload)
         cls_weight = state_dict.get("det_head.cls_pred.weight")
         if isinstance(cls_weight, torch.Tensor) and cls_weight.ndim >= 1:
             inferred_num_classes = int(cls_weight.shape[0])
@@ -725,6 +706,18 @@ def export_cmd(
         fields={"output": exported_path, "shape_mode": _normalize_shape_mode(shape_mode)},
     )
     print(f"export ok output={exported_path}")
+
+
+def preflight_cmd(profile: str = "worldclass") -> None:
+    normalized = str(profile).strip().lower()
+    if normalized != "worldclass":
+        raise ValueError("preflight profile must be 'worldclass'")
+    missing = missing_worldclass_dependencies()
+    if missing:
+        print(f"preflight fail profile=worldclass missing={','.join(missing)}")
+        print(worldclass_install_hint())
+        raise SystemExit(1)
+    print("preflight ok profile=worldclass")
 
 
 def main() -> None:
@@ -811,6 +804,10 @@ def main() -> None:
         help="Load checkpoint with strict=False",
     )
 
+    # Preflight
+    preflight_parser = subparsers.add_parser("preflight")
+    preflight_parser.add_argument("--profile", default="worldclass")
+
     args = parser.parse_args()
 
     if args.command == "train":
@@ -877,6 +874,8 @@ def main() -> None:
             args.num_classes,
             args.strict_load,
         )
+    elif args.command == "preflight":
+        preflight_cmd(args.profile)
 
 
 if __name__ == "__main__":

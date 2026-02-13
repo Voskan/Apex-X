@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#apex-x" class="md-skip">
+        <a href="#apex-x-documentation" class="md-skip">
           Skip to content
         </a>
       
@@ -470,10 +470,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-apex-x" class="md-nav__link">
+  <a href="#core-docs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Apex-X?
+        Core docs
       
     </span>
   </a>
@@ -481,10 +481,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
+  <a href="#cli-reference-current" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture Overview
+        CLI reference (current)
       
     </span>
   </a>
@@ -492,60 +492,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#validation-rule-for-docs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Quick Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-install-train" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Install &amp; Train
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-export-to-onnx" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Export to ONNX
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-compare-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Compare Results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#core-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Core Documentation
+        Validation rule for docs
       
     </span>
   </a>
@@ -1817,10 +1767,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-apex-x" class="md-nav__link">
+  <a href="#core-docs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Apex-X?
+        Core docs
       
     </span>
   </a>
@@ -1828,10 +1778,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
+  <a href="#cli-reference-current" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture Overview
+        CLI reference (current)
       
     </span>
   </a>
@@ -1839,60 +1789,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#validation-rule-for-docs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Quick Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-install-train" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Install &amp; Train
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-export-to-onnx" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Export to ONNX
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-compare-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Compare Results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#core-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Core Documentation
+        Validation rule for docs
       
     </span>
   </a>
@@ -1916,65 +1816,36 @@
 
 
 
-<h1 id="apex-x">Apex-X</h1>
-<div align="center">
-  <strong>Universal Vision Dynamic Compute Graph</strong>
-  <br>
-  <em>Adaptive Intelligence. Strict Budgets. Edge Ready.</em>
-</div>
-
-<hr />
-<p><strong>Apex-X</strong> is a next-generation computer vision runtime designed for constrained environments. It breaks the "one-size-fits-all" paradigm of static Deep Learning models by dynamically allocating compute power to where it matters most in every frame.</p>
-<h2 id="why-apex-x">Why Apex-X?</h2>
-<div class="grid cards" markdown>
-
--   :material-speedometer: **Dynamic Speed**
-    ---
-    Process video up to **4x faster** than static baselines by ignoring 60%+ of background pixels.
-
--   :material-clock-fast: **Strict Latency**
-    ---
-    Define a budget (e.g., "15ms"), and the model mathematically guarantees it will finish in time.
-
--   :material-chip: **Edge Native**
-    ---
-    Built for NVIDIA Jetson, TensorRT, and Triton. No heavy transformers required.
-
--   :material-chart-bell-curve-cumulative: **Production Ready**
-    ---
-    Exports to standard ONNX. Zero custom operators needed for basic deployment.
-
-</div>
-
-<h2 id="architecture-overview">Architecture Overview</h2>
-<pre class="mermaid"><code>graph LR
-    Input --&gt; Router;
-    Router --&gt;|Budget Control| Selector;
-    Selector --&gt;|High Importance| Heavy[Heavy CNN];
-    Selector --&gt;|Low Importance| Skip[Skip / Reuse];
-    Heavy --&gt; Merger;
-    Skip --&gt; Merger;
-    Merger --&gt; Head[Detection Head];</code></pre>
-<h2 id="quick-start">Quick Start</h2>
-<h3 id="1-install-train">1. Install &amp; Train</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># Train a small model on CPU to verify setup</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>apex-x<span class="w"> </span>train<span class="w"> </span>examples/smoke_cpu.yaml<span class="w"> </span>--steps-per-stage<span class="w"> </span><span class="m">100</span>
-</code></pre></div>
-<h3 id="2-export-to-onnx">2. Export to ONNX</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>apex-x<span class="w"> </span><span class="nb">export</span><span class="w"> </span>artifacts/train_output/config.json<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span>--output<span class="w"> </span>model.onnx<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>--num-classes<span class="w"> </span><span class="m">3</span>
-</code></pre></div>
-<h3 id="3-compare-results">3. Compare Results</h3>
-<p>Check out our <a href="benchmarks/">Benchmarks</a> to see how Apex-X outperforms YOLOv8 and others in efficiency.</p>
-<h2 id="core-documentation">Core Documentation</h2>
+<h1 id="apex-x-documentation">Apex-X Documentation</h1>
+<p>Primary documentation entrypoints:</p>
 <ul>
-<li><strong><a href="algorithms/">Algorithms</a></strong>: Understand the math behind dual-variable routing.</li>
-<li><strong><a href="benchmarks/">Benchmarks</a></strong>: Performance comparisons.</li>
-<li><strong><a href="ENGINEERING_SPEC/">Engineering Spec</a></strong>: Deep dive into the implementation.</li>
-<li><strong><a href="release/CHECKLIST/">Release Notes</a></strong>: What's new in v4.</li>
+<li>Project overview and runnable quickstart: <code>README.md</code></li>
+<li>Training flow and checkpoint policy: <code>docs/TRAINING_GUIDE.md</code></li>
+<li>Runtime and deployment notes: <code>docs/runtime/</code></li>
+<li>Benchmark protocol/docs: <code>docs/benchmarks.md</code></li>
 </ul>
+<h2 id="core-docs">Core docs</h2>
+<ol>
+<li><code>docs/ENGINEERING_SPEC.md</code></li>
+<li><code>docs/algorithms.md</code></li>
+<li><code>docs/DECISIONS.md</code></li>
+<li><code>docs/release/CHECKLIST.md</code></li>
+</ol>
+<h2 id="cli-reference-current">CLI reference (current)</h2>
+<ul>
+<li><code>python -m apex_x.cli train ...</code></li>
+<li><code>python -m apex_x.cli eval ...</code></li>
+<li><code>python -m apex_x.cli predict ...</code></li>
+<li><code>python -m apex_x.cli bench ...</code></li>
+<li><code>python -m apex_x.cli ablate ...</code></li>
+<li><code>python -m apex_x.cli export ...</code></li>
+</ul>
+<h2 id="validation-rule-for-docs">Validation rule for docs</h2>
+<p>User-facing claims should be backed by reproducible artifacts:
+- config used
+- commit hash
+- checkpoint lineage
+- evaluation reports</p>
 
 
 

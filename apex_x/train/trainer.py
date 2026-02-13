@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Any, cast
 
@@ -54,6 +55,105 @@ from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 LOGGER = get_logger(__name__)
 
 StageMetricValue = float | int | bool | str | None
+
+
+def _to_json_compatible_metric(value: StageMetricValue) -> float | int | bool | str | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return float(value)
+    if isinstance(value, str):
+        return value
+    return None
+
+
+def _format_metric(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    if value is None:
+        return "n/a"
+    return str(value)
+
+
+def _build_train_report_markdown(report_payload: Mapping[str, Any]) -> str:
+    dataset = cast(Mapping[str, Any], report_payload.get("dataset", {}))
+    final = cast(Mapping[str, Any], report_payload.get("final", {}))
+    loss_diag = cast(Mapping[str, Any], final.get("loss_diagnostics", {}))
+    history = cast(list[Mapping[str, Any]], report_payload.get("history", []))
+    stages = cast(list[Mapping[str, Any]], report_payload.get("stages", []))
+
+    lines: list[str] = [
+        "# Apex-X Train Report",
+        "",
+        "## Summary",
+        f"- epochs: {report_payload.get('epochs', 'n/a')}",
+        f"- best_metric_name: {report_payload.get('best_metric_name', 'n/a')}",
+        f"- best_metric_value: {_format_metric(report_payload.get('best_metric_value'))}",
+        "",
+        "## Dataset",
+        f"- mode: {dataset.get('mode', 'unknown')}",
+        f"- backend: {dataset.get('backend', 'unknown')}",
+        (
+            "- allow_synthetic_fallback: "
+            f"{_format_metric(dataset.get('allow_synthetic_fallback'))}"
+        ),
+        "",
+        "## Final",
+        f"- loss_proxy: {_format_metric(final.get('loss_proxy'))}",
+        f"- final_mu: {_format_metric(final.get('final_mu'))}",
+        "",
+        "## Loss Diagnostics",
+    ]
+    if loss_diag:
+        for key in sorted(loss_diag):
+            lines.append(f"- {key}: {_format_metric(loss_diag[key])}")
+    else:
+        lines.append("- n/a")
+
+    lines.extend(["", "## Stage Metrics"])
+    if stages:
+        lines.extend(
+            [
+                "| stage_id | name | metrics |",
+                "|---|---|---|",
+            ]
+        )
+        for stage in stages:
+            stage_id = stage.get("stage_id", "n/a")
+            stage_name = stage.get("name", "unknown")
+            metrics = cast(Mapping[str, Any], stage.get("metrics", {}))
+            metric_parts = [f"{key}={_format_metric(metrics[key])}" for key in sorted(metrics)]
+            lines.append(f"| {stage_id} | {stage_name} | {'; '.join(metric_parts)} |")
+    else:
+        lines.append("- n/a")
+
+    lines.extend(["", "## Epoch History"])
+    if history:
+        lines.extend(
+            [
+                "| epoch | loss_proxy | selected_metric_name | selected_metric_value | is_best |",
+                "|---|---|---|---|---|",
+            ]
+        )
+        for row in history:
+            lines.append(
+                "| "
+                f"{row.get('epoch', 'n/a')} | "
+                f"{_format_metric(row.get('loss_proxy'))} | "
+                f"{row.get('selected_metric_name', 'n/a')} | "
+                f"{_format_metric(row.get('selected_metric_value'))} | "
+                f"{_format_metric(row.get('is_best'))} |"
+            )
+    else:
+        lines.append("- n/a")
+
+    return "\n".join(lines) + "\n"
 
 
 def _identity_collate(batch: list[Any]) -> list[Any]:
@@ -572,6 +672,25 @@ class ApexXTrainer:
             return "satellite"
         return "synthetic"
 
+    def _handle_synthetic_fallback(
+        self,
+        *,
+        reason: str,
+        dataset_type: str,
+        steps_per_epoch: int,
+    ) -> tuple[torch.utils.data.DataLoader | None, int, str]:
+        if not self.config.train.allow_synthetic_fallback:
+            raise RuntimeError(
+                "Synthetic fallback is disabled (train.allow_synthetic_fallback=false). "
+                f"Dataset bootstrap failed for dataset_type={dataset_type}: {reason}"
+            )
+        LOGGER.warning(
+            "synthetic_dataset_fallback_enabled",
+            dataset_type=dataset_type,
+            reason=reason,
+        )
+        return None, steps_per_epoch, "synthetic"
+
     def _build_training_dataloader(
         self,
         *,
@@ -582,14 +701,22 @@ class ApexXTrainer:
         dataset_type = self._infer_dataset_type(dataset_path)
         steps_per_epoch = 1000
         if dataset_type == "synthetic":
-            return None, steps_per_epoch, dataset_type
+            return self._handle_synthetic_fallback(
+                reason="dataset_type resolved to synthetic",
+                dataset_type=dataset_type,
+                steps_per_epoch=steps_per_epoch,
+            )
 
         dataset: Any | None = None
         try:
             if dataset_type == "satellite":
                 root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
                 if not root_text:
-                    return None, steps_per_epoch, dataset_type
+                    return self._handle_synthetic_fallback(
+                        reason="empty dataset root for satellite dataset",
+                        dataset_type=dataset_type,
+                        steps_per_epoch=steps_per_epoch,
+                    )
                 dataset = SatelliteDataset(
                     root_dir=root_text,
                     tile_size=max(train_h, 256),
@@ -597,8 +724,11 @@ class ApexXTrainer:
                 )
             elif dataset_type == "coco":
                 if not self.config.data.coco_train_images or not self.config.data.coco_train_annotations:
-                    LOGGER.warning("COCO dataset_type selected but train image/annotation paths are not set")
-                    return None, steps_per_epoch, dataset_type
+                    return self._handle_synthetic_fallback(
+                        reason="COCO train image/annotation paths are missing",
+                        dataset_type=dataset_type,
+                        steps_per_epoch=steps_per_epoch,
+                    )
                 dataset = CocoDetectionDataset(
                     root=self.config.data.coco_train_images,
                     ann_file=self.config.data.coco_train_annotations,
@@ -607,11 +737,18 @@ class ApexXTrainer:
             elif dataset_type == "yolo":
                 root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
                 if not root_text:
-                    return None, steps_per_epoch, dataset_type
+                    return self._handle_synthetic_fallback(
+                        reason="empty dataset root for YOLO dataset",
+                        dataset_type=dataset_type,
+                        steps_per_epoch=steps_per_epoch,
+                    )
                 root = Path(root_text).expanduser()
                 if not (root / "data.yaml").exists():
-                    LOGGER.warning("YOLO dataset_type selected but data.yaml was not found")
-                    return None, steps_per_epoch, dataset_type
+                    return self._handle_synthetic_fallback(
+                        reason=f"missing data.yaml at {root}",
+                        dataset_type=dataset_type,
+                        steps_per_epoch=steps_per_epoch,
+                    )
                 dataset = YOLOSegmentationDataset(
                     root=root,
                     split="train",
@@ -620,11 +757,18 @@ class ApexXTrainer:
             else:
                 raise ValueError(f"unsupported dataset type: {dataset_type}")
         except Exception as exc:
-            LOGGER.warning(f"Failed to build train dataloader for dataset_type={dataset_type}: {exc}")
-            return None, steps_per_epoch, dataset_type
+            return self._handle_synthetic_fallback(
+                reason=f"failed to build train dataloader: {exc}",
+                dataset_type=dataset_type,
+                steps_per_epoch=steps_per_epoch,
+            )
 
         if dataset is None or len(dataset) == 0:
-            return None, steps_per_epoch, dataset_type
+            return self._handle_synthetic_fallback(
+                reason=f"empty training dataset for dataset_type={dataset_type}",
+                dataset_type=dataset_type,
+                steps_per_epoch=steps_per_epoch,
+            )
 
         batch_size = 1
         if self.config.train.auto_batch_size:
@@ -738,6 +882,8 @@ class ApexXTrainer:
         generator: torch.Generator,
         *,
         steps: int,
+        epoch: int,
+        total_epochs: int,
         dataset_path: str | Path | None = None,
     ) -> tuple[StageResult, float]:
         optimizer = torch.optim.AdamW(self.teacher.parameters(), lr=1e-3)
@@ -764,6 +910,8 @@ class ApexXTrainer:
             dataset_path=dataset_path,
         )
         LOGGER.info(f"Stage1 dataset backend: {dataset_type}")
+        dataset_mode = "synthetic" if dataloader is None else "real"
+        LOGGER.info(f"Stage1 dataset mode: {dataset_mode}")
                 
         transforms = build_robust_transforms(
             height=train_h, 
@@ -775,6 +923,22 @@ class ApexXTrainer:
         rng = np.random.RandomState(42)
 
         loss_last = 0.0
+        loss_component_sums: dict[str, float] = {}
+        loss_component_updates = 0
+        nan_or_inf_grad_steps = 0
+        skipped_non_diff_steps = 0
+        oom_skipped_steps = 0
+        grad_norm_last = 0.0
+        grad_norm_max = 0.0
+
+        def _update_loss_component_sums(loss_components: Mapping[str, float]) -> None:
+            nonlocal loss_component_updates
+            for name, value in loss_components.items():
+                value_f = float(value)
+                if not np.isfinite(value_f):
+                    continue
+                loss_component_sums[name] = loss_component_sums.get(name, 0.0) + value_f
+            loss_component_updates += 1
         
         # If dataloader exists, we iterate it. Else random loop.
         iterator = iter(dataloader) if dataloader else None
@@ -822,17 +986,29 @@ class ApexXTrainer:
                         # Forward pass with AMP
                         out = self.teacher(image, use_ema=False)
                         # Compute training loss with real detection outputs
-                        total_loss, _ = compute_teacher_training_loss(
+                        total_loss, loss_components = compute_teacher_training_loss(
                             output=out,
                             samples=samples_for_loss,
                             det_weight=1.0,
                             boundary_weight=0.05,
+                            epoch=epoch,
+                            total_epochs=total_epochs,
                             box_loss_type=self.config.train.box_loss_type,
+                            boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                            boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                            box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                            box_scale_start=self.config.train.loss_box_scale_start,
+                            box_scale_end=self.config.train.loss_box_scale_end,
+                            max_det_component=self.config.train.loss_det_component_clip,
+                            max_boundary_component=self.config.train.loss_boundary_component_clip,
+                            max_seg_component=self.config.train.loss_seg_component_clip,
                         )
+                        _update_loss_component_sums(loss_components)
                         
                         # Scale loss by accumulation steps
                         total_loss = total_loss / self.gradient_accumulation_steps
                     if not total_loss.requires_grad:
+                        skipped_non_diff_steps += 1
                         LOGGER.warning(
                             f"Non-differentiable loss at step {step_idx}; skipping batch."
                         )
@@ -856,7 +1032,12 @@ class ApexXTrainer:
                         self.scaler.unscale_(optimizer)
                         
                         # Gradient clip for stability
-                        torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
+                        grad_norm = torch.nn.utils.clip_grad_norm_(
+                            self.teacher.parameters(),
+                            max_norm=10.0,
+                        )
+                        grad_norm_last = float(grad_norm.item())
+                        grad_norm_max = max(grad_norm_max, grad_norm_last)
                         
                         # Verify gradients are finite before stepping
                         grads_finite = True
@@ -869,6 +1050,7 @@ class ApexXTrainer:
                             self.scaler.step(optimizer)
                             self.scaler.update()
                         else:
+                            nan_or_inf_grad_steps += 1
                             LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
                             optimizer.zero_grad(set_to_none=True)
                 else:
@@ -879,17 +1061,29 @@ class ApexXTrainer:
                     with heavy_ops_autocast_context(self.precision_policy):
                         out = self.teacher(image, use_ema=False)
                         # Compute training loss with real detection outputs
-                        total_loss, _ = compute_teacher_training_loss(
+                        total_loss, loss_components = compute_teacher_training_loss(
                             output=out,
                             samples=samples_for_loss,
                             det_weight=1.0,
                             boundary_weight=0.05,
+                            epoch=epoch,
+                            total_epochs=total_epochs,
                             box_loss_type=self.config.train.box_loss_type,
+                            boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                            boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                            box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                            box_scale_start=self.config.train.loss_box_scale_start,
+                            box_scale_end=self.config.train.loss_box_scale_end,
+                            max_det_component=self.config.train.loss_det_component_clip,
+                            max_boundary_component=self.config.train.loss_boundary_component_clip,
+                            max_seg_component=self.config.train.loss_seg_component_clip,
                         )
+                        _update_loss_component_sums(loss_components)
                         
                         # Scale loss by accumulation steps
                         total_loss = total_loss / self.gradient_accumulation_steps
                     if not total_loss.requires_grad:
+                        skipped_non_diff_steps += 1
                         LOGGER.warning(
                             f"Non-differentiable loss at step {step_idx}; skipping batch."
                         )
@@ -910,7 +1104,12 @@ class ApexXTrainer:
                     
                     # Only step optimizer after accumulating enough gradients
                     if should_step:
-                        torch.nn.utils.clip_grad_norm_(self.teacher.parameters(), max_norm=10.0)
+                        grad_norm = torch.nn.utils.clip_grad_norm_(
+                            self.teacher.parameters(),
+                            max_norm=10.0,
+                        )
+                        grad_norm_last = float(grad_norm.item())
+                        grad_norm_max = max(grad_norm_max, grad_norm_last)
                         
                         # Verify gradients are finite before stepping
                         grads_finite = True
@@ -922,6 +1121,7 @@ class ApexXTrainer:
                         if grads_finite:
                             optimizer.step()
                         else:
+                            nan_or_inf_grad_steps += 1
                             LOGGER.warning(f"NaN/Inf detected in gradients at step {step_idx}. Skipping step.")
                             optimizer.zero_grad(set_to_none=True)
                 
@@ -949,6 +1149,7 @@ class ApexXTrainer:
                     LOGGER.debug(f"Step {step_idx}/{steps}: loss={loss_last:.4f}, lr={current_lr:.6f}")
 
             if oom_state.triggered:
+                oom_skipped_steps += 1
                 optimizer.zero_grad(set_to_none=True)
                 continue
 
@@ -971,7 +1172,18 @@ class ApexXTrainer:
             "qat_wrapped_modules": self.quantization_summary.wrapped_modules,
             "heavy_ops_dtype": self.precision_policy.to_dict()["heavy_ops_dtype"],
             "fp8_enabled": self.precision_policy.fp8_enabled,
+            "dataset_backend": dataset_type,
+            "dataset_mode": dataset_mode,
+            "loss_component_updates": int(loss_component_updates),
+            "nan_or_inf_grad_steps": int(nan_or_inf_grad_steps),
+            "skipped_non_diff_steps": int(skipped_non_diff_steps),
+            "oom_skipped_steps": int(oom_skipped_steps),
+            "grad_norm_last": float(grad_norm_last),
+            "grad_norm_max": float(grad_norm_max),
         }
+        if loss_component_updates > 0:
+            for name, value in sorted(loss_component_sums.items()):
+                metrics[f"loss_{name}_mean"] = float(value / float(loss_component_updates))
         return StageResult(stage_id=1, name="teacher_full_compute", metrics=metrics), loss_last
 
     def _build_calibration_inputs(
@@ -1341,6 +1553,8 @@ class ApexXTrainer:
         generator: torch.Generator,
         *,
         steps: int,
+        epoch: int,
+        total_epochs: int,
         dataset_path: str | Path | None = None,
         lr: float = 1e-4,
     ) -> tuple[StageResult, float]:
@@ -1375,6 +1589,8 @@ class ApexXTrainer:
             dataset_path=dataset_path,
         )
         LOGGER.info(f"LoRA finetune dataset backend: {dataset_type}")
+        dataset_mode = "synthetic" if dataloader is None else "real"
+        LOGGER.info(f"LoRA finetune dataset mode: {dataset_mode}")
 
         transforms = build_robust_transforms(
             height=train_h,
@@ -1418,6 +1634,17 @@ class ApexXTrainer:
                         samples=samples_for_loss,
                         det_weight=1.0,
                         boundary_weight=0.1,  # Higher boundary focus in finetuning
+                        epoch=epoch,
+                        total_epochs=total_epochs,
+                        box_loss_type=self.config.train.box_loss_type,
+                        boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                        boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                        box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                        box_scale_start=self.config.train.loss_box_scale_start,
+                        box_scale_end=self.config.train.loss_box_scale_end,
+                        max_det_component=self.config.train.loss_det_component_clip,
+                        max_boundary_component=self.config.train.loss_boundary_component_clip,
+                        max_seg_component=self.config.train.loss_seg_component_clip,
                     )
                     total_loss = total_loss / self.gradient_accumulation_steps
                 if not total_loss.requires_grad:
@@ -1450,6 +1677,19 @@ class ApexXTrainer:
                     total_loss, _ = compute_teacher_training_loss(
                         output=out,
                         samples=samples_for_loss,
+                        det_weight=1.0,
+                        boundary_weight=0.1,
+                        epoch=epoch,
+                        total_epochs=total_epochs,
+                        box_loss_type=self.config.train.box_loss_type,
+                        boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                        boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                        box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                        box_scale_start=self.config.train.loss_box_scale_start,
+                        box_scale_end=self.config.train.loss_box_scale_end,
+                        max_det_component=self.config.train.loss_det_component_clip,
+                        max_boundary_component=self.config.train.loss_boundary_component_clip,
+                        max_seg_component=self.config.train.loss_seg_component_clip,
                     )
                     total_loss = total_loss / self.gradient_accumulation_steps
                 if not total_loss.requires_grad:
@@ -1482,6 +1722,8 @@ class ApexXTrainer:
             "finetune_loss_last": loss_last,
             "final_lr": float(final_lr),
             "num_lora_params": len(trainable_params),
+            "dataset_backend": dataset_type,
+            "dataset_mode": dataset_mode,
         }
         return StageResult(stage_id=5, name="lora_finetune", metrics=metrics), loss_last
 
@@ -1529,6 +1771,8 @@ class ApexXTrainer:
             stage1, stage1_loss = self._stage1_teacher_training(
                 generator,
                 steps=steps_per_stage,
+                epoch=epoch,
+                total_epochs=num_epochs,
                 dataset_path=dataset_path,
             )
             stage2, stage2_loss = self._stage2_oracle_bootstrapping(
@@ -1564,6 +1808,8 @@ class ApexXTrainer:
                 stage5, stage5_loss = self._stage_finetune_lora(
                     generator,
                     steps=steps_per_stage,
+                    epoch=epoch,
+                    total_epochs=num_epochs,
                     dataset_path=dataset_path,
                 )
                 stage_results.append(stage5)
@@ -1692,26 +1938,66 @@ class ApexXTrainer:
         legacy_checkpoint_path = output_dir / "teacher_checkpoint.pt"
         torch.save(self.teacher.state_dict(), legacy_checkpoint_path)
 
-        import json
-
         config_path = output_dir / "config.json"
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(self.config.to_dict(), f, indent=2)
 
+        stage1_metrics = next(
+            (stage.metrics for stage in last_result.stage_results if stage.name == "teacher_full_compute"),
+            {},
+        )
         report_payload = {
             "epochs": int(num_epochs),
             "best_metric_name": self.best_metric_name,
             "best_metric_value": float(self.best_metric),
+            "dataset": {
+                "mode": str(stage1_metrics.get("dataset_mode", "unknown")),
+                "backend": str(stage1_metrics.get("dataset_backend", "unknown")),
+                "allow_synthetic_fallback": bool(self.config.train.allow_synthetic_fallback),
+            },
             "history": history,
             "final": {
                 "loss_proxy": float(last_result.loss_proxy),
                 "final_mu": float(last_result.final_mu),
                 "val_metrics": final_val_metrics,
+                "loss_diagnostics": {
+                    str(k): float(v)
+                    for k, v in stage1_metrics.items()
+                    if isinstance(v, (int, float))
+                    and (
+                        str(k).startswith("loss_")
+                        or str(k)
+                        in {
+                            "nan_or_inf_grad_steps",
+                            "skipped_non_diff_steps",
+                            "oom_skipped_steps",
+                            "grad_norm_last",
+                            "grad_norm_max",
+                            "teacher_loss_last",
+                        }
+                    )
+                },
             },
+            "stages": [
+                {
+                    "stage_id": int(stage.stage_id),
+                    "name": str(stage.name),
+                    "metrics": {
+                        str(key): _to_json_compatible_metric(value)
+                        for key, value in stage.metrics.items()
+                    },
+                }
+                for stage in last_result.stage_results
+            ],
         }
         report_path = output_dir / "train_report.json"
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump(report_payload, f, indent=2)
+        report_md_path = output_dir / "train_report.md"
+        report_md_path.write_text(
+            _build_train_report_markdown(report_payload),
+            encoding="utf-8",
+        )
 
         log_event(
             LOGGER,
@@ -1722,6 +2008,7 @@ class ApexXTrainer:
                 "checkpoint_last": str(self.checkpoint_dir / "last.pt"),
                 "config": str(config_path),
                 "report": str(report_path),
+                "report_markdown": str(report_md_path),
             },
         )
 

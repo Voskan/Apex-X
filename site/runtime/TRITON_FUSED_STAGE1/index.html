@@ -2003,6 +2003,30 @@
 - <code>separate_dispatch_p50/p95</code>: split dispatch path (<code>TilePack -&gt; op -&gt; TileUnpack</code>)
 - <code>fused_dispatch_p50/p95</code>: fused Stage-1 dispatch path
 - <code>speedup_separate_over_fused</code>: primary speedup metric for Stage-1</p>
+<p>CUDA evidence snapshot (2026-02-11):
+- benchmark command:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.bench.triton_fused_stage1_bench<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--batch<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--channels<span class="w"> </span><span class="m">128</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>--height<span class="w"> </span><span class="m">128</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>--width<span class="w"> </span><span class="m">128</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>--tile-size<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span>--kmax<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span>--warmup<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span>--iters<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span>--dtype<span class="w"> </span>fp16<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span>--output<span class="w"> </span>artifacts/perf_triton_fused_stage1.json
+</code></pre></div>
+- key results:
+  - <code>fused_dispatch_p50</code>: <code>0.4001 ms</code>
+  - <code>separate_dispatch_p50</code>: <code>1.0392 ms</code>
+  - <code>speedup_separate_over_fused</code>: <code>2.5973x</code></p>
+<p>Artifacts:
+- <code>artifacts/perf_triton_fused_stage1.json</code>
+- <code>artifacts/perf_triton_fused_stage1.md</code>
+- <code>artifacts/parity_triton_fused_stage1.json</code>
+- <code>artifacts/parity_triton_fused_stage1.md</code>
+- <code>artifacts/test_triton_fused_stage1.log</code></p>
 <h2 id="limitations-stage-1">Limitations (Stage-1)</h2>
 <ul>
 <li>transform is intentionally lightweight and local only</li>

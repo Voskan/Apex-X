@@ -2,122 +2,126 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://example.com/apex-x/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/CI_GPU/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/CONTEXT/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/DECISIONS/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/ENGINEERING_SPEC/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/FP8/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/PERF/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/PERF_GPU/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/PRD/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/QAT/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/TODO/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
+    </url>
+    <url>
+         <loc>https://example.com/apex-x/TRAINING_GUIDE/</loc>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/algorithms/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/benchmarks/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/release/CHECKLIST/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/release/MIGRATION/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/CAPS/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/GO_SERVICE/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/PARITY/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/PLUGIN_SPEC/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/PLUGIN_SPECS/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TENSORRT/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TENSORRT_BUILD/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TENSORRT_INT8/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TENSORRT_POST/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TRITON/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TRITON_FUSED_STAGE1/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TRITON_FUSION/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TRITON_SSM/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TRITON_TILEPACK/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
     <url>
          <loc>https://example.com/apex-x/runtime/TRITON_TILEUNPACK/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-13</lastmod>
     </url>
 </urlset>

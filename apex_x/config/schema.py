@@ -218,6 +218,14 @@ class TrainConfig:
 
     # Loss configuration
     box_loss_type: str = "mpdiou"  # iou, giou, diou, ciou, mpdiou
+    loss_boundary_warmup_epochs: int = 10
+    loss_boundary_max_scale: float = 10.0
+    loss_box_warmup_epochs: int = 5
+    loss_box_scale_start: float = 0.5
+    loss_box_scale_end: float = 2.0
+    loss_det_component_clip: float = 1e4
+    loss_boundary_component_clip: float = 1e3
+    loss_seg_component_clip: float = 1e3
 
     # Performance optimizations
     torch_compile: bool = False
@@ -229,6 +237,7 @@ class TrainConfig:
     
     # Advanced Training
     auto_batch_size: bool = False
+    allow_synthetic_fallback: bool = False
     swa_enabled: bool = False
     swa_lr: float = 0.05
     swa_start_epoch: int = 5
@@ -273,12 +282,30 @@ class TrainConfig:
 
         if self.dataloader_num_workers < 0:
             raise ValueError("train.dataloader_num_workers must be >= 0")
+        if not isinstance(self.allow_synthetic_fallback, bool):
+            raise ValueError("train.allow_synthetic_fallback must be boolean")
 
         if (self.qat_int8 or self.qat_fp8) and not self.qat_enable:
             raise ValueError("train.qat_enable must be true when qat_int8 or qat_fp8 is enabled")
 
         if self.box_loss_type not in {"iou", "giou", "diou", "ciou", "mpdiou"}:
              raise ValueError("train.box_loss_type must be iou, giou, diou, ciou, or mpdiou")
+        if self.loss_boundary_warmup_epochs < 0:
+            raise ValueError("train.loss_boundary_warmup_epochs must be >= 0")
+        if self.loss_boundary_max_scale < 1.0:
+            raise ValueError("train.loss_boundary_max_scale must be >= 1.0")
+        if self.loss_box_warmup_epochs < 0:
+            raise ValueError("train.loss_box_warmup_epochs must be >= 0")
+        if self.loss_box_scale_start <= 0:
+            raise ValueError("train.loss_box_scale_start must be > 0")
+        if self.loss_box_scale_end < self.loss_box_scale_start:
+            raise ValueError("train.loss_box_scale_end must be >= train.loss_box_scale_start")
+        if self.loss_det_component_clip <= 0:
+            raise ValueError("train.loss_det_component_clip must be > 0")
+        if self.loss_boundary_component_clip <= 0:
+            raise ValueError("train.loss_boundary_component_clip must be > 0")
+        if self.loss_seg_component_clip <= 0:
+            raise ValueError("train.loss_seg_component_clip must be > 0")
 
         if self.swa_enabled:
             if self.swa_lr <= 0:

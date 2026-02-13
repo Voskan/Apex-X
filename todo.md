@@ -34,14 +34,11 @@ No task is done without:
 
 | ID | Task | Priority | Status |
 |---|---|---|---|
-| T0.8 | Dependency hardening for DINOv2/V3 paths | P0 | [ ] |
-| T0.9 | Remove silent synthetic fallback in train path | P0 | [ ] |
-| T0.10 | Unified secure checkpoint loading (`weights_only`) | P0 | [ ] |
-| T0.11 | Remove placeholder/no-op APIs from critical user paths | P0 | [ ] |
-| T0.12 | README/TRAINING docs truth sync | P0 | [ ] |
-| T0.13 | Lint/type debt closure (`ruff/black/mypy`) | P0 | [ ] |
-| T0.14 | Notebook checkpoint/image robustness gate | P0 | [ ] |
-| T0.15 | Loss explosion diagnostics and stabilization | P0 | [ ] |
+| T0.9 | Remove silent synthetic fallback in train path | P0 | [~] |
+| T0.10 | Unified secure checkpoint loading (`weights_only`) | P0 | [~] |
+| T0.11 | Remove placeholder/no-op APIs from critical user paths | P0 | [~] |
+| T0.13 | Lint/type debt closure (`ruff/black/mypy`) | P0 | [~] |
+| T0.14 | Notebook checkpoint/image robustness gate | P0 | [~] |
 | T1.1 | Unify real dataloaders (COCO + satellite + YOLO) | P1 | [~] |
 | T1.4 | Integrate test split evaluation + final report artifact | P1 | [~] |
 | T1.5 | Dataset contract validation (fail-fast preflight) | P1 | [ ] |
@@ -68,36 +65,18 @@ No task is done without:
 
 ## 3) Detailed active tasks
 
-### [ ] T0.8 Dependency hardening for DINOv2/V3 paths
+### [~] T0.9 Remove silent synthetic fallback in train path
 Priority: `P0`
 
-Problem:
-- `TeacherModelV3` fails when optional deps are absent (`transformers`, `timm`, `peft`, `safetensors`).
+Progress (2026-02-13):
+- added `train.allow_synthetic_fallback` (default `false`) in `apex_x/config/schema.py`
+- staged trainer now fail-fasts when dataset bootstrap fails and fallback is disabled
+- explicit synthetic fallback warning path added when fallback is enabled
+- dataset mode/backend recorded in stage metrics and `train_report.json`
+- added policy tests in `tests/test_train_synthetic_fallback_policy.py`
 
-Implementation:
-1. Add optional extras profile `worldclass` in packaging.
-2. Add explicit preflight checker for missing deps in CLI/notebook startup.
-3. Keep baseline paths usable without V3 deps.
-
-Files:
-- `pyproject.toml`
-- `requirements.txt`
-- `apex_x/model/pv_dinov2.py`
-- `apex_x/model/teacher_v3.py`
-- `docs/TRAINING_GUIDE.md`
-
-Done criteria:
-- clean missing-dependency error with exact install command
-- v3 path starts successfully when extras are installed
-
-Validation:
-- smoke with deps missing
-- smoke with deps installed
-
----
-
-### [ ] T0.9 Remove silent synthetic fallback in train path
-Priority: `P0`
+Remaining:
+- propagate same fallback policy to any non-staged legacy train entrypoints if introduced later
 
 Problem:
 - training can silently switch to synthetic data and produce misleading loss.
@@ -123,8 +102,22 @@ Validation:
 
 ---
 
-### [ ] T0.10 Unified secure checkpoint loading (`weights_only`)
+### [~] T0.10 Unified secure checkpoint loading (`weights_only`)
 Priority: `P0`
+
+Progress (2026-02-13):
+- added canonical helpers in `apex_x/train/checkpoint.py`:
+  - `safe_torch_load`
+  - `extract_model_state_dict`
+  - `load_checkpoint_payload`
+- migrated `apex_x/train/checkpoint.py` internal load path to `safe_torch_load`
+- migrated `apex_x/cli.py` export checkpoint loading to canonical helpers
+- migrated `scripts/mine_hard_examples.py` to canonical helpers
+- notebook `checkpoint_image_inference.ipynb` now calls shared helper APIs
+- `train_a100_sxm.ipynb` switched best-checkpoint load to shared secure loader
+
+Remaining:
+- audit any new future scripts/notebooks to prevent re-introducing direct `torch.load` patterns
 
 Problem:
 - checkpoint loading is inconsistent and security warning appears in multiple paths.
@@ -151,8 +144,20 @@ Validation:
 
 ---
 
-### [ ] T0.11 Remove placeholder/no-op APIs from critical user paths
+### [~] T0.11 Remove placeholder/no-op APIs from critical user paths
 Priority: `P0`
+
+Progress (2026-02-13):
+- removed `bench_placeholder` from `apex_x/bench/__init__.py` and CLI bench path
+- removed `train_step_placeholder` from `apex_x/train/__init__.py`
+- removed `loss_placeholder` from `apex_x/losses/__init__.py`
+- removed `infer_placeholder` alias from `apex_x/infer/__init__.py`
+- updated tests to use real APIs:
+  - `tests/test_feature_toggle_smoke.py`
+  - `tests/test_routing_diagnostics.py`
+
+Remaining:
+- keep monitoring for new placeholder/no-op exports in critical surfaces
 
 Problem:
 - placeholder/no-op APIs still exposed in critical paths.
@@ -179,35 +184,19 @@ Validation:
 
 ---
 
-### [ ] T0.12 README/TRAINING docs truth sync
+### [~] T0.13 Lint/type debt closure (`ruff/black/mypy`)
 Priority: `P0`
 
-Problem:
-- docs contain unsupported commands/APIs and unverified claims.
+Progress (2026-02-13):
+- ran baseline checks:
+  - `ruff check .` -> large repo debt remains (currently 351 findings)
+  - `black --check .` -> 84 files would be reformatted
+  - `mypy ...` -> internal tool crash on current environment (`NotImplementedError: Cannot serialize TypeGuardedType instance`)
+- ensured changed critical files in this batch pass `ruff check` on scoped paths
 
-Implementation:
-1. Remove unsupported API examples and missing file references.
-2. Keep only runnable commands aligned with current CLI.
-3. Mark benchmark claims as artifact-backed only.
-
-Files:
-- `README.md`
-- `docs/TRAINING_GUIDE.md`
-- `docs/index.md`
-- `scripts/apex_finetune_pipeline.sh`
-
-Done criteria:
-- all documented commands are executable in current repo
-- no unverified quality claims
-
-Validation:
-- command smoke checklist
-- `mkdocs build --strict`
-
----
-
-### [ ] T0.13 Lint/type debt closure (`ruff/black/mypy`)
-Priority: `P0`
+Remaining:
+- close full-repo lint debt in controlled batches
+- add mypy version pin/workaround to avoid internal crash and get deterministic type gate
 
 Problem:
 - lint/type gates are not clean.
@@ -232,8 +221,21 @@ Validation:
 
 ---
 
-### [ ] T0.14 Notebook checkpoint/image robustness gate
+### [~] T0.14 Notebook checkpoint/image robustness gate
 Priority: `P0`
+
+Progress (2026-02-13):
+- notebook supports upload/path for checkpoint and image
+- model family auto-detection and class inference implemented
+- strict/non-strict load diagnostics exposed
+- secure checkpoint loader is now shared with core checkpoint helper
+- added dependency preflight visibility for worldclass path
+- added manual `Align` override for checkpoint inference (`auto|14|16|28|32`)
+- added retry path for teacher_v3 token-grid reshape failures (fallback square resize)
+- added notebook contract test (`tests/test_checkpoint_notebook_contract.py`)
+
+Remaining:
+- CPU + CUDA manual smoke capture in reproducible artifact form
 
 Problem:
 - notebook must reliably support upload checkpoint + image and run inference.
@@ -253,30 +255,6 @@ Done criteria:
 
 Validation:
 - manual notebook smoke on CPU and CUDA
-
----
-
-### [ ] T0.15 Loss explosion diagnostics and stabilization
-Priority: `P0`
-
-Problem:
-- very large early losses are not fully explained by current logs.
-
-Implementation:
-1. Log detailed per-component loss and assignment stats.
-2. Add gradient norm / NaN counters into train report.
-3. Add warmup normalization knobs for unstable components.
-
-Files:
-- `apex_x/train/trainer.py`
-- `apex_x/train/train_losses.py`
-- `apex_x/losses/det_loss.py`
-
-Done criteria:
-- loss spikes are diagnosable from logs/report
-
-Validation:
-- train smoke with report assertions
 
 ---
 

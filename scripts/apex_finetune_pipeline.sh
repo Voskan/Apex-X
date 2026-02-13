@@ -39,9 +39,9 @@ python scripts/mine_hard_examples.py \
     --image-path "$DATA_ROOT" \
     --output-dir "$OUTPUT_DIR/mined"
 
-# 2. Semi-supervised Training (Future implementation: Integrate pseudo_label.py into training loop)
-echo "🧬 Step 2: Preparing semi-supervised labels..."
-# Placeholder for direct pseudo-label integration inside train script
+# 2. Optional semi-supervised stage (external workflow hook)
+echo "🧬 Step 2: Semi-supervised label generation is not invoked by this script."
+echo "   If needed, run your pseudo-label workflow before Step 3."
 
 # 3. Run Fine-tuning (LoRA)
 echo "🏋️ Step 3: Running LoRA fine-tuning..."
@@ -50,7 +50,7 @@ python scripts/train_satellite_v3.py \
     --data-root "$DATA_ROOT" \
     --output-dir "$OUTPUT_DIR/checkpoints" \
     --resume "$MODEL_PATH" \
-    --epochs 50
+    --set train.epochs=50
 
 echo "✅ Fine-tuning Pipeline Complete! 🎉"
 echo "Checkpoints: $OUTPUT_DIR/checkpoints"

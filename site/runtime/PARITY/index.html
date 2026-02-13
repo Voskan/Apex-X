@@ -1894,6 +1894,13 @@ Use this for:
 - shape sweeps
 - precision sweeps
 - combined shape+precision regression packs</p>
+<p>CUDA backend matrix examples in this repository:
+- <code>tests/test_tensorrt_tilepack_parity.py</code>
+  - validates reference vs triton vs tensorrt parity on CUDA (including triton-vs-tensorrt)
+  - includes multi-shape parametrization.
+- <code>tests/test_tensorrt_tilessm_parity.py</code>
+  - validates reference vs triton vs tensorrt parity on CUDA for forward/backward scan.
+  - includes multi-shape parametrization.</p>
 <p>Minimal sweep example:
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">apex_x.runtime</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParityMatrixCase</span><span class="p">,</span> <span class="n">run_parity_sweep</span>

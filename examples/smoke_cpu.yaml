@@ -12,3 +12,6 @@ routing:
 
 runtime:
   deterministic: true
+
+train:
+  allow_synthetic_fallback: true

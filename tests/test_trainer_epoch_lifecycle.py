@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from apex_x.config import ApexXConfig
@@ -12,6 +13,7 @@ def test_trainer_run_multi_epoch_saves_checkpoint_lifecycle(tmp_path: Path) -> N
     cfg.train.epochs = 3
     cfg.train.save_interval = 1
     cfg.train.val_interval = 10  # Disable validation path for this lifecycle check.
+    cfg.train.allow_synthetic_fallback = True
 
     trainer = ApexXTrainer(config=cfg, num_classes=3)
     result = trainer.run(steps_per_stage=1, seed=123, enable_budgeting=False)
@@ -23,6 +25,12 @@ def test_trainer_run_multi_epoch_saves_checkpoint_lifecycle(tmp_path: Path) -> N
     assert (ckpt_dir / "best.pt").exists()
     assert (ckpt_dir / "last.pt").exists()
     assert (Path(cfg.train.output_dir) / "train_report.json").exists()
+    assert (Path(cfg.train.output_dir) / "train_report.md").exists()
+    report_payload = json.loads((Path(cfg.train.output_dir) / "train_report.json").read_text())
+    assert "stages" in report_payload
+    assert isinstance(report_payload["stages"], list)
+    assert "final" in report_payload
+    assert "loss_diagnostics" in report_payload["final"]
     assert result.train_summary["epochs"] == 3
     assert trainer.current_epoch == 2
 
@@ -37,6 +45,7 @@ def test_trainer_primary_metric_controls_best_checkpoint(
     cfg.train.save_interval = 1
     cfg.train.val_interval = 1
     cfg.train.primary_metric = "val_loss"
+    cfg.train.allow_synthetic_fallback = True
 
     trainer = ApexXTrainer(config=cfg, num_classes=3)
 

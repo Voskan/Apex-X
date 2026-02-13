@@ -9,10 +9,11 @@ Expected impact: +5-8% mAP from superior pre-trained features.
 from __future__ import annotations
 
 import math
-from typing import Dict
 
 import torch
 from torch import Tensor, nn
+
+from .worldclass_deps import ensure_worldclass_dependencies
 
 try:
     from transformers import Dinov2Model
@@ -109,11 +110,12 @@ class PVModuleDINOv2(nn.Module):
         output_dims: tuple[int, int, int] = (256, 512, 1024),
     ) -> None:
         super().__init__()
-        
+
+        ensure_worldclass_dependencies(context="PVModuleDINOv2")
         if not DINOV2_AVAILABLE:
             raise RuntimeError(
-                "transformers library required for DINOv2. "
-                "Install with: pip install transformers"
+                "transformers is installed but Dinov2Model import failed. "
+                "Check transformers/torch version compatibility."
             )
         
         self.feature_layers = feature_layers
@@ -254,7 +256,7 @@ class PVModuleDINOv2(nn.Module):
         x = x.permute(0, 3, 1, 2)  # [B, D, h, w]
         return x
 
-    def forward(self, image: Tensor) -> Dict[str, Tensor]:
+    def forward(self, image: Tensor) -> dict[str, Tensor]:
         """Extract multi-scale features using DINOv2.
 
         Args:

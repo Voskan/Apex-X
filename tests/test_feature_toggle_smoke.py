@@ -8,7 +8,6 @@ import pytest
 from apex_x import ApexXConfig, ApexXModel
 from apex_x.config import apply_overrides
 from apex_x.tiles import tile_grid_shape
-from apex_x.train import train_step_placeholder
 
 
 def test_disable_nesting_override_forces_depth_zero() -> None:
@@ -77,9 +76,5 @@ def test_all_toggle_combinations_smoke(
     if no_ssm:
         assert np.allclose(out["ssm_state"], 0.0)
 
-    train_summary = train_step_placeholder(
-        routing_diagnostics=diagnostics,
-        config=cfg,
-    )
-    assert train_summary["training_toggles"]["distill_enabled"] is (not no_distill)
-    assert train_summary["training_toggles"]["pcgradpp_enabled"] is (not no_pcgradpp)
+    assert cfg.train.distill_enabled() is (not no_distill)
+    assert cfg.train.pcgradpp_enabled() is (not no_pcgradpp)

@@ -23,7 +23,8 @@ from .bifpn import BiFPN
 from .cascade_head import CascadeDetHead
 from .cascade_mask_head import CascadeMaskHead
 from .mask_quality_head import MaskQualityHead
-from .pv_dinov2 import DINOV2_AVAILABLE, PVModuleDINOv2
+from .pv_dinov2 import PVModuleDINOv2
+from .worldclass_deps import ensure_worldclass_dependencies
 
 
 class TeacherModelV3(nn.Module):
@@ -68,12 +69,7 @@ class TeacherModelV3(nn.Module):
         self.fpn_channels = fpn_channels
 
         # --- backbone ---------------------------------------------------------
-        # --- backbone ---------------------------------------------------------
-        if not DINOV2_AVAILABLE:
-            raise ImportError(
-                "DINOv2 is required for Apex-X 'Best in World' mode. "
-                "Please install transformers and torch."
-            )
+        ensure_worldclass_dependencies(context="TeacherModelV3")
             
         self.backbone = PVModuleDINOv2(
             model_name=backbone_model,

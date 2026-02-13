@@ -1926,7 +1926,8 @@
 <p>Current scope:
 - L0 tile scatter with overlap handling
 - deterministic priority overwrite semantics
-- optional blend mode with ordered composition semantics</p>
+- optional blend mode with ordered composition semantics
+- dedicated Triton blend-update kernel path (<code>_tileunpack_blend_update_kernel</code>)</p>
 <h2 id="tensor-contract">Tensor Contract</h2>
 <ul>
 <li>Input base map: <code>F_base [B, C, H, W]</code>, contiguous <code>NCHW</code></li>
@@ -1956,7 +1957,9 @@
 - falls back to reference when autograd is requested (<code>requires_grad</code> and <code>inference_only=True</code>)
 - defaults to <code>overlap_mode="override"</code> (priority overwrite)
 - <code>overlap_mode="blend"</code> is supported in dispatch without forced reference-only branch
-  when Triton path is selected</p>
+  when Triton path is selected
+- <code>overlap_mode="blend"</code> in Triton path executes sorted-rank kernel updates on CUDA
+  (no Python patch loop in the fast path)</p>
 <h2 id="api">API</h2>
 <ul>
 <li><code>get_triton_tileunpack_availability()</code></li>
@@ -1986,9 +1989,11 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>--tile-size<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>--kmax<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span>--overlap-shift<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span>--warmup<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span>--iters<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span>--dtype<span class="w"> </span>fp16
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span>--overlap-mode<span class="w"> </span>blend<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span>--blend-alpha<span class="w"> </span><span class="m">0</span>.25<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span>--warmup<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span>--iters<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span>--dtype<span class="w"> </span>fp16
 </code></pre></div></p>
 <p>Report includes:
 - backend selected and fallback reason

@@ -6,6 +6,7 @@ from apex_x.train import ApexXTrainer
 
 def test_staged_trainer_runs_all_required_stages() -> None:
     cfg = ApexXConfig()
+    cfg.train.allow_synthetic_fallback = True
     trainer = ApexXTrainer(config=cfg, num_classes=3)
     result = trainer.run(steps_per_stage=1, seed=7)
 
@@ -37,6 +38,7 @@ def test_staged_trainer_runs_all_required_stages() -> None:
 
 def test_staged_trainer_is_repeatable_with_fixed_seed() -> None:
     cfg = ApexXConfig()
+    cfg.train.allow_synthetic_fallback = True
 
     first = ApexXTrainer(config=cfg, num_classes=3).run(steps_per_stage=1, seed=11)
     second = ApexXTrainer(config=cfg, num_classes=3).run(steps_per_stage=1, seed=11)
@@ -54,6 +56,7 @@ def test_staged_trainer_is_repeatable_with_fixed_seed() -> None:
 def test_staged_trainer_pcgrad_snapshot_disabled_when_toggle_off() -> None:
     cfg = ApexXConfig()
     cfg.train.disable_pcgradpp = True
+    cfg.train.allow_synthetic_fallback = True
 
     result = ApexXTrainer(config=cfg, num_classes=3).run(steps_per_stage=1, seed=3)
 

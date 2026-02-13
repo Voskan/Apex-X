@@ -10,31 +10,27 @@
       
       
       
-        <link rel="canonical" href="https://example.com/apex-x/runtime/TRITON_SSM/">
+        <link rel="canonical" href="https://example.com/apex-x/TRAINING_GUIDE/">
       
       
-        <link rel="prev" href="../TRITON_FUSION/">
-      
-      
-        <link rel="next" href="../TRITON_FUSED_STAGE1/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>SSM - Apex-X</title>
+        <title>Apex-X Training Guide - Apex-X</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,7 +49,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#triton-tilessm-scan-baseline" class="md-skip">
+        <a href="#apex-x-training-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +88,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Apex-X" class="md-header__button md-logo" aria-label="Apex-X" data-md-component="logo">
+    <a href=".." title="Apex-X" class="md-header__button md-logo" aria-label="Apex-X" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SSM
+              Apex-X Training Guide
             
           </span>
         </div>
@@ -225,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href=".." class="md-tabs__link">
         
   
   
@@ -246,7 +242,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../benchmarks/" class="md-tabs__link">
+        <a href="../benchmarks/" class="md-tabs__link">
           
   
   
@@ -266,7 +262,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../PRD/" class="md-tabs__link">
+        <a href="../PRD/" class="md-tabs__link">
           
   
   
@@ -286,7 +282,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../PERF/" class="md-tabs__link">
+        <a href="../PERF/" class="md-tabs__link">
           
   
   
@@ -302,13 +298,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../PLUGIN_SPEC/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../runtime/PLUGIN_SPEC/" class="md-tabs__link">
           
   
   
@@ -328,7 +322,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../release/CHECKLIST/" class="md-tabs__link">
+        <a href="../release/CHECKLIST/" class="md-tabs__link">
           
   
   
@@ -348,7 +342,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../TODO/" class="md-tabs__link">
+        <a href="../TODO/" class="md-tabs__link">
           
   
   
@@ -382,7 +376,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Apex-X" class="md-nav__button md-logo" aria-label="Apex-X" data-md-component="logo">
+    <a href=".." title="Apex-X" class="md-nav__button md-logo" aria-label="Apex-X" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -412,7 +406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -491,7 +485,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarks/" class="md-nav__link">
+      <a href="../benchmarks/" class="md-nav__link">
         
   
   
@@ -519,7 +513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../algorithms/" class="md-nav__link">
+      <a href="../algorithms/" class="md-nav__link">
         
   
   
@@ -547,7 +541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CONTEXT/" class="md-nav__link">
+      <a href="../CONTEXT/" class="md-nav__link">
         
   
   
@@ -575,7 +569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DECISIONS/" class="md-nav__link">
+      <a href="../DECISIONS/" class="md-nav__link">
         
   
   
@@ -662,7 +656,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PRD/" class="md-nav__link">
+      <a href="../PRD/" class="md-nav__link">
         
   
   
@@ -690,7 +684,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ENGINEERING_SPEC/" class="md-nav__link">
+      <a href="../ENGINEERING_SPEC/" class="md-nav__link">
         
   
   
@@ -718,7 +712,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../QAT/" class="md-nav__link">
+      <a href="../QAT/" class="md-nav__link">
         
   
   
@@ -746,7 +740,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FP8/" class="md-nav__link">
+      <a href="../FP8/" class="md-nav__link">
         
   
   
@@ -833,7 +827,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PERF/" class="md-nav__link">
+      <a href="../PERF/" class="md-nav__link">
         
   
   
@@ -861,7 +855,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PERF_GPU/" class="md-nav__link">
+      <a href="../PERF_GPU/" class="md-nav__link">
         
   
   
@@ -889,7 +883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CI_GPU/" class="md-nav__link">
+      <a href="../CI_GPU/" class="md-nav__link">
         
   
   
@@ -921,31 +915,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -963,7 +952,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -981,7 +970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PLUGIN_SPEC/" class="md-nav__link">
+      <a href="../runtime/PLUGIN_SPEC/" class="md-nav__link">
         
   
   
@@ -1009,7 +998,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../CAPS/" class="md-nav__link">
+      <a href="../runtime/CAPS/" class="md-nav__link">
         
   
   
@@ -1043,20 +1032,17 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
             
   
   
@@ -1092,7 +1078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TENSORRT/" class="md-nav__link">
+      <a href="../runtime/TENSORRT/" class="md-nav__link">
         
   
   
@@ -1120,7 +1106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TENSORRT_BUILD/" class="md-nav__link">
+      <a href="../runtime/TENSORRT_BUILD/" class="md-nav__link">
         
   
   
@@ -1148,7 +1134,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TENSORRT_INT8/" class="md-nav__link">
+      <a href="../runtime/TENSORRT_INT8/" class="md-nav__link">
         
   
   
@@ -1176,7 +1162,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TENSORRT_POST/" class="md-nav__link">
+      <a href="../runtime/TENSORRT_POST/" class="md-nav__link">
         
   
   
@@ -1212,7 +1198,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../GO_SERVICE/" class="md-nav__link">
+      <a href="../runtime/GO_SERVICE/" class="md-nav__link">
         
   
   
@@ -1237,31 +1223,26 @@
                 
   
   
-    
   
   
-  
     
     
     
     
       
       
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
         
           
-          
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
             
   
   
@@ -1279,7 +1260,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1297,7 +1278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TRITON/" class="md-nav__link">
+      <a href="../runtime/TRITON/" class="md-nav__link">
         
   
   
@@ -1325,7 +1306,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TRITON_TILEPACK/" class="md-nav__link">
+      <a href="../runtime/TRITON_TILEPACK/" class="md-nav__link">
         
   
   
@@ -1353,7 +1334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TRITON_TILEUNPACK/" class="md-nav__link">
+      <a href="../runtime/TRITON_TILEUNPACK/" class="md-nav__link">
         
   
   
@@ -1381,7 +1362,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TRITON_FUSION/" class="md-nav__link">
+      <a href="../runtime/TRITON_FUSION/" class="md-nav__link">
         
   
   
@@ -1406,37 +1387,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    SSM
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_SSM/" class="md-nav__link">
         
   
   
@@ -1452,103 +1406,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#scope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Scope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recurrence" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recurrence
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#training-vs-inference-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Training vs Inference Integration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations-baseline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations (Baseline)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1561,7 +1418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TRITON_FUSED_STAGE1/" class="md-nav__link">
+      <a href="../runtime/TRITON_FUSED_STAGE1/" class="md-nav__link">
         
   
   
@@ -1656,7 +1513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../release/CHECKLIST/" class="md-nav__link">
+      <a href="../release/CHECKLIST/" class="md-nav__link">
         
   
   
@@ -1684,7 +1541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../release/MIGRATION/" class="md-nav__link">
+      <a href="../release/MIGRATION/" class="md-nav__link">
         
   
   
@@ -1771,7 +1628,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../TODO/" class="md-nav__link">
+      <a href="../TODO/" class="md-nav__link">
         
   
   
@@ -1826,10 +1683,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#scope" class="md-nav__link">
+  <a href="#1-prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scope
+        1. Prerequisites
       
     </span>
   </a>
@@ -1837,10 +1694,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recurrence" class="md-nav__link">
+  <a href="#2-canonical-train-entrypoints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recurrence
+        2. Canonical train entrypoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Canonical train entrypoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-dataset-policy-fail-fast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Dataset policy (fail-fast)
       
     </span>
   </a>
@@ -1848,10 +1733,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#api" class="md-nav__link">
+  <a href="#4-checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        API
+        4. Checkpoints
       
     </span>
   </a>
@@ -1859,10 +1744,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#training-vs-inference-integration" class="md-nav__link">
+  <a href="#5-validation-and-report-artifacts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Training vs Inference Integration
+        5. Validation and report artifacts
       
     </span>
   </a>
@@ -1870,10 +1755,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#limitations-baseline" class="md-nav__link">
+  <a href="#6-resume-training" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Limitations (Baseline)
+        6. Resume training
       
     </span>
   </a>
@@ -1881,24 +1766,52 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tests" class="md-nav__link">
+  <a href="#7-common-troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tests
+        7. Common troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Common troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-worldclass-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing worldclass dependencies
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#dataset-path-errors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark
+        Dataset path errors
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-load-warnings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint load warnings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1919,120 +1832,119 @@
 
 
 
-<h1 id="triton-tilessm-scan-baseline">Triton TileSSM Scan (Baseline)</h1>
-<h2 id="scope">Scope</h2>
-<p>This document defines the baseline Triton TileSSM scan implementation:
-- input tokens <code>tokens [B,K,C]</code>
-- linear recurrence scan over <code>K</code> for each <code>(B,C)</code> stream
-- supports directions:
-  - <code>forward</code>
-  - <code>backward</code>
-  - <code>bidirectional</code>
-- output sequence <code>y [B,K,C]</code> and final state:
-  - <code>[B,C]</code> for <code>forward</code>/<code>backward</code>
-  - <code>[B,2,C]</code> for <code>bidirectional</code> (<code>forward_state</code>, <code>backward_state</code>)</p>
-<p>Implementation:
-- <code>apex_x/kernels/triton/tilessm_scan.py</code></p>
-<h2 id="recurrence">Recurrence</h2>
-<p>Per batch <code>b</code>, step <code>k</code>, channel <code>c</code>:</p>
+<h1 id="apex-x-training-guide">Apex-X Training Guide</h1>
+<p>This guide documents the current, runnable training flow.</p>
+<h2 id="1-prerequisites">1. Prerequisites</h2>
 <ul>
-<li><code>driven = input_gain[c] * x[b,k,c] + state_bias[c]</code></li>
-<li><code>state = decay[c] * state + (1 - decay[c]) * driven</code></li>
-<li><code>y[b,k,c] = output_gain[c] * state</code></li>
+<li>Python 3.11+</li>
+<li>PyTorch installed</li>
+<li>Optional GPU for accelerated training</li>
 </ul>
-<p>Stability notes:
-- token sanitization: <code>nan -&gt; 0</code>, infinities clamped
-- token clamp range default: <code>[-1e4, 1e4]</code>
-- <code>decay</code> clamped into <code>(1e-6, 1-1e-6)</code>
-- accumulation computed in <code>fp32</code> in both reference and Triton paths</p>
-<h2 id="api">API</h2>
+<p>Install project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</code></pre></div>
+<p>Optional worldclass deps (required for <code>TeacherModelV3</code> / DINOv2 paths):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;apex-x[worldclass]&quot;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># or</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>pip<span class="w"> </span>install<span class="w"> </span>transformers<span class="w"> </span>timm<span class="w"> </span>peft<span class="w"> </span>safetensors
+</code></pre></div>
+<p>Optional dependency preflight:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>preflight<span class="w"> </span>--profile<span class="w"> </span>worldclass
+</code></pre></div>
+<p>Worldclass startup checklist (run before any DINOv2/V3 flow):</p>
+<ol>
+<li>Install optional deps: <code>pip install "apex-x[worldclass]"</code></li>
+<li>Run preflight: <code>python -m apex_x.cli preflight --profile worldclass</code></li>
+<li>Validate cache/network access to <code>facebook/dinov2-large</code> (first run downloads weights)</li>
+<li>Start one of the supported entrypoints:</li>
+<li>CLI: <code>python -m apex_x.cli train configs/worldclass.yaml ...</code></li>
+<li>Wrapper: <code>python scripts/train_worldclass_coco.py --config configs/worldclass.yaml ...</code></li>
+<li>Notebook: <code>notebooks/checkpoint_image_inference.ipynb</code></li>
+</ol>
+<h2 id="2-canonical-train-entrypoints">2. Canonical train entrypoints</h2>
+<p>Equivalent entrypoints:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>&lt;config&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+<p>or wrapper:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>scripts/train.py<span class="w"> </span>--config<span class="w"> </span>&lt;config&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+<h3 id="minimal-example">Minimal example</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>configs/coco_baseline.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--steps-per-stage<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--seed<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--num-classes<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>--set<span class="w"> </span>train.epochs<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>--set<span class="w"> </span>train.output_dir<span class="o">=</span>artifacts/train_output
+</code></pre></div>
+<h2 id="3-dataset-policy-fail-fast">3. Dataset policy (fail-fast)</h2>
+<p>Default behavior:
+- <code>train.allow_synthetic_fallback = false</code>
+- invalid/missing dataset configuration causes a hard error</p>
+<p>This prevents silent synthetic training when real dataset loading fails.</p>
+<p>For explicit smoke/debug synthetic runs only:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>examples/smoke_cpu.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--steps-per-stage<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--set<span class="w"> </span>train.allow_synthetic_fallback<span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+<p>Training report (<code>train_report.json</code>) now includes dataset mode:
+- <code>real</code>
+- <code>synthetic</code></p>
+<h2 id="4-checkpoints">4. Checkpoints</h2>
+<p>Checkpoint utilities use a unified secure load path with <code>weights_only=True</code>
+when supported by your PyTorch version.</p>
+<p>Supported payloads:
+- raw state_dict
+- <code>{model_state_dict: ...}</code>
+- <code>{state_dict: ...}</code>
+- <code>{model: ...}</code>
+- <code>{teacher: ...}</code>
+- <code>{ema_model: ...}</code>
+- <code>{ema: ...}</code></p>
+<p>Trainer checkpoints are saved in:</p>
 <ul>
-<li><code>get_triton_tilessm_availability()</code></li>
-<li><code>tilessm_scan_reference(...)</code></li>
-<li><code>tilessm_scan_triton(...)</code></li>
-<li><code>tilessm_scan_dispatch(...)</code></li>
-<li><code>scan(tokens, direction=...) -&gt; y</code> (clean API)</li>
+<li><code>&lt;train.output_dir&gt;/checkpoints/epoch_XXXX.pt</code></li>
+<li><code>&lt;train.output_dir&gt;/checkpoints/best.pt</code></li>
+<li><code>&lt;train.output_dir&gt;/checkpoints/last.pt</code></li>
 </ul>
-<p>Direction and merge options:
-- <code>direction</code>: <code>forward | backward | bidirectional</code>
-- <code>merge_mode</code> (for bidirectional): <code>sum | avg | gated</code>
-- <code>merge_gate</code> (optional, torch-computed): <code>[C]</code> or <code>[B,1,C]</code>, used when <code>merge_mode="gated"</code></p>
-<p>Dispatch semantics:
-- inference-first Triton path (<code>prefer_triton=True</code>)
-- reference fallback when Triton/CUDA unavailable
-- reference fallback when <code>requires_grad</code> and <code>inference_only=True</code></p>
-<h2 id="training-vs-inference-integration">Training vs Inference Integration</h2>
-<ul>
-<li>Training/backward path should continue using torch scan modules:</li>
-<li><code>StableStateSpaceScan</code></li>
-<li><code>StableBidirectionalStateSpaceScan</code></li>
-<li>Inference can opt into Triton dispatch via model wiring.</li>
-</ul>
-<p>Current integration:
-- <code>apex_x/model/ff_heavy_path.py</code>
-  - new <code>use_triton_inference_scan</code> toggle
-  - when enabled and module is in <code>.eval()</code> mode, scan uses <code>tilessm_scan_dispatch(...)</code>
-  - in <code>.train()</code> mode, existing torch scan path is kept</p>
-<h2 id="limitations-baseline">Limitations (Baseline)</h2>
-<ul>
-<li>kernel is still forward recurrence only; backward and bidirectional are built from directional composition</li>
-<li>no custom backward kernel (training path remains torch/reference)</li>
-<li>compile specialization by <code>K</code> (sequence length)</li>
-<li>long-sequence policy:</li>
-<li>Triton forward scan uses chunked launches when <code>K &gt; 4096</code></li>
-<li>chunk state is streamed between launches (<code>final_state</code> -&gt; next chunk <code>init_state</code>)</li>
-<li>preserves directional semantics while avoiding oversized single-launch specialization</li>
-</ul>
-<h2 id="tests">Tests</h2>
-<ul>
-<li><code>tests/test_triton_tilessm_parity_dispatch.py</code></li>
-<li><code>tests/test_triton_tilessm_parity_gpu.py</code></li>
-<li><code>tests/test_ff_heavy_path_tilessm_dispatch.py</code></li>
-</ul>
-<p>Coverage:
-- parity vs torch stable scan on small/medium shapes
-- parity for backward and bidirectional merge modes (<code>sum/avg/gated</code>)
-- deterministic CPU fallback behavior
-- autograd-safe fallback in inference-only mode
-- long-sequence chunking contract for Triton forward helper
-- CUDA parity for long-sequence chunked path (<code>K &gt; 4096</code>)
-- integration check: eval uses dispatch; train uses torch path</p>
-<h2 id="benchmark">Benchmark</h2>
-<p>Microbenchmark:
-- <code>apex_x/bench/triton_tilessm_bench.py</code></p>
-<p>Run:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.bench.triton_tilessm_bench<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--batch<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>--steps<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--channels<span class="w"> </span><span class="m">128</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>--warmup<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>--iters<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>--dtype<span class="w"> </span>fp16
-</code></pre></div></p>
-<p>Reported:
-- per-direction timings:
-  - forward
-  - backward
-  - bidirectional (avg, gated)
-- multi-direction overhead ratios vs forward
-- forward throughput and speedup</p>
-<p>Long-sequence evidence (<code>K &gt; 4096</code>):
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w"> </span>tests/test_triton_tilessm_parity_gpu.py<span class="w"> </span>-k<span class="w"> </span>long_sequence<span class="w"> </span>--maxfail<span class="o">=</span><span class="m">1</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.bench.triton_tilessm_bench<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--batch<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>--steps<span class="w"> </span><span class="m">8192</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>--channels<span class="w"> </span><span class="m">64</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>--warmup<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span>--iters<span class="w"> </span><span class="m">12</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span>--dtype<span class="w"> </span>fp16<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span>--output<span class="w"> </span>artifacts/perf_triton_tilessm_long_k.json
-</code></pre></div></p>
-<p>Artifacts:
-- <code>artifacts/parity_tilessm_long_k.json</code>
-- <code>artifacts/parity_tilessm_long_k.md</code>
-- <code>artifacts/test_tilessm_long_k.log</code>
-- <code>artifacts/perf_triton_tilessm_long_k.json</code>
-- <code>artifacts/perf_triton_tilessm_long_k.md</code></p>
+<h2 id="5-validation-and-report-artifacts">5. Validation and report artifacts</h2>
+<p>Training writes artifacts to <code>train.output_dir</code>:
+- <code>train_report.json</code>
+- <code>train_report.md</code>
+- <code>config.json</code>
+- checkpoint files in <code>checkpoints/</code></p>
+<p><code>train_report.json</code> includes:
+- selected checkpoint metric
+- best metric value
+- history by epoch
+- dataset mode/backend
+- loss diagnostics (component means, grad norm, NaN/Inf/OOM counters)
+- per-stage metrics snapshot</p>
+<p>Optional loss-stability knobs (<code>train.*</code>):
+- <code>loss_boundary_warmup_epochs</code>
+- <code>loss_boundary_max_scale</code>
+- <code>loss_box_warmup_epochs</code>
+- <code>loss_box_scale_start</code>
+- <code>loss_box_scale_end</code>
+- <code>loss_det_component_clip</code>
+- <code>loss_boundary_component_clip</code>
+- <code>loss_seg_component_clip</code></p>
+<h2 id="6-resume-training">6. Resume training</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>configs/coco_baseline.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--resume<span class="w"> </span>artifacts/train_output/checkpoints/last.pt
+</code></pre></div>
+<h2 id="7-common-troubleshooting">7. Common troubleshooting</h2>
+<h3 id="missing-worldclass-dependencies">Missing worldclass dependencies</h3>
+<p>If <code>TeacherModelV3</code>/DINOv2 path fails with missing modules, install:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;apex-x[worldclass]&quot;</span>
+</code></pre></div>
+<h3 id="dataset-path-errors">Dataset path errors</h3>
+<p>If training fails with synthetic fallback disabled, either:
+- fix dataset configuration/path
+- or explicitly set <code>train.allow_synthetic_fallback=true</code> for a smoke run</p>
+<h3 id="checkpoint-load-warnings">Checkpoint load warnings</h3>
+<p>The repository uses a centralized checkpoint loader that prefers secure loading behavior.
+If you load checkpoints manually in custom code, use the same helper APIs from
+<code>apex_x.train.checkpoint</code>.</p>
 
 
 
@@ -2088,10 +2000,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

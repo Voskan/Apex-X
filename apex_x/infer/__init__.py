@@ -41,9 +41,6 @@ from .tracking import (
     hungarian_assignment,
 )
 
-infer_placeholder = extract_routing_diagnostics
-
-
 __all__ = [
     "DetectionBatch",
     "DetectionCandidates",
@@ -80,5 +77,4 @@ __all__ = [
     "GreedyCosineAssociator",
     "HungarianAssociator",
     "hungarian_assignment",
-    "infer_placeholder",
 ]

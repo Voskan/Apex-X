@@ -89,3 +89,18 @@ def test_invalid_kmax_validation() -> None:
 def test_unknown_override_path_raises() -> None:
     with pytest.raises(KeyError, match="Unknown override path"):
         apply_overrides(ApexXConfig(), ["model.nope=1"])
+
+
+def test_invalid_train_loss_stability_config_raises() -> None:
+    with pytest.raises(ValueError, match="loss_boundary_max_scale"):
+        ApexXConfig.from_dict({"train": {"loss_boundary_max_scale": 0.9}})
+
+    with pytest.raises(ValueError, match="loss_box_scale_end"):
+        ApexXConfig.from_dict(
+            {
+                "train": {
+                    "loss_box_scale_start": 1.5,
+                    "loss_box_scale_end": 1.0,
+                }
+            }
+        )

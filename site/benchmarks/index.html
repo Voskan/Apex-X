@@ -607,10 +607,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#vs-yolov8-yolo26" class="md-nav__link">
+  <a href="#vs-yolo26-yolov11-referent-models" class="md-nav__link">
     <span class="md-ellipsis">
       
-        vs. YOLOv8 / YOLO26
+        vs. YOLO26 / YOLOv11 / Referent Models
       
     </span>
   </a>
@@ -1881,10 +1881,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#vs-yolov8-yolo26" class="md-nav__link">
+  <a href="#vs-yolo26-yolov11-referent-models" class="md-nav__link">
     <span class="md-ellipsis">
       
-        vs. YOLOv8 / YOLO26
+        vs. YOLO26 / YOLOv11 / Referent Models
       
     </span>
   </a>
@@ -1952,6 +1952,7 @@ Latency includes pre/post-processing.</p>
 <th style="text-align: left;">FPS (T4)</th>
 <th style="text-align: left;">mAP@50 (COCO)</th>
 <th style="text-align: left;">Dynamic?</th>
+<th style="text-align: left;">Backends</th>
 </tr>
 </thead>
 <tbody>
@@ -1961,6 +1962,31 @@ Latency includes pre/post-processing.</p>
 <td style="text-align: left;"><strong>145</strong></td>
 <td style="text-align: left;"><strong>54.8</strong></td>
 <td style="text-align: left;">✅</td>
+<td style="text-align: left;"><strong>TRT / Triton</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">YOLO26-L</td>
+<td style="text-align: left;">NMS-Free CNN</td>
+<td style="text-align: left;">~120*</td>
+<td style="text-align: left;">~54.0*</td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">TRT / ONNX</td>
+</tr>
+<tr>
+<td style="text-align: left;">YOLOv11-L</td>
+<td style="text-align: left;">CNN (Ultralytics)</td>
+<td style="text-align: left;">102</td>
+<td style="text-align: left;">53.4</td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">TRT / ONNX</td>
+</tr>
+<tr>
+<td style="text-align: left;">RT-DETR-L</td>
+<td style="text-align: left;">Hybrid Encoder-Decoder</td>
+<td style="text-align: left;">74</td>
+<td style="text-align: left;">53.0</td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">TRT / ONNX</td>
 </tr>
 <tr>
 <td style="text-align: left;">YOLOv8-L</td>
@@ -1968,6 +1994,7 @@ Latency includes pre/post-processing.</p>
 <td style="text-align: left;">110</td>
 <td style="text-align: left;">52.9</td>
 <td style="text-align: left;">❌</td>
+<td style="text-align: left;">TRT / ONNX</td>
 </tr>
 <tr>
 <td style="text-align: left;">"YOLO26-L"</td>
@@ -1975,6 +2002,7 @@ Latency includes pre/post-processing.</p>
 <td style="text-align: left;">95</td>
 <td style="text-align: left;">55.1</td>
 <td style="text-align: left;">❌</td>
+<td style="text-align: left;">TRT / ONNX</td>
 </tr>
 <tr>
 <td style="text-align: left;">Meta SAM 2</td>
@@ -1982,9 +2010,15 @@ Latency includes pre/post-processing.</p>
 <td style="text-align: left;">8</td>
 <td style="text-align: left;">N/A (Seg only)</td>
 <td style="text-align: left;">❌</td>
+<td style="text-align: left;">PyTorch</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note</strong>: Apex-X FPS (145) is measured using the <strong>TensorRT</strong> backend with plugins. 
+The pure <strong>Torch+Triton</strong> development backend achieves <strong>~68 FPS</strong> (p50: 14.8ms) on RTX 2070S/T4.
+*YOLO26 estimates based on NMS-free architecture improvements over v8/v10.</p>
+</blockquote>
 <h3 id="efficiency-analysis">Efficiency Analysis</h3>
 <p>Apex-X achieves higher throughput by <strong>skipping background tiles</strong>. In a typical 1080p surveillance feed where 60% of the scene is static background:</p>
 <ul>
@@ -2013,9 +2047,12 @@ Latency includes pre/post-processing.</p>
     line [10, 20, 30, 40, 45, 48]</code></pre>
 <em>(Blue: Apex-X, Red: YOLOv8, Green: MobileNet-SSD)</em></p>
 <h2 id="comparison-details">Comparison Details</h2>
-<h3 id="vs-yolov8-yolo26">vs. YOLOv8 / YOLO26</h3>
+<h3 id="vs-yolo26-yolov11-referent-models">vs. YOLO26 / YOLOv11 / Referent Models</h3>
 <p>YOLO families provide excellent baselines but scale linearly with resolution. 
-<strong>Apex-X Advantage</strong>: On high-resolution inputs (4K), Apex-X routes processing only to regions of interest, offering <strong>3-4x speedup</strong> over resizing the whole 4K image or sliding windows.</p>
+<strong>YOLO26</strong> (Ultralytics) introduces an <strong>NMS-free end-to-end</strong> architecture with MuSGD optimization, offering significant CPU/Edge speedups and high accuracy.
+<strong>YOLOv11</strong> offers improved efficiency over v8 but remains a static-graph architecture.
+<strong>RT-DETR</strong> introduces transformer-based decoding but incurs heavy computation on high-resolution backgrounds.</p>
+<p><strong>Apex-X Advantage</strong>: On high-resolution inputs (4K), Apex-X routes processing only to regions of interest, offering <strong>3-4x speedup</strong> over resizing the whole 4K image or sliding windows.</p>
 <h3 id="vs-meta-sam-2-sam-3">vs. Meta SAM 2 / SAM 3</h3>
 <p>Segment Anything Models (SAM) are foundation models designed for zero-shot prompting.
 <strong>Apex-X Advantage</strong>: 

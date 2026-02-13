@@ -41,6 +41,7 @@ class DetLossOutput:
     box_loss: Tensor
     quality_loss: Tensor
     targets: SimOTATargets
+    assignment_stats: dict[str, float]
 
 
 def _sanitize_logits(logits: Tensor, *, logit_clip: float = 30.0) -> Tensor:
@@ -449,10 +450,18 @@ def det_loss_with_simota(
     total = (
         cls_loss_weight * cls_loss + box_loss_weight * box_loss + quality_loss_weight * quality_loss
     )
+    num_anchors = float(pred_cls.shape[0])
+    num_foreground = float(targets.num_foreground)
+    assignment_stats = {
+        "num_anchors": num_anchors,
+        "num_foreground": num_foreground,
+        "foreground_ratio": (num_foreground / max(num_anchors, 1.0)),
+    }
     return DetLossOutput(
         total_loss=total,
         cls_loss=cls_loss,
         box_loss=box_loss,
         quality_loss=quality_loss,
         targets=targets,
+        assignment_stats=assignment_stats,
     )

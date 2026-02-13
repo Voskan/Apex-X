@@ -6,16 +6,15 @@ and ground truth annotations.
 
 from __future__ import annotations
 
-
 import torch
 from torch import Tensor
 
 from apex_x.data import TransformSample
-from apex_x.model import TeacherDistillOutput, compute_anchor_centers
 from apex_x.losses.det_loss import (
     det_loss_with_simota,
 )
 from apex_x.losses.seg_loss import instance_segmentation_losses
+from apex_x.model import TeacherDistillOutput, compute_anchor_centers
 
 
 def compute_teacher_training_loss(
@@ -31,6 +30,14 @@ def compute_teacher_training_loss(
     total_epochs: int | None = None,
     adaptive_boundary: bool = True,
     box_loss_type: str = "mpdiou",
+    boundary_warmup_epochs: int = 10,
+    boundary_max_scale: float = 10.0,
+    box_warmup_epochs: int = 5,
+    box_scale_start: float = 0.5,
+    box_scale_end: float = 2.0,
+    max_det_component: float = 1e4,
+    max_boundary_component: float = 1e3,
+    max_seg_component: float = 1e3,
 ) -> tuple[Tensor, dict[str, float]]:
     """Compute training loss for teacher model using SimOTA.
     
@@ -46,6 +53,14 @@ def compute_teacher_training_loss(
         total_epochs: Total training epochs (for progressive loss balancing)
         adaptive_boundary: Use adaptive boundary weight scheduling
         box_loss_type: Type of box loss (iou, giou, diou, ciou, mpdiou)
+        boundary_warmup_epochs: Epoch count before boundary ramp starts
+        boundary_max_scale: Maximum boundary weight multiplier at end of ramp
+        box_warmup_epochs: Epoch count before box-weight ramp starts
+        box_scale_start: Initial scale multiplier for box regression term
+        box_scale_end: Final scale multiplier for box regression term
+        max_det_component: Clamp for detection loss component (stability guard)
+        max_boundary_component: Clamp for boundary loss component (stability guard)
+        max_seg_component: Clamp for segmentation loss component (stability guard)
     
     Returns:
         tuple of (total_loss, loss_dict) with individual components
@@ -55,32 +70,64 @@ def compute_teacher_training_loss(
     
     # Adaptive boundary weight: 0.05 → 0.5 during training
     # Early: focus on detection, Late: refine boundaries
-    if adaptive_boundary and epoch is not None and total_epochs is not None and total_epochs > 10:
-        warmup = 10  # First 10 epochs keep low boundary weight
-        progress = max(0.0, min(1.0, (epoch - warmup) / (total_epochs - warmup)))
-        # Linear increase from base (0.05) to 10x base (0.5)
-        boundary_weight = boundary_weight * (1.0 + 9.0 * progress)
+    if (
+        adaptive_boundary
+        and epoch is not None
+        and total_epochs is not None
+        and total_epochs > boundary_warmup_epochs
+    ):
+        warmup = max(0, int(boundary_warmup_epochs))
+        progress = max(0.0, min(1.0, (epoch - warmup) / max(total_epochs - warmup, 1)))
+        max_scale = max(1.0, float(boundary_max_scale))
+        boundary_scale = 1.0 + (max_scale - 1.0) * progress
+        boundary_weight = boundary_weight * boundary_scale
+        loss_dict['boundary_scale_adaptive'] = boundary_scale
         loss_dict['boundary_weight_adaptive'] = boundary_weight
     
     if samples is None or len(samples) == 0:
         # Fallback: dummy loss for synthetic data
         det_loss = output.logits.pow(2).mean()
+        det_loss = torch.nan_to_num(
+            det_loss,
+            nan=0.0,
+            posinf=max_det_component,
+            neginf=0.0,
+        ).clamp(min=0.0, max=max_det_component)
         boundary_loss = output.boundaries.mean()
+        boundary_loss = torch.nan_to_num(
+            boundary_loss,
+            nan=0.0,
+            posinf=max_boundary_component,
+            neginf=0.0,
+        ).clamp(min=0.0, max=max_boundary_component)
         total_loss = det_loss + boundary_weight * boundary_loss
+        total_loss = torch.nan_to_num(
+            total_loss,
+            nan=0.0,
+            posinf=max_det_component,
+            neginf=0.0,
+        )
         
         loss_dict["det_loss"] = float(det_loss.item())
         loss_dict["boundary_loss"] = float(boundary_loss.item())
         loss_dict["total_loss"] = float(total_loss.item())
+        loss_dict["num_assignment_samples"] = 0.0
+        loss_dict["assignment_num_anchors"] = 0.0
+        loss_dict["assignment_num_foreground"] = 0.0
+        loss_dict["assignment_foreground_ratio"] = 0.0
         
         return total_loss, loss_dict
     
     # Progressive loss balancing (YOLO26-style)
-    if epoch is not None and total_epochs is not None and total_epochs > 5:
-        warmup = 5
-        progress = max(0.0, min(1.0, (epoch - warmup) / (total_epochs - warmup)))
+    if epoch is not None and total_epochs is not None and total_epochs > box_warmup_epochs:
+        warmup = max(0, int(box_warmup_epochs))
+        progress = max(0.0, min(1.0, (epoch - warmup) / max(total_epochs - warmup, 1)))
+        box_start = float(max(box_scale_start, 1e-6))
+        box_end = float(max(box_scale_end, box_start))
         # Early: focus classification, Late: refine boxes
         cls_weight = cls_weight * 1.0
-        box_weight = box_weight * (0.5 + 1.5 * progress)  # 0.5 → 2.0
+        box_weight = box_weight * (box_start + (box_end - box_start) * progress)
+        loss_dict["box_weight_adaptive"] = box_weight
     
     # Extract GT from samples
     gt_boxes_list = []
@@ -110,6 +157,9 @@ def compute_teacher_training_loss(
     total_box_loss = torch.tensor(0.0, device=device)
     total_quality_loss = torch.tensor(0.0, device=device)
     num_levels_used = 0
+    assignment_num_anchors = 0.0
+    assignment_num_foreground = 0.0
+    assignment_samples = 0
     
     for level_name, stride in levels:
         if level_name not in output.logits_by_level:
@@ -175,6 +225,9 @@ def compute_teacher_training_loss(
             total_box_loss += loss_out.box_loss
             total_quality_loss += loss_out.quality_loss
             num_levels_used += 1
+            assignment_num_anchors += float(loss_out.assignment_stats.get("num_anchors", 0.0))
+            assignment_num_foreground += float(loss_out.assignment_stats.get("num_foreground", 0.0))
+            assignment_samples += 1
     
     # Average losses across levels and batch
     if num_levels_used > 0:
@@ -184,10 +237,19 @@ def compute_teacher_training_loss(
     
     # Detection loss
     det_loss = total_cls_loss + total_box_loss + total_quality_loss
+    det_loss = torch.nan_to_num(det_loss, nan=0.0, posinf=max_det_component, neginf=0.0).clamp(
+        min=0.0,
+        max=max_det_component,
+    )
     
     # Boundary distillation loss
     boundary_loss = output.boundaries.abs().mean()
-    boundary_loss = torch.nan_to_num(boundary_loss, nan=0.0)
+    boundary_loss = torch.nan_to_num(
+        boundary_loss,
+        nan=0.0,
+        posinf=max_boundary_component,
+        neginf=0.0,
+    ).clamp(min=0.0, max=max_boundary_component)
 
     # Instance segmentation loss when masks are available from both prediction and GT.
     seg_loss = torch.tensor(0.0, device=device)
@@ -228,9 +290,14 @@ def compute_teacher_training_loss(
             seg_batches += 1
     if seg_batches > 0:
         seg_loss = seg_loss / seg_batches
+    seg_loss = torch.nan_to_num(seg_loss, nan=0.0, posinf=max_seg_component, neginf=0.0).clamp(
+        min=0.0,
+        max=max_seg_component,
+    )
     
     # Combine
     total_loss = det_weight * det_loss + boundary_weight * boundary_loss + seg_loss
+    total_loss = torch.nan_to_num(total_loss, nan=0.0, posinf=max_det_component, neginf=0.0)
     
     # Record components
     loss_dict["cls_loss"] = float(total_cls_loss.item())
@@ -241,7 +308,16 @@ def compute_teacher_training_loss(
     loss_dict["seg_loss"] = float(seg_loss.item())
     loss_dict["total_loss"] = float(total_loss.item())
     loss_dict["num_levels"] = num_levels_used
-    
+    loss_dict["num_assignment_samples"] = float(assignment_samples)
+    loss_dict["assignment_num_anchors"] = float(assignment_num_anchors)
+    loss_dict["assignment_num_foreground"] = float(assignment_num_foreground)
+    if assignment_num_anchors > 0.0:
+        loss_dict["assignment_foreground_ratio"] = float(
+            assignment_num_foreground / assignment_num_anchors
+        )
+    else:
+        loss_dict["assignment_foreground_ratio"] = 0.0
+
     return total_loss, loss_dict
 
 

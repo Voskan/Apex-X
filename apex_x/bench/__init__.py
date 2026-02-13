@@ -7,13 +7,7 @@ from .trt_engine_sweep import (
     run_trt_engine_shape_sweep,
 )
 
-
-def bench_placeholder() -> None:
-    return None
-
-
 __all__ = [
-    "bench_placeholder",
     "run_cpu_perf_suite",
     "write_json",
     "read_json",

@@ -1,4 +1,4 @@
-"""Loss interfaces and placeholders for DET/SEG training."""
+"""Loss interfaces for DET/SEG training."""
 
 from .det_loss import (
     ClsLossType,
@@ -37,13 +37,7 @@ from .simota import (
     topk_center_candidates,
 )
 
-
-def loss_placeholder() -> float:
-    return 0.0
-
-
 __all__ = [
-    "loss_placeholder",
     "ClsLossType",
     "QualityLossType",
     "SimOTATargets",
