@@ -161,14 +161,13 @@ class TeacherModelV3(nn.Module):
             fpn_features: Pyramid features
             image_size: (H, W)
             max_proposals: Max proposals per image
+
+        Returns one tensor of shape ``[N, 4]`` **per batch element**.
         """
         # God-Tier Optimization: Throttle proposals during training to prevent OOM
         # 128 is more than enough for training signal, keeps VRAM low.
         if self.training and max_proposals > 128:
             max_proposals = 128
-
-        Returns one tensor of shape ``[N, 4]`` **per batch element**.
-        """
         # Use the middle FPN level for proposals
         mid = min(1, len(fpn_features) - 1)
         feat = fpn_features[mid]
