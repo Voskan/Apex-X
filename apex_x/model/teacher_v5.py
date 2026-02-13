@@ -103,7 +103,7 @@ class TeacherModelV5(nn.Module):
         inr_refined = self.inr_head(feats_expanded, all_coords)
         final_masks = inr_refined.reshape(B * num_boxes, 1, grid_h, grid_w)
         
-        # ⚠️ SOTA Alignment: Returning keys exactly as expected by train_losses_v3
+        # ⚠️ SOTA Alignment: Returning keys exactly as expected by train_losses_v5
         return {
             "boxes": torch.cat(final_boxes, dim=0) if final_boxes else torch.zeros(0, 4, device=images.device),
             "scores": det_out["scores"][-1],

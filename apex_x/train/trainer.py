@@ -30,6 +30,7 @@ from apex_x.model import (
     PVModule,
     TeacherModel,
     TeacherModelV3,
+    TeacherModelV5,
     TimmBackboneAdapter,
 )
 from apex_x.routing import (
@@ -53,7 +54,7 @@ from .checkpoint import update_checkpoint_manifest
 from .lr_scheduler import create_lr_scheduler
 from .pcgrad import apply_pcgradpp, diagnostics_to_dict
 from .train_losses import compute_teacher_training_loss
-from .train_losses_v3 import compute_v3_training_losses
+from .train_losses_v5 import compute_v5_training_losses
 from .qat import QuantizationSummary, prepare_int8_ptq, prepare_int8_qat
 from .trainer_utils import add_train_epoch_method
 from .memory_manager import MemoryManager
@@ -580,8 +581,8 @@ class ApexXTrainer:
                 output = self.teacher(images, use_ema=True)
                 
                 # Compute real validation loss
-                if isinstance(self.teacher, TeacherModelV3):
-                     val_loss_tens, _ = compute_v3_training_losses(
+                if isinstance(self.teacher, (TeacherModelV3, TeacherModelV5)):
+                     val_loss_tens, _ = compute_v5_training_losses(
                          outputs=output,
                          targets=batch_data,
                          model=self.teacher,
@@ -608,7 +609,7 @@ class ApexXTrainer:
                 if compute_map and evaluator is not None:
                     results = {}
                     
-                    if isinstance(self.teacher, TeacherModelV3):
+                    if isinstance(self.teacher, (TeacherModelV3, TeacherModelV5)):
                         # V3 Output Processing
                         boxes_all = output["boxes"] # [N_total, 4]
                         scores_all = output["scores"] # [N_total, C]
@@ -1145,8 +1146,8 @@ class ApexXTrainer:
                         out = self.teacher(image, use_ema=False)
                         # Compute training loss with real detection outputs
                         # Compute training loss with real detection outputs
-                        if isinstance(self.teacher, TeacherModelV3):
-                             total_loss, loss_components = compute_v3_training_losses(
+                        if isinstance(self.teacher, (TeacherModelV3, TeacherModelV5)):
+                             total_loss, loss_components = compute_v5_training_losses(
                                  outputs=out,
                                  targets=samples_for_loss,
                                  model=self.teacher,
@@ -1228,8 +1229,8 @@ class ApexXTrainer:
                     with heavy_ops_autocast_context(self.precision_policy):
                         out = self.teacher(image, use_ema=False)
                         # Compute training loss with real detection outputs
-                        if isinstance(self.teacher, TeacherModelV3):
-                             total_loss, loss_components = compute_v3_training_losses(
+                        if isinstance(self.teacher, (TeacherModelV3, TeacherModelV5)):
+                             total_loss, loss_components = compute_v5_training_losses(
                                  outputs=out,
                                  samples=samples_for_loss,
                                  model=self.teacher,
@@ -1804,8 +1805,8 @@ class ApexXTrainer:
                     optimizer.zero_grad(set_to_none=True)
                 with torch.cuda.amp.autocast():
                     out = self.teacher(image, use_ema=False)
-                    if isinstance(self.teacher, TeacherModelV3):
-                        total_loss, _ = compute_v3_training_losses(
+                    if isinstance(self.teacher, (TeacherModelV3, TeacherModelV5)):
+                        total_loss, _ = compute_v5_training_losses(
                             outputs=out,
                             targets=samples_for_loss,
                             model=self.teacher,
@@ -1857,8 +1858,8 @@ class ApexXTrainer:
                     optimizer.zero_grad(set_to_none=True)
                 with heavy_ops_autocast_context(self.precision_policy):
                     out = self.teacher(image, use_ema=False)
-                    if isinstance(self.teacher, TeacherModelV3):
-                        total_loss, _ = compute_v3_training_losses(
+                    if isinstance(self.teacher, (TeacherModelV3, TeacherModelV5)):
+                        total_loss, _ = compute_v5_training_losses(
                             outputs=out,
                             targets=samples_for_loss,
                             model=self.teacher,

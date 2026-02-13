@@ -1,4 +1,4 @@
-"""Enhanced training losses for TeacherModelV3."""
+"""Enhanced training losses for TeacherModelV5."""
 
 from __future__ import annotations
 
@@ -131,13 +131,13 @@ def _loss_weight(config: Any, key: str, default: float) -> float:
     return default
 
 
-def compute_v3_training_losses(
+def compute_v5_training_losses(
     outputs: dict[str, Any],
     targets: dict[str, Any],
     model: Any,
     config: Any,
 ) -> tuple[Tensor, dict[str, Tensor]]:
-    """Compute v3 training losses with finite-safe sanitization."""
+    """Compute v5 training losses with finite-safe sanitization."""
     device = _resolve_device(outputs, model)
     loss_dict: dict[str, Tensor] = {}
 
@@ -670,4 +670,4 @@ def compute_v3_training_losses(
     return total, safe_loss_dict
 
 
-__all__ = ["compute_v3_training_losses"]
+__all__ = ["compute_v5_training_losses"]
