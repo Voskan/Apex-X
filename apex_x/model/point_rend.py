@@ -145,8 +145,6 @@ class PointRendModule(nn.Module):
             self.mlp.add_module(f"relu{i+1}", nn.ReLU(inplace=True))
             
         self.mlp.add_module("final", nn.Conv1d(fc_dim, out_channels, 1))
-        
-    def forward(self, coarse_logits: Tensor, fine_features: Tensor, point_coords: Tensor) -> Tensor:
     def _predict_at_points(
         self, 
         coarse_logits: Tensor, 
