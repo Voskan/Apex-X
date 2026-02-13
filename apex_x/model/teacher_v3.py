@@ -491,6 +491,8 @@ class TeacherModelV3(nn.Module):
 
         # 8. God-Tier: Global Path ----------------------------------------------
         bff_out, diffused_mask = self._get_global_segmentation(fpn_features)
+
+        return {
             "boxes": boxes_xyxy,                # Tensor [N_total, 4]
             "batch_indices": flat_boxes[:, 0].long(), # Tensor [N_total]
             "masks": final_masks_flat,           # Tensor [N_total, 1, 28, 28]
