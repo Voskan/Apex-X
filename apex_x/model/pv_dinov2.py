@@ -132,6 +132,7 @@ class PVModuleDINOv2(nn.Module):
         hidden_dim = self.dinov2.config.hidden_size  # 1024 for ViT-L
         
         # LoRA adapters for each pyramid level
+        self.lora_p2 = LoRAAdapter(hidden_dim, output_dims[0], rank=lora_rank) # NEW: high-res P2
         self.lora_p3 = LoRAAdapter(hidden_dim, output_dims[0], rank=lora_rank)
         self.lora_p4 = LoRAAdapter(hidden_dim, output_dims[1], rank=lora_rank)
         self.lora_p5 = LoRAAdapter(hidden_dim, output_dims[2], rank=lora_rank)
@@ -186,7 +187,7 @@ class PVModuleDINOv2(nn.Module):
             for special in candidates:
                 if token_count - special == expected_tokens:
                     return special
-
+        
         for special in candidates:
             if token_count - special > 0:
                 return special
@@ -233,10 +234,7 @@ class PVModuleDINOv2(nn.Module):
         *,
         image_hw: tuple[int, int] | None = None,
     ) -> Tensor:
-        """Reshape ViT sequence output to a 2D feature map.
-
-        Supports rectangular patch grids and optional register tokens.
-        """
+        """Reshape ViT sequence output to a 2D feature map."""
         if x.ndim != 3:
             raise ValueError("ViT hidden-state must be [B, N_tokens, D]")
         B, token_count, D = x.shape
@@ -257,16 +255,7 @@ class PVModuleDINOv2(nn.Module):
         return x
 
     def forward(self, image: Tensor) -> dict[str, Tensor]:
-        """Extract multi-scale features using DINOv2.
-
-        Args:
-            image: Input image ``[B, 3, H, W]``.
-                   Rectangular shapes are supported.
-
-        Returns:
-            ``{'P3': ..., 'P4': ..., 'P5': ...}``
-            where P3 is the highest-resolution feature map.
-        """
+        """Extract multi-scale features using DINOv2."""
         B, _, H, W = image.shape
 
         # Forward through frozen DINOv2
@@ -281,35 +270,43 @@ class PVModuleDINOv2(nn.Module):
         max_index = len(hidden_states) - 1
         l_early, l_mid, l_deep = self._resolve_feature_layers(max_index)
 
-        feat_l8 = hidden_states[l_early]   # early
+        feat_l0  = hidden_states[1]        # Extra-early for high-res P2
+        feat_l8  = hidden_states[l_early]   # early
         feat_l16 = hidden_states[l_mid]    # mid
         feat_l23 = hidden_states[l_deep]   # deep
 
-        # Reshape to 2-D feature maps  ── all share the same spatial grid
         image_hw = (int(H), int(W))
-        feat_l8_2d  = self._reshape_vit_output(feat_l8, image_hw=image_hw)    # [B, D, h, w]
+        feat_l0_2d  = self._reshape_vit_output(feat_l0, image_hw=image_hw)
+        feat_l8_2d  = self._reshape_vit_output(feat_l8, image_hw=image_hw)
         feat_l16_2d = self._reshape_vit_output(feat_l16, image_hw=image_hw)
         feat_l23_2d = self._reshape_vit_output(feat_l23, image_hw=image_hw)
 
         # ------- LoRA adapters (trainable) ----------------------------------
-        # P3 — full patch-grid resolution
+        # P2 — Stride 4 (High resolution from early features)
+        p2 = self.lora_p2(feat_l0_2d.permute(0, 2, 3, 1))
+        p2 = p2.permute(0, 3, 1, 2) # [B, C3, h, w] (Stride 14)
+        p2 = nn.functional.interpolate(p2, size=(H // 4, W // 4), mode="bilinear", align_corners=False)
+
+        # P3 — Stride 8 (full patch-grid is 14, we upsample slightly for standard pyramid)
         p3 = self.lora_p3(feat_l8_2d.permute(0, 2, 3, 1))   # → [B, h, w, C3]
         p3 = p3.permute(0, 3, 1, 2)                          # → [B, C3, h, w]
+        p3 = nn.functional.interpolate(p3, size=(H // 8, W // 8), mode="bilinear", align_corners=False)
 
-        # P4 — half resolution
+        # P4 — Stride 16 (half of 8)
         p4 = self.lora_p4(feat_l16_2d.permute(0, 2, 3, 1))
         p4 = p4.permute(0, 3, 1, 2)
-        p4 = nn.functional.avg_pool2d(p4, kernel_size=2, stride=2)
+        p4 = nn.functional.interpolate(p4, size=(H // 16, W // 16), mode="bilinear", align_corners=False)
 
-        # P5 — quarter resolution
+        # P5 — Stride 32 (quarter of 8)
         p5 = self.lora_p5(feat_l23_2d.permute(0, 2, 3, 1))
         p5 = p5.permute(0, 3, 1, 2)
-        p5 = nn.functional.avg_pool2d(p5, kernel_size=4, stride=4)
+        p5 = nn.functional.interpolate(p5, size=(H // 32, W // 32), mode="bilinear", align_corners=False)
 
         return {
-            'P3': p3,   # [B, 256,  h,    w   ]
-            'P4': p4,   # [B, 512,  h/2,  w/2 ]
-            'P5': p5,   # [B, 1024, h/4,  w/4 ]
+            'P2': p2,   # [B, 256,  H/4,  W/4 ]
+            'P3': p3,   # [B, 256,  H/8,  W/8 ]
+            'P4': p4,   # [B, 512,  H/16, W/16]
+            'P5': p5,   # [B, 1024, H/32, W/32]
         }
     
     def trainable_parameters(self) -> int:

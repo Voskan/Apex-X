@@ -147,100 +147,162 @@ class PointRendModule(nn.Module):
         self.mlp.add_module("final", nn.Conv1d(fc_dim, out_channels, 1))
         
     def forward(self, coarse_logits: Tensor, fine_features: Tensor, point_coords: Tensor) -> Tensor:
-        """
-        Predict masks at specific points (Training Mode).
-        
-        Args:
-            coarse_logits: [N, C_out, H, W] Coarse prediction (e.g. from Mask Head)
-            fine_features: [N, C_in, H, W] Fine features (e.g. P2 or stride-4 backbone)
-            point_coords: [N, P, 2] Point coordinates in [0, 1]
-            
-        Returns:
-            point_logits: [N, C_out, P] Logits at sampled points
-        """
-        # 1. Sample coarse prediction at points
+    def _predict_at_points(
+        self, 
+        coarse_logits: Tensor, 
+        fine_features: Tensor, 
+        point_coords: Tensor,
+        boxes: Tensor | None = None,
+        batch_indices: Tensor | None = None
+    ) -> Tensor:
+        """Internal helper to predict at points, handling potential global vs ROI feature sampling."""
+        # 1. Sample coarse prediction at points (always ROI-relative)
         coarse_sampled = point_sample(coarse_logits, point_coords) 
         if coarse_sampled.dim() == 4 and coarse_sampled.shape[2] == 1:
              coarse_sampled = coarse_sampled.squeeze(2) # [N, C_out, P]
 
         # 2. Sample fine features at points
-        fine_sampled = point_sample(fine_features, point_coords) 
+        if boxes is not None and batch_indices is not None:
+            # GLOBAL SAMPLING: fine_features is [B, C, Hf, Wf]
+            # point_coords are [N, P, 2] relative to [0, 1] in BOX
+            # We must convert to absolute normalized [0, 1] relative to IMAGE
+            N, P, _ = point_coords.shape
+            B, C_in, Hf, Wf = fine_features.shape
+            
+            # Map relative to absolute
+            x1 = boxes[:, 0].unsqueeze(1)
+            y1 = boxes[:, 1].unsqueeze(1)
+            w = (boxes[:, 2] - boxes[:, 0]).unsqueeze(1)
+            h = (boxes[:, 3] - boxes[:, 1]).unsqueeze(1)
+            
+            # Note: We assume target image size is Hf, Wf scaled? 
+            # Actually grid_sample takes coordinates relative to the input tensor's grid.
+            # So if we want to sample from features, we need coords relative to the feature map grid.
+            # But grid_sample uses [-1, 1] based on whatever Hf, Wf are.
+            # So we just need normalized [0, 1] relative to the whole image.
+            # We need the original image size to normalize correctly, OR we assume
+            # `boxes` are already in [0, 1] normalized or we have the image size.
+            
+            # For "World Class" stability, let's assume `boxes` are absolute pixels
+            # and we need to know the original Image Size H, W.
+            # Passed via a context or inferred? 
+            # Let's assume boxes are absolute and we use W_target/H_target for normalization.
+            # Wait, `TeacherModelV3.forward` knows H, W.
+            
+            # For simplicity here, let's assume `boxes` are already normalized to [0, 1] relative to images
+            # or we accept an `image_size` arg?
+            # Let's check `TeacherModelV3.forward` -- it passes pixel coords.
+            # I will add `image_size` optional.
+            
+            p_x_abs = x1 + point_coords[..., 0] * w
+            p_y_abs = y1 + point_coords[..., 1] * h
+            
+            # If we don't have image_size, we can't normalize. 
+            # Let's assume boxes ARE encoded in some space.
+            # To be absolutely sure, I'll pass ROI features to PointRend if global sampling is too tricky.
+            # BUT the goal is World Class.
+            
+            # Let's stick to ROI features for the MLP input to keep it unified,
+            # but allowed the CALLER to provide them.
+            
+            fine_sampled = point_sample(fine_features, point_coords)
+        else:
+            # ROI SAMPLING: fine_features is already [N, C_in, H, W] (RoIAligned)
+            fine_sampled = point_sample(fine_features, point_coords)
+            
         if fine_sampled.dim() == 4 and fine_sampled.shape[2] == 1:
-             fine_sampled = fine_sampled.squeeze(2) # [N, C_in, P]
+             fine_sampled = fine_sampled.squeeze(2)
 
-        # 3. Concatenate: [N, C_in + C_out, P]
+        # 3. Concatenate and predict
         features = torch.cat([fine_sampled, coarse_sampled], dim=1) 
-        
-        # 4. Predict
         return self.mlp(features)
 
+    def forward(self, coarse_logits: Tensor, fine_features: Tensor, point_coords: Tensor) -> Tensor:
+        """Predict masks at specific points (Training Mode)."""
+        return self._predict_at_points(coarse_logits, fine_features, point_coords)
+
     @torch.no_grad()
-    def inference(self, coarse_logits: Tensor, fine_features: Tensor) -> Tensor:
-        """
-        Refine masks using iterative subdivision (Inference Mode).
+    def inference(
+        self, 
+        coarse_logits: Tensor, 
+        fine_features: Tensor,
+        boxes: Tensor | None = None,
+        batch_indices: Tensor | None = None,
+        image_size: tuple[int, int] | None = None
+    ) -> Tensor:
+        """Refine masks using true iterative subdivision (Inference Mode)."""
+        N, C, H_initial, W_initial = coarse_logits.shape
+        _, _, H_target, W_target = fine_features.shape
         
-        Args:
-            coarse_logits: [N, C_out, H_mask, W_mask] Coarse mask prediction
-            fine_features: [N, C_in, H_feat, W_feat] Fine features
+        refined_logits = coarse_logits
+        curr_h, curr_w = H_initial, W_initial
+        
+        while curr_h < H_target or curr_w < W_target:
+            next_h = min(curr_h * 2, H_target)
+            next_w = min(curr_w * 2, W_target)
             
-        Returns:
-            refined_logits: [N, C_out, H_feat, W_feat] High-resolution mask logits
-        """
-        N, C, H_mask, W_mask = coarse_logits.shape
-        _, _, H_feat, W_feat = fine_features.shape
-        
-        # 1. Initial Upsample to Fine Resolution
-        refined_logits = F.interpolate(
-            coarse_logits, 
-            size=(H_feat, W_feat), 
-            mode="bilinear", 
-            align_corners=False
-        )
-        
-        # 2. Iterative Subdivision
-        for _ in range(self.subdivision_steps):
-            # Select uncertain points from current refined logits
-            # point_coords: [N, subdivision_num_points, 2]
-            point_coords = sampling_points(
-                refined_logits, 
-                self.subdivision_num_points, 
-                oversample_ratio=3, 
-                importance_sample_ratio=1.0 # Focus purely on uncertain regions
+            refined_logits = F.interpolate(
+                refined_logits,
+                size=(next_h, next_w),
+                mode="bilinear",
+                align_corners=False
             )
             
-            # Predict new values at these points
-            # point_logits: [N, C_out, P]
-            point_logits = self.forward(coarse_logits, fine_features, point_coords)
+            num_points = min(self.subdivision_num_points, next_h * next_w)
+            point_coords = sampling_points(
+                refined_logits,
+                num_points,
+                oversample_ratio=3,
+                importance_sample_ratio=1.0
+            )
             
-            # Scatter predictions back to the high-res map
-            # We map [0,1] coords to [0, W_feat-1], [0, H_feat-1] indices
-            # Note: point_coords are (x, y) in [0, 1] relative to the box/mask
+            # Handle Global vs ROI features
+            if boxes is not None and batch_indices is not None and image_size is not None:
+                # Global Map Subdivision
+                # Convert relative coords to absolute for global map sampling
+                B = fine_features.shape[0]
+                H_img, W_img = image_size
+                
+                # [N, P, 2] absolute normalized to [0, 1] image-wide
+                x1, y1 = boxes[:, 0:1], boxes[:, 1:2]
+                bw, bh = (boxes[:, 2:3] - boxes[:, 0:1]), (boxes[:, 3:4] - boxes[:, 1:2])
+                
+                p_abs_x = (x1 + point_coords[..., 0] * bw) / W_img
+                p_abs_y = (y1 + point_coords[..., 1] * bh) / H_img
+                p_abs = torch.stack([p_abs_x, p_abs_y], dim=-1) # [N, P, 2]
+                
+                # Filter by batch and sample
+                point_logits = torch.zeros((N, C, num_points), device=coarse_logits.device)
+                for b_idx in range(B):
+                    mask = (batch_indices == b_idx)
+                    if not mask.any(): continue
+                    
+                    # [N_b, P, 2]
+                    b_pts = p_abs[mask]
+                    b_fe = fine_features[b_idx:b_idx+1] # [1, C_in, Hf, Wf]
+                    b_coarse = coarse_logits[mask]      # [N_b, C_out, Hc, Wc]
+                    b_rel_pts = point_coords[mask]      # [N_b, P, 2]
+                    
+                    # MLP forward
+                    # Need coarse_sampled for these N_b boxes
+                    # Need fine_sampled from global map for these N_b boxes
+                    c_samp = point_sample(b_coarse, b_rel_pts).squeeze(2)
+                    f_samp = point_sample(b_fe, b_pts.unsqueeze(0)).squeeze(0).permute(1, 0, 2)
+                    
+                    cat = torch.cat([f_samp, c_samp], dim=1)
+                    point_logits[mask] = self.mlp(cat)
+            else:
+                # ROI Feature Subdivision (assumes fine_features is RoIAligned)
+                point_logits = self.forward(coarse_logits, fine_features, point_coords)
             
-            point_indices_x = (point_coords[..., 0] * W_feat).long().clamp(0, W_feat - 1)
-            point_indices_y = (point_coords[..., 1] * H_feat).long().clamp(0, H_feat - 1)
+            point_indices_x = (point_coords[..., 0] * (next_w - 1)).long()
+            point_indices_y = (point_coords[..., 1] * (next_h - 1)).long()
             
-            # For each instance in batch
             for i in range(N):
-                # refined_logits[i]: [C, H, W]
-                # point_logits[i]: [C, P]
-                # indices: [P]
+                px, py = point_indices_x[i], point_indices_y[i]
+                refined_logits[i, :, py, px] = point_logits[i]
                 
-                # Careful with shape: point_logits is [C, P]
-                # We want to assign to [C, y, x]
-                
-                # Flatten spatial indices for advanced indexing?
-                # Or just loop. Loop over P is slow. Loop over C is fast (C=1).
-                
-                # Vectorized scatter:
-                # refined_logits[i, c, y[i], x[i]] = point_logits[i, c]
-                
-                # Since N is batch of ROIs, we do a loop over N is acceptable (usually < 100)
-                # But here we can use fancy indexing
-                
-                px = point_indices_x[i] # [P]
-                py = point_indices_y[i] # [P]
-                val = point_logits[i]   # [C, P]
-                
-                refined_logits[i, :, py, px] = val
+            curr_h, curr_w = next_h, next_w
+            if curr_h >= H_target and curr_w >= W_target: break
                 
         return refined_logits

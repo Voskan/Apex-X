@@ -49,14 +49,28 @@ class COCOEvaluator:
             scores = scores.cpu().numpy()
         if isinstance(classes, torch.Tensor):
             classes = classes.cpu().numpy()
-        if isinstance(masks, torch.Tensor):
+        if masks is not None:
             # Encode binary masks to RLE for efficiency
-            # pycocotools expects RLE for segmentation eval usually, or polygon
-            # For strict RLE:
-            # from pycocotools import mask as mask_utils
-            # rle = mask_utils.encode(np.asfortranarray(masks.cpu().numpy().astype(np.uint8)))
-            # But converting [N, H, W] to RLE list is heavy. 
-            pass # TODO: Implement mask encoding if efficient RLE needed, otherwise let's stick to boxes for now or simple RLE
+            # pycocotools expects RLE for segmentation eval
+            if isinstance(masks, torch.Tensor):
+                masks = masks.cpu().numpy()
+            
+            # Ensure uint8 [N, H, W]
+            if masks.dtype == bool:
+                masks = masks.astype(np.uint8)
+            
+            # pycocotools.mask.encode expects Fortran-style array [H, W, N] 
+            # or single [H, W] uint8
+            from pycocotools import mask as mask_utils
+            
+            rle_list = []
+            for i in range(masks.shape[0]):
+                m = np.asfortranarray(masks[i])
+                rle_list.append(mask_utils.encode(m))
+            
+            masks_rle = rle_list
+        else:
+            masks_rle = None
 
         # Convert xyxy to xywh for COCO
         # w = x2 - x1, h = y2 - y1
@@ -73,13 +87,29 @@ class COCOEvaluator:
             }
             
             # Add segmentation if available
-            # if masks is not None:
-            #     pred["segmentation"] = rle[i]
+            if masks_rle is not None:
+                pred["segmentation"] = masks_rle[i]
             
             self.predictions.append(pred)
             
     def synchronize_between_processes(self) -> None:
-        pass # TODO for DDP
+        """Sync predictions across all processes in DDP mode."""
+        if not torch.distributed.is_available() or not torch.distributed.is_initialized():
+            return
+            
+        world_size = torch.distributed.get_world_size()
+        if world_size <= 1:
+            return
+            
+        # Gather all predictions to rank 0
+        all_predictions = [None for _ in range(world_size)]
+        torch.distributed.all_gather_object(all_predictions, self.predictions)
+        
+        if torch.distributed.get_rank() == 0:
+            # Flatten list of lists
+            self.predictions = [p for sublist in all_predictions for p in sublist]
+        else:
+            self.predictions = []
         
     def evaluate(self) -> dict[str, float]:
         """Run COCO evaluation."""

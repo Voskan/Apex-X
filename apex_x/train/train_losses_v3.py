@@ -446,6 +446,7 @@ def compute_v3_training_losses(
                  B_gt, N_gt, H_gt, W_gt = gt_masks.shape
                  gt_masks = gt_masks.reshape(-1, H_gt, W_gt)
              elif gt_masks.ndim == 3:
+                 # Already flattened or single image
                  pass
              
              # Normalize Predictions (just to get Count)
@@ -456,17 +457,55 @@ def compute_v3_training_losses(
              if n > 0:
                  # Slice
                  p_logits = point_logits[:n]         # [n, 1, P]
-                 p_coords = point_coords[:n]         # [n, P, 2]
-                 gt = gt_masks[:n].unsqueeze(1).float() # [n, 1, H, W]
-                 
-                 from apex_x.losses.seg_loss import point_rend_loss
-                 # point_rend_loss expects [N, 1, P], [N, P, 2], [N, 1, H, W]
-                 
-                 loss_dict["point_rend"] = point_rend_loss(
-                     p_logits,
-                     p_coords,
-                     gt
-                 )
+            if n > 0:
+                # Slice
+                p_logits = point_logits[:n]         # [n, 1, P]
+                p_coords = point_coords[:n]         # [n, P, 2]
+                gt = gt_masks[:n].unsqueeze(1).float() # [n, 1, H, W]
+                
+                from apex_x.losses.seg_loss import point_rend_loss
+                # point_rend_loss expects [N, 1, P], [N, P, 2], [N, 1, H, W]
+                
+                loss_dict["point_rend"] = point_rend_loss(
+                    p_logits,
+                    p_coords,
+                    gt
+                )
+
+    # 9) Boundary Force Field (BFF) Loss
+    bff_pred = outputs.get("bff")
+    if bff_pred is not None and "masks" in targets:
+        # Use first mask of each batch or consolidate ground truth
+        # BFF usually applies to the whole image segmentation if available
+        # OR we can apply it per-instance if we have an instance mapper.
+        # Efficient World-Class shortcut: apply to binary semantic map of all classes.
+        gt_masks = targets["masks"] # [B, N, H, W]
+        if gt_masks is not None and gt_masks.numel() > 0:
+            # Combine instances into a semantic map for BFF training
+            semantic_gt = (gt_masks.sum(dim=1) > 0.5).float() # [B, H, W]
+            
+            # Interpolate bff_pred to GT resolution if needed (BFF is usually H/4)
+            if bff_pred.shape[-2:] != semantic_gt.shape[-2:]:
+                semantic_gt = F.interpolate(
+                    semantic_gt.unsqueeze(1), 
+                    size=bff_pred.shape[-2:], 
+                    mode="nearest"
+                ).squeeze(1)
+            
+            from apex_x.losses.bff_loss import BFFLoss, DifferentiableContourIntegrator
+            bff_criterion = BFFLoss()
+            loss_dict["bff"] = bff_criterion(bff_pred, semantic_gt)
+            
+            # --- Differentiable Contour Integrator (Geometric Consistency) ---
+            # Converts force field to mask probability via divergence integration
+            integrator = DifferentiableContourIntegrator()
+            pred_mask_from_bff = integrator(bff_pred.unsqueeze(0)).squeeze(0) # [B, 1, H, W]
+            
+            # Binary Cross Entropy between BFF-derived mask and GT
+            loss_dict["bff_mask_consistency"] = F.binary_cross_entropy_with_logits(
+                pred_mask_from_bff, 
+                semantic_gt.unsqueeze(1).expand_as(pred_mask_from_bff)
+            )
 
     default_weights = {
         "cls": 1.0,
@@ -476,7 +515,8 @@ def compute_v3_training_losses(
         "boundary_iou": _loss_weight(config, "boundary", 0.5),
         "mask_quality": _loss_weight(config, "quality", 1.0),
         "multi_scale": 1.0,
-        "point_rend": 1.0, # New default
+        "point_rend": 1.0,
+        "bff": _loss_weight(config, "bff", 0.5), # New default
     }
 
     box_weight = _loss_weight(config, "box", 2.0)

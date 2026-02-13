@@ -79,8 +79,8 @@ class TeacherModelV3(nn.Module):
             model_name=backbone_model,
             lora_rank=lora_rank,
         )
-        # PVModuleDINOv2 produces P3 (256), P4 (512), P5 (1024)
-        backbone_channels = [256, 512, 1024]
+        # PVModuleDINOv2 produces P2 (256), P3 (256), P4 (512), P5 (1024)
+        backbone_channels = [256, 256, 512, 1024]
 
         self._num_levels = len(backbone_channels)
 
@@ -127,6 +127,14 @@ class TeacherModelV3(nn.Module):
         # --- RPN (simple) for initial proposals --------------------------------
         self.rpn_objectness = nn.Conv2d(fpn_channels, 3, 1)   # 3 anchors
         self.rpn_bbox_pred = nn.Conv2d(fpn_channels, 3 * 4, 1)
+        
+        # --- Boundary Force Field (BFF) Head -----------------------------------
+        # Non-standard: Predicts dx, dy vector field for high-res edge refinement
+        self.bff_head = nn.Sequential(
+            nn.Conv2d(fpn_channels, fpn_channels // 2, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(fpn_channels // 2, 2, 1) # [dx, dy] outputs
+        )
 
     # ------------------------------------------------------------------
     # helpers
@@ -461,28 +469,17 @@ class TeacherModelV3(nn.Module):
                  point_coords = points_relative # Return relative for loss calc
                  
              else:
-                 # Inference: Subdivision
-                 # This requires `inference` method which I added.
-                 # But again, `inference` expects [N, C, H, W] and [N, C, Hf, Wf].
-                 # It assumes fine_features are aligned with coarse_logits (ROI features).
-                 
-                 # For Inference, we usually extract ROI features from fine map first?
-                 # Yes, we need [N_total, C, 14, 14] or similar.
-                 # But PointRend wants HIGHER res.
-                 # We can just extract [N_total, C, 112, 112] using RoIAlign?
-                 # If we do that, we defeat the memory savings of PointRend.
-                 
-                 # The `inference` method I wrote assumes we have [N, C, Hf, Wf] ROI features.
-                 # So we MUST run RoIAlign on P3 with a larger output size?
-                 # e.g. 28x28 or 56x56?
-                 # Let's assume we run RoIAlign to get [N, C, 14, 14] and upsample to 224? No.
-                 
-                 # NOTE: implementing full subdivision inference efficiently is complex.
-                 # For now, to satisfy "World Class", we enable it but maybe just upsample?
-                 # Or we run the sampling logic?
-                 
-                 refined_masks = final_masks_flat # Fallback if logic is too complex for this script
-                 pass
+                # Inference: Recursive Subdivision (World-Class Rendering)
+                # We pass the global feature map, ROI boxes, and batch indices
+                # to allow PointRend to sample from the highest resolution features.
+                refined_masks = self.point_rend.inference(
+                    final_masks_flat, 
+                    fpn_features[0], 
+                    boxes=flat_boxes[:, 1:], 
+                    batch_indices=flat_boxes[:, 0].long(),
+                    image_size=(H, W)
+                )
+                final_masks_flat = refined_masks
 
 
         return {
@@ -498,6 +495,8 @@ class TeacherModelV3(nn.Module):
             # PointRend outputs
             "point_logits": point_logits,
             "point_coords": point_coords,
+            # Boundary Force Field (BFF) Output
+            "bff": self.bff_head(fpn_features[0]), # [B, 2, H/4, W/4]
         }
 
 

@@ -149,11 +149,6 @@ def build_robust_transforms(
              transforms.append(
                  A.SomeOf(aug_list, n=2, p=0.8, replace=False)
              )
-    
-    # Original specific blocks kept for backward compat if probabilities are managed individually
-    # but here we merged them into a RandAugment block for "Perfection".
-    # To avoid double application, we skip the old blocks below if we used the list.
-    pass # Replaces old blocks
         
     pipeline = A.Compose(
         transforms,
