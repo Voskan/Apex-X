@@ -537,9 +537,9 @@ def compute_v3_training_losses(
                     diffused_mask, 
                     semantic_gt.unsqueeze(1).expand_as(diffused_mask)
                 )
-                from apex_x.losses.seg_loss import dice_loss
-                loss_dict["diffusion_dice"] = dice_loss(
-                    torch.sigmoid(diffused_mask), 
+                # mask_dice_loss expects [B, N, H, W] and handles sigmoid internally
+                loss_dict["diffusion_dice"] = mask_dice_loss(
+                    diffused_mask, 
                     semantic_gt.unsqueeze(1).expand_as(diffused_mask)
                 )
 
