@@ -30,7 +30,7 @@ class TeacherModelV5(nn.Module):
         self.mask_head = CascadeMaskHead(in_channels=ssm_dim)
         
         # 5. SOTA Implicit Neural Head (Infinite Precision)
-        self.inr_head = ImplicitNeuralHead(hidden_dim=256)
+        self.inr_head = ImplicitNeuralHead(in_channels=ssm_dim, hidden_dim=256)
         
         # 6. PointRend (Standard SOTA fallback)
         self.point_rend = PointRendModule(in_channels=ssm_dim, out_channels=1)
@@ -60,7 +60,9 @@ class TeacherModelV5(nn.Module):
         
         # Detection & Coarse Masks
         # In Ascension V5, we fuse standard detection with SOTA heads
-        det_out = self.det_head(feats, [[torch.zeros(1, 4, device=images.device)]], image_size=images.shape[2:])
+        # Use initial zero-seeds per batch element
+        initial_boxes = [torch.zeros((1, 4), device=images.device) for _ in range(B)]
+        det_out = self.det_head(feats, initial_boxes, image_size=images.shape[2:])
         final_boxes = det_out["boxes"][-1]
         
         coarse_masks = self.mask_head(feats, det_out["boxes"], image_size=images.shape[2:])
