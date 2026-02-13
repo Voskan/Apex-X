@@ -6,7 +6,8 @@ from torch import Tensor
 @triton.jit
 def selective_scan_kernel(
     X_ptr, A_ptr, B_ptr, C_ptr, Y_ptr,
-    batch_size, seq_len, d_model, d_state,
+    batch_size, seq_len, d_model, 
+    d_state: tl.constexpr,
     stride_xb, stride_xl, stride_xd,
     stride_ab, stride_al, stride_ad,
     stride_bb, stride_bl, stride_bs,
@@ -66,7 +67,7 @@ def triton_selective_scan(x, a, b, c):
     grid = (B * D,)
     selective_scan_kernel[grid](
         x, a, b, c, y,
-        B, L, D, S,
+        B, L, D, d_state=S,
         x.stride(0), x.stride(1), x.stride(2),
         a.stride(0), a.stride(1), a.stride(2),
         b.stride(0), b.stride(1), b.stride(2),
