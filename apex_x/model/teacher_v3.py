@@ -140,11 +140,12 @@ class TeacherModelV3(nn.Module):
         objectness = self.rpn_objectness(feat)          # [B, 3, fH, fW]
         _ = self.rpn_bbox_pred(feat)                    # [B, 12, fH, fW]
 
-        stride = image_size[0] / fH                     # effective stride
+        stride_y = image_size[0] / fH                   # H stride
+        stride_x = image_size[1] / fW                   # W stride
 
         # build anchor grid once -------------------------------------------------
-        shifts_y = (torch.arange(fH, device=feat.device, dtype=feat.dtype) + 0.5) * stride
-        shifts_x = (torch.arange(fW, device=feat.device, dtype=feat.dtype) + 0.5) * stride
+        shifts_y = (torch.arange(fH, device=feat.device, dtype=feat.dtype) + 0.5) * stride_y
+        shifts_x = (torch.arange(fW, device=feat.device, dtype=feat.dtype) + 0.5) * stride_x
         shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x, indexing="ij")
         shift_x = shift_x.reshape(-1)
         shift_y = shift_y.reshape(-1)  # [fH*fW]

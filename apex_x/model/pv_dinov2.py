@@ -8,6 +8,7 @@ Expected impact: +5-8% mAP from superior pre-trained features.
 
 from __future__ import annotations
 
+import math
 from typing import Dict
 
 import torch
@@ -158,37 +159,99 @@ class PVModuleDINOv2(nn.Module):
             else:
                 resolved = [0, 0, 0]
         return (resolved[0], resolved[1], resolved[2])
-    
-    def _reshape_vit_output(self, x: Tensor) -> Tensor:
-        """Reshape ViT sequence output to 2D feature map.
 
-        DINOv2 returns ``[B, 1 + num_patches, D]`` where the first
-        token is CLS.  ``num_patches = (H / patch_size) * (W / patch_size)``.
-        We infer the spatial grid from ``num_patches`` directly — no
-        need to pass an explicit target size.
+    def _expected_patch_grid(self, image_hw: tuple[int, int]) -> tuple[int, int]:
+        h, w = image_hw
+        return max(1, h // self.patch_size), max(1, w // self.patch_size)
 
-        Args:
-            x: ViT hidden-state ``[B, N+1, D]`` (includes CLS token).
+    def _resolve_special_tokens_count(
+        self,
+        token_count: int,
+        *,
+        image_hw: tuple[int, int] | None,
+    ) -> int:
+        # Hidden states can include CLS (+ optional register tokens).
+        num_register_tokens = int(getattr(self.dinov2.config, "num_register_tokens", 0) or 0)
+        candidates = [1]
+        if num_register_tokens > 0:
+            candidates.append(1 + num_register_tokens)
+        # Defensive fallback for variants without explicit CLS in hidden states.
+        candidates.append(0)
 
-        Returns:
-            Feature map ``[B, D, h_patches, w_patches]``.
+        if image_hw is not None:
+            exp_h, exp_w = self._expected_patch_grid(image_hw)
+            expected_tokens = exp_h * exp_w
+            for special in candidates:
+                if token_count - special == expected_tokens:
+                    return special
+
+        for special in candidates:
+            if token_count - special > 0:
+                return special
+        raise ValueError(f"Invalid token count {token_count}: cannot strip special tokens")
+
+    def _infer_patch_grid(
+        self,
+        num_tokens: int,
+        *,
+        image_hw: tuple[int, int] | None,
+    ) -> tuple[int, int]:
+        if num_tokens <= 0:
+            raise ValueError(f"num_tokens must be > 0, got {num_tokens}")
+
+        if image_hw is not None:
+            exp_h, exp_w = self._expected_patch_grid(image_hw)
+            if exp_h * exp_w == num_tokens:
+                return exp_h, exp_w
+            target_ratio = float(image_hw[0]) / float(max(1, image_hw[1]))
+        else:
+            target_ratio = None
+
+        best: tuple[float, int, int] | None = None
+        root = int(math.isqrt(num_tokens))
+        for h in range(root, 0, -1):
+            if num_tokens % h != 0:
+                continue
+            w = num_tokens // h
+            for cand_h, cand_w in ((h, w), (w, h)):
+                if target_ratio is None:
+                    score = abs(cand_h - cand_w)
+                else:
+                    score = abs((float(cand_h) / float(max(1, cand_w))) - target_ratio)
+                if best is None or score < best[0]:
+                    best = (score, cand_h, cand_w)
+
+        if best is None:
+            raise ValueError(f"Cannot factor token grid for num_tokens={num_tokens}")
+        return best[1], best[2]
+
+    def _reshape_vit_output(
+        self,
+        x: Tensor,
+        *,
+        image_hw: tuple[int, int] | None = None,
+    ) -> Tensor:
+        """Reshape ViT sequence output to a 2D feature map.
+
+        Supports rectangular patch grids and optional register tokens.
         """
-        B, N_plus_1, D = x.shape
+        if x.ndim != 3:
+            raise ValueError("ViT hidden-state must be [B, N_tokens, D]")
+        B, token_count, D = x.shape
 
-        # Drop CLS token
-        x = x[:, 1:, :]              # [B, N, D]
-        N = x.shape[1]
+        special = self._resolve_special_tokens_count(token_count, image_hw=image_hw)
+        x = x[:, special:, :]  # [B, N, D]
+        num_tokens = int(x.shape[1])
 
-        # Infer spatial grid (assume square or almost-square)
-        h_patches = int(N ** 0.5)
-        w_patches = N // h_patches
-        assert h_patches * w_patches == N, (
-            f"Cannot reshape {N} tokens into a 2-D grid "
-            f"({h_patches}×{w_patches} != {N})"
-        )
+        h_patches, w_patches = self._infer_patch_grid(num_tokens, image_hw=image_hw)
+        if h_patches * w_patches != num_tokens:
+            raise ValueError(
+                f"Cannot reshape {num_tokens} tokens into a 2-D grid "
+                f"({h_patches}x{w_patches} != {num_tokens})"
+            )
 
         x = x.reshape(B, h_patches, w_patches, D)
-        x = x.permute(0, 3, 1, 2)    # [B, D, h, w]
+        x = x.permute(0, 3, 1, 2)  # [B, D, h, w]
         return x
 
     def forward(self, image: Tensor) -> Dict[str, Tensor]:
@@ -196,7 +259,7 @@ class PVModuleDINOv2(nn.Module):
 
         Args:
             image: Input image ``[B, 3, H, W]``.
-                   *Must* be divisible by ``patch_size`` (14).
+                   Rectangular shapes are supported.
 
         Returns:
             ``{'P3': ..., 'P4': ..., 'P5': ...}``
@@ -221,9 +284,10 @@ class PVModuleDINOv2(nn.Module):
         feat_l23 = hidden_states[l_deep]   # deep
 
         # Reshape to 2-D feature maps  ── all share the same spatial grid
-        feat_l8_2d  = self._reshape_vit_output(feat_l8)    # [B, D, h, w]
-        feat_l16_2d = self._reshape_vit_output(feat_l16)
-        feat_l23_2d = self._reshape_vit_output(feat_l23)
+        image_hw = (int(H), int(W))
+        feat_l8_2d  = self._reshape_vit_output(feat_l8, image_hw=image_hw)    # [B, D, h, w]
+        feat_l16_2d = self._reshape_vit_output(feat_l16, image_hw=image_hw)
+        feat_l23_2d = self._reshape_vit_output(feat_l23, image_hw=image_hw)
 
         # ------- LoRA adapters (trainable) ----------------------------------
         # P3 — full patch-grid resolution
