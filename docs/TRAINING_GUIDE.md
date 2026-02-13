@@ -36,9 +36,27 @@ Worldclass startup checklist (run before any DINOv2/V3 flow):
 4. Start one of the supported entrypoints:
    - CLI: `python -m apex_x.cli train configs/worldclass.yaml ...`
    - Wrapper: `python scripts/train_worldclass_coco.py --config configs/worldclass.yaml ...`
-   - Notebook: `notebooks/checkpoint_image_inference.ipynb`
+   - V5 Notebook: `examples/train_v5_ascension.ipynb`
 
-## 2. Canonical train entrypoints
+## 2. Ascension V5 (The Flagship)
+
+The **Ascension V5** architecture is the production standard for Apex-X.
+
+### V5 Entrypoints
+- **Training**: [train_v5_ascension.ipynb](file:///Users/voskan/Desktop/apex_x/examples/train_v5_ascension.ipynb)
+- **Inference**: [inference_v5_ascension.ipynb](file:///Users/voskan/Desktop/apex_x/notebooks/inference_v5_ascension.ipynb)
+
+### SOTA Loss Configuration
+To achieve world-class results, ensure your configuration enables the following:
+```python
+loss=LossConfig(
+    topological_persistence=True,
+    flow_symmetry=True,
+    self_distillation=True
+)
+```
+
+## 3. Canonical train entrypoints
 
 Equivalent entrypoints:
 

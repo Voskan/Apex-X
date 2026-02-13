@@ -17,6 +17,9 @@ from apex_x.losses.seg_loss import (
     multi_scale_instance_segmentation_losses,
 )
 from apex_x.model.mask_quality_head import mask_iou_loss
+from apex_x.losses.topological_loss import TopologicalPersistenceLoss
+from apex_x.losses.flow_symmetry_loss import FlowSymmetryLoss
+from apex_x.train.pseudo_label_v5 import apply_self_supervision
 from apex_x.utils import get_logger
 
 LOGGER = get_logger(__name__)
@@ -301,6 +304,31 @@ def compute_v3_training_losses(
                     ms_out = multi_scale_instance_segmentation_losses(ms_pred_4d[:, :n], ms_gt_4d[:, :n])
                     loss_dict["multi_scale"] = ms_out.total_loss
 
+    # 7) SOTA: Topological Persistence Loss
+    if getattr(config.loss, "topological_persistence", False) and "masks" in outputs and "masks" in targets:
+        topo_criterion = TopologicalPersistenceLoss()
+        # [B*N, 1, H, W]
+        mask_pred = outputs["masks"]
+        mask_gt = targets["masks"].to(device)
+        if mask_pred is not None and mask_gt is not None:
+             # Ensure same resolution
+             if mask_pred.shape[-2:] != mask_gt.shape[-2:]:
+                 mask_gt = F.interpolate(mask_gt.unsqueeze(1).float(), size=mask_pred.shape[-2:], mode="nearest").squeeze(1)
+             loss_dict["topological"] = topo_criterion(mask_pred, mask_gt)
+
+    # 8) SOTA: Flow Symmetry Loss (Energy-based physics)
+    if getattr(config.loss, "flow_symmetry", False) and "masks" in targets:
+        # We use a vectorized physics-informed flow loss
+        flow_criterion = FlowSymmetryLoss()
+        # BFF output is predicted flow [B, 2, H, W]
+        bff_pred = outputs.get("bff")
+        if bff_pred is not None:
+             loss_dict["flow_symmetry"] = flow_criterion(bff_pred)
+
+    # 9) SOTA: Self-Supervision (Distillation from Diffusion/Refined outputs)
+    if getattr(config.loss, "self_distillation", False):
+        apply_self_supervision(outputs, loss_dict)
+
     # 7) Optional cascade stage losses
     all_boxes = outputs.get("all_boxes")
     gt_boxes = targets.get("boxes")
@@ -556,6 +584,9 @@ def compute_v3_training_losses(
         "bff_mask_consistency": 0.5,
         "diffusion_bce": 1.0,
         "diffusion_dice": 1.0,
+        "topological": _loss_weight(config, "topological", 1.0),
+        "flow_symmetry": _loss_weight(config, "flow_symmetry", 0.5),
+        "self_teacher_consistency": 1.0,
     }
 
     box_weight = _loss_weight(config, "box", 2.0)
