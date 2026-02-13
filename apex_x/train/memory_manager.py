@@ -78,18 +78,7 @@ class MemoryManager:
         start_batch_size: int = 1,
         mode: str = "train",
     ) -> int:
-        """Find the maximum batch size that fits in memory.
-
-        Args:
-            model: The PyTorch model (will be put in mode for sizing).
-            input_shape: Shape of a single input sample (C, H, W).
-            max_batch_size: Upper limit for batch size.
-            start_batch_size: Starting batch size for search.
-            mode: 'train' or 'eval'. 'train' enables gradients.
-
-        Returns:
-            Optimal batch size.
-        """
+        """Find the maximum batch size that fits in memory."""
         if not self.enabled:
             LOGGER.info("CUDA not available, returning default batch size 1")
             return 1
@@ -97,7 +86,7 @@ class MemoryManager:
         LOGGER.info(f"Auto-tuning batch size (max={max_batch_size})...")
         self.clear()
         
-        # Binary search or exponential search
+        # Binary search
         low = start_batch_size
         high = max_batch_size
         optimal = start_batch_size
@@ -108,15 +97,11 @@ class MemoryManager:
         else:
             model.eval()
 
-        # Try powers of 2 first, then refinemement? 
-        # Actually binary search is robust.
-        
-        # But first, quick check if start_batch_size even works
         if not self._try_batch_size(model, input_shape, start_batch_size, mode=mode):
              LOGGER.warning("Even batch_size=1 failed! Check model/memory.")
              return 1
 
-        # Exponential growth to find upper bound
+        # Exponential growth
         curr = start_batch_size
         while curr <= max_batch_size:
             if self._try_batch_size(model, input_shape, curr, mode=mode):
@@ -128,7 +113,7 @@ class MemoryManager:
                 high = curr
                 break
         
-        # Binary search between optimal and high
+        # Binary search
         low = optimal
         while low < high - 1:
             mid = (low + high) // 2
@@ -141,6 +126,32 @@ class MemoryManager:
         self.clear()
         LOGGER.info(f"Found optimal batch size: {optimal}")
         return optimal
+
+    def downshift_batch_size(self, current_bsz: int, min_bsz: int = 1) -> int:
+        """Reduce batch size in response to OOM."""
+        new_bsz = max(min_bsz, current_bsz // 2)
+        LOGGER.warning(f"Downshifting batch size: {current_bsz} -> {new_bsz}")
+        self.clear()
+        return new_bsz
+        
+    def guard(self, func: Callable, *args, **kwargs) -> Any:
+        """Run a function with OOM guarding.
+        
+        If OOM occurs, clears cache and re-raises to let caller handle retry settings.
+        """
+        try:
+            return func(*args, **kwargs)
+        except torch.cuda.OutOfMemoryError:
+            self.clear()
+            LOGGER.error("OOM caught in guarded execution!")
+            raise
+        except Exception as e:
+            if "out of memory" in str(e).lower():
+                 self.clear()
+                 LOGGER.error(f"OOM-like error caught: {e}")
+                 # Re-raise as proper OOM for handling
+                 raise torch.cuda.OutOfMemoryError(str(e))
+            raise
 
     def _try_batch_size(
         self, 

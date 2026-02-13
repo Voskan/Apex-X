@@ -172,11 +172,37 @@ def main() -> None:
             score_mean=float(apex_summary.det_score_mean),
             detections_mean=None,
             notes=(
-                "primary metric det_score_mean; for AP comparison run labeled eval "
-                "with consistent annotation protocol"
+                "primary metric det_score_mean; standard inference"
             ),
         )
     ]
+
+    # Benchmark Apex-X with TTA
+    print("Running Apex-X with TTA...")
+    apex_tta_summary = evaluate_model_dataset(
+        model=model,
+        images=images,
+        requested_backend=cfg.runtime.backend,
+        selected_backend=cfg.runtime.backend,
+        fallback_policy=cfg.runtime.fallback_policy,
+        precision_profile=cfg.runtime.precision_profile,
+        selection_fallback_reason=None,
+        runtime_caps=caps,
+        max_samples=args.max_samples,
+        use_tta=True,
+    )
+    results.append(
+        ModelBenchmarkResult(
+            model="apex_x_tta",
+            status="done",
+            latency_ms_mean=None,
+            score_mean=float(apex_tta_summary.det_score_mean),
+            detections_mean=None,
+            notes=(
+                "TTA enabled (scales=[0.8, 1.0, 1.2], flips)"
+            ),
+        )
+    )
 
     yolo_models = [m.strip() for m in str(args.yolo_models).split(",") if m.strip()]
     for model_name in yolo_models:

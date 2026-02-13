@@ -1,194 +1,250 @@
-"""Test-Time Augmentation (TTA) utilities.
+"""Test Time Augmentation (TTA) module for Apex-X inference.
 
-Improve inference accuracy by averaging predictions over multiple
-augmented views of the same image.
-
-Expected impact: +1-3% mAP with minimal compute overhead.
+Implements multi-scale and flip augmentation strategies with result aggregation.
 """
 
 from __future__ import annotations
 
-from typing import List, Dict
+import copy
+from dataclasses import dataclass
+from typing import Any, List, Optional, Tuple
 
+import cv2
+import numpy as np
 import torch
-from torch import Tensor
-import torch.nn.functional as F
+from torch import Tensor, nn
+
+from apex_x.infer.ensemble import weighted_boxes_fusion
+from apex_x.utils import get_logger
+
+LOGGER = get_logger(__name__)
+
+
+@dataclass
+class TTAParams:
+    """Parameters for TTA."""
+    scales: List[float] = (0.8, 1.0, 1.2)
+    flips: List[str] = ("none", "horizontal")  # "none", "horizontal", "vertical"
+    conf_threshold: float = 0.01
+    iou_threshold: float = 0.55  # For WBF
+    wbf_skip_box_thr: float = 0.001
 
 
 class TestTimeAugmentation:
-    """Test-time augmentation for object detection.
-    
-    Averages predictions over multiple augmented views:
-    - Original image
-    - Horizontal flip
-    - Multi-scale (0.8x, 1.0x, 1.2x)
-    
-    Uses weighted boxes fusion to merge overlapping detections.
-    
-    Args:
-        scales: List of scale factors to test (default: [0.8, 1.0, 1.2])
-        use_flip: Whether to include horizontal flip (default: True)
-        conf_threshold: Confidence threshold for NMS (default: 0.001)
-        nms_threshold: IoU threshold for NMS (default: 0.65)
-        fusion_mode: How to fuse predictions ('weighted' or 'soft_nms')
-    
-    Expected improvement: +1-3% mAP
-    """
-    
+    """Wrapper for model to perform TTA."""
+
     def __init__(
         self,
-        scales: List[float] = [0.8, 1.0, 1.2],
-        use_flip: bool = True,
-        conf_threshold: float = 0.001,
-        nms_threshold: float = 0.65,
-        fusion_mode: str = 'weighted',
+        model: nn.Module,
+        device: torch.device,
+        params: TTAParams | None = None,
     ) -> None:
-        self.scales = scales
-        self.use_flip = use_flip
-        self.conf_threshold = conf_threshold
-        self.nms_threshold = nms_threshold
-        self.fusion_mode = fusion_mode
-    
-    def __call__(
+        self.model = model
+        self.device = device
+        self.params = params or TTAParams()
+
+    def _apply_aug(
         self,
-        model: torch.nn.Module,
-        image: Tensor,
-        post_process_fn: callable,
-    ) -> Dict[str, Tensor]:
-        """Apply TTA and return fused predictions.
-        
-        Args:
-            model: Detection model
-            image: Input image [B, 3, H, W]
-            post_process_fn: Function to convert model outputs to detections
-        
-        Returns:
-            Fused detection results
-        """
-        all_predictions = []
-        
-        # Original image at multiple scales
-        for scale in self.scales:
-            pred = self._predict_at_scale(model, image, scale, post_process_fn)
-            all_predictions.append(pred)
-        
-        # Horizontal flip at multiple scales
-        if self.use_flip:
-            image_flipped = torch.flip(image, dims=[3])  # Flip width dimension
-            
-            for scale in self.scales:
-                pred_flipped = self._predict_at_scale(
-                    model, image_flipped, scale, post_process_fn
-                )
-                # Un-flip predictions
-                pred_unflipped = self._unflip_predictions(pred_flipped, image.shape[3])
-                all_predictions.append(pred_unflipped)
-        
-        # Fuse all predictions
-        fused = self._fuse_predictions(all_predictions)
-        
-        return fused
-    
-    def _predict_at_scale(
-        self,
-        model: torch.nn.Module,
-        image: Tensor,
+        image_np: np.ndarray,
         scale: float,
-        post_process_fn: callable,
-    ) -> Dict[str, Tensor]:
-        """Run inference at a specific scale."""
+        flip: str,
+    ) -> np.ndarray:
+        """Apply augmentation to image."""
+        img = image_np.copy()
+        
+        # Scaling
         if scale != 1.0:
-            # Resize image
-            h, w = image.shape[2:]
+            h, w = img.shape[:2]
             new_h, new_w = int(h * scale), int(w * scale)
-            image_scaled = F.interpolate(
-                image,
-                size=(new_h, new_w),
-                mode='bilinear',
-                align_corners=False,
-            )
-        else:
-            image_scaled = image
+            img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
         
-        # Forward pass
-        with torch.no_grad():
-            output = model(image_scaled)
+        # Flipping
+        if flip == "horizontal":
+            img = cv2.flip(img, 1)
+        elif flip == "vertical":
+            img = cv2.flip(img, 0)
+            
+        return img
+
+    def _inverse_aug_boxes(
+        self,
+        boxes: np.ndarray,
+        orig_shape: Tuple[int, int],
+        aug_shape: Tuple[int, int],
+        scale: float,
+        flip: str,
+    ) -> np.ndarray:
+        """Inverse transform boxes to original image coordinates."""
+        if boxes.shape[0] == 0:
+            return boxes
         
-        # Post-process to get detections
-        detections = post_process_fn(output)
+        inv_boxes = boxes.copy()
+        h, w = aug_shape
+        orig_h, orig_w = orig_shape
         
-        # Rescale box coordinates back to original size
+        # Inverse Flip
+        if flip == "horizontal":
+            inv_boxes[:, [0, 2]] = w - inv_boxes[:, [2, 0]]
+        elif flip == "vertical":
+            inv_boxes[:, [1, 3]] = h - inv_boxes[:, [3, 1]]
+            
+        # Inverse Scale
         if scale != 1.0:
-            for det in detections:
-                if 'boxes' in det and len(det['boxes']) > 0:
-                    det['boxes'] = det['boxes'] / scale
-        
-        return detections
-    
-    def _unflip_predictions(
-        self,
-        predictions: Dict[str, Tensor],
-        original_width: int,
-    ) -> Dict[str, Tensor]:
-        """Un-flip box coordinates after horizontal flip."""
-        unflipped = []
-        
-        for pred in predictions:
-            pred_copy = pred.copy()
+            inv_boxes[:, [0, 2]] /= (float(w) / float(orig_w))
+            inv_boxes[:, [1, 3]] /= (float(h) / float(orig_h))
             
-            if 'boxes' in pred and len(pred['boxes']) > 0:
-                boxes = pred['boxes'].copy()
-                # Flip x-coordinates: x' = W - x
-                boxes[:, [0, 2]] = original_width - boxes[:, [2, 0]]
-                pred_copy['boxes'] = boxes
-            
-            unflipped.append(pred_copy)
-        
-        return unflipped
+        return inv_boxes
     
-    def _fuse_predictions(
+    def _inverse_aug_masks(
         self,
-        all_predictions: List[Dict[str, Tensor]],
-    ) -> Dict[str, Tensor]:
-        """Fuse predictions from all augmentations using weighted boxes fusion."""
-        from torchvision.ops import nms
+        masks_np: np.ndarray,
+        orig_shape: Tuple[int, int],
+        aug_shape: Tuple[int, int],
+        scale: float,
+        flip: str,
+    ) -> np.ndarray:
+        """Inverse transform masks.
         
-        # Gather all boxes and scores across all augmentations
-        all_boxes = []
-        all_scores = []
-        all_classes = []
+        masks_np: [N, H_aug, W_aug] (numpy)
+        """
+        if masks_np.size == 0:
+            return masks_np
+            
+        N, h, w = masks_np.shape
+        orig_h, orig_w = orig_shape
         
-        for pred_batch in all_predictions:
-            for pred in pred_batch:
-                if 'boxes' in pred and len(pred['boxes']) > 0:
-                    all_boxes.append(torch.from_numpy(pred['boxes']))
-                    all_scores.append(torch.from_numpy(pred['scores']))
-                    all_classes.append(torch.from_numpy(pred['classes']))
+        # We process manually or via cv2/torch
+        # Using cv2 loop is safest for numpy
         
-        if len(all_boxes) == 0:
-            # No detections
-            return [{
-                'boxes': torch.zeros((0, 4)),
-                'scores': torch.zeros((0,)),
-                'classes': torch.zeros((0,), dtype=torch.int64),
-            }]
-        
-        # Concatenate all
-        boxes_all = torch.cat(all_boxes, dim=0)
-        scores_all = torch.cat(all_scores, dim=0)
-        classes_all = torch.cat(all_classes, dim=0)
-        
-        # Apply NMS to deduplicate
-        keep = nms(boxes_all, scores_all, iou_threshold=self.nms_threshold)
-        
-        # Return fused results
-        fused_result = [{
-            'boxes': boxes_all[keep].cpu().numpy(),
-            'scores': scores_all[keep].cpu().numpy(),
-            'classes': classes_all[keep].cpu().numpy(),
-        }]
-        
-        return fused_result
+        inv_masks = []
+        for i in range(N):
+            m = masks_np[i] # [H, W]
+            
+            # Inverse Flip
+            if flip == "horizontal":
+                m = cv2.flip(m, 1)
+            elif flip == "vertical":
+                m = cv2.flip(m, 0)
+            
+            # Inverse Scale
+            if scale != 1.0:
+                m = cv2.resize(m, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
+            else:
+                # Ensure size match
+                if m.shape != (orig_h, orig_w):
+                     m = cv2.resize(m, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
 
+            inv_masks.append(m)
+            
+        return np.stack(inv_masks, axis=0)
 
-__all__ = ['TestTimeAugmentation']
+    def predict(
+        self,
+        image_tensor: Tensor,  # [1, 3, H, W] normalized - UNUSED in loop, we build from np
+        orig_image_np: np.ndarray, # [H, W, 3] uint8 for resizing reference
+    ) -> dict[str, Any]:
+        """Run TTA inference."""
+        all_boxes_list = []
+        all_scores_list = []
+        all_labels_list = []
+        all_masks_list = []
+        
+        # Base image dimensions
+        orig_h, orig_w = orig_image_np.shape[:2]
+        
+        for scale in self.params.scales:
+            for flip in self.params.flips:
+                # 1. Augment
+                aug_img = self._apply_aug(orig_image_np, scale, flip)
+                aug_h, aug_w = aug_img.shape[:2]
+                
+                # Prepare tensor
+                input_tensor = torch.from_numpy(aug_img).float() / 255.0
+                input_tensor = input_tensor.permute(2, 0, 1).unsqueeze(0).to(self.device)
+                
+                # 2. Inference
+                with torch.no_grad():
+                    # Call model and post-process
+                    outputs = self.model(input_tensor)
+                    
+                    from apex_x.model.post_process import post_process_detections
+                    dets = post_process_detections(
+                        cls_logits_by_level=outputs.logits_by_level,
+                        box_reg_by_level=outputs.boxes_by_level,
+                        quality_by_level=outputs.quality_by_level,
+                        conf_threshold=self.params.wbf_skip_box_thr,
+                        nms_threshold=1.0, # Weak/No NMS
+                        masks=outputs.masks, # Pass masks!
+                    )[0] # Batch size 1
+                
+                # 3. Inverse Transform for this view
+                boxes = dets['boxes'].cpu().numpy()
+                scores = dets['scores'].cpu().numpy()
+                labels = dets['classes'].cpu().numpy()
+                masks = None
+                if 'masks' in dets:
+                     masks = dets['masks'].cpu().numpy() # [N, H_aug, W_aug] (probs)
+                
+                if len(boxes) > 0:
+                    inv_boxes = self._inverse_aug_boxes(
+                        boxes,
+                        orig_shape=(orig_h, orig_w),
+                        aug_shape=(aug_h, aug_w),
+                        scale=scale,
+                        flip=flip
+                    )
+                    
+                    # Normalize boxes to 0..1 for WBF
+                    inv_boxes_norm = inv_boxes.copy()
+                    inv_boxes_norm[:, [0, 2]] /= float(orig_w)
+                    inv_boxes_norm[:, [1, 3]] /= float(orig_h)
+                    inv_boxes_norm = np.clip(inv_boxes_norm, 0.0, 1.0)
+                    
+                    all_boxes_list.append(inv_boxes_norm)
+                    all_scores_list.append(scores)
+                    all_labels_list.append(labels)
+                    
+                    if masks is not None:
+                         scale_ratio = scale # Already handled
+                         inv_masks = self._inverse_aug_masks(
+                             masks, 
+                             orig_shape=(orig_h, orig_w),
+                             aug_shape=(aug_h, aug_w),
+                             scale=scale,
+                             flip=flip
+                         )
+                         all_masks_list.append(inv_masks)
+                    
+        # 4. Aggregate (WBF)
+        if not all_boxes_list:
+             return {'boxes': torch.tensor([]), 'scores': torch.tensor([]), 'classes': torch.tensor([])}
+
+        wbf_args = {
+             "boxes_list": all_boxes_list,
+             "scores_list": all_scores_list,
+             "labels_list": all_labels_list,
+             "iou_thr": self.params.iou_threshold,
+             "skip_box_thr": self.params.conf_threshold,
+             "conf_type": 'avg',
+        }
+        if all_masks_list:
+             wbf_args["masks_list"] = all_masks_list
+
+        wbf_boxes, wbf_scores, wbf_labels, wbf_masks = weighted_boxes_fusion(**wbf_args)
+        
+        # Convert back to absolute coordinates
+        final_boxes = wbf_boxes.copy()
+        final_boxes[:, [0, 2]] *= float(orig_w)
+        final_boxes[:, [1, 3]] *= float(orig_h)
+        
+        result = {
+            'boxes': torch.from_numpy(final_boxes).to(self.device).float(),
+            'scores': torch.from_numpy(wbf_scores).to(self.device).float(),
+            'classes': torch.from_numpy(wbf_labels).to(self.device).long(),
+        }
+        
+        if wbf_masks is not None:
+             # Masks are numpy float [N, H, W]
+             result['masks'] = torch.from_numpy(wbf_masks).to(self.device).float()
+             
+        return result

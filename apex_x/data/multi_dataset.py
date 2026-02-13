@@ -137,6 +137,10 @@ class MultiDataset(Dataset):
         if isinstance(sample, dict):
             sample['dataset_name'] = self.dataset_names[dataset_idx]
             sample['dataset_idx'] = dataset_idx
+        elif hasattr(sample, "__dict__") or hasattr(sample, "image"):
+            # TransformSample or similar object
+            setattr(sample, "dataset_name", self.dataset_names[dataset_idx])
+            setattr(sample, "dataset_idx", dataset_idx)
         
         return sample
 

@@ -5,6 +5,7 @@ Provides functions to save, load, and manage model checkpoints during training.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from collections.abc import Mapping
@@ -31,6 +32,148 @@ _STATE_DICT_CANDIDATE_KEYS: tuple[str, ...] = (
     "ema_model",
     "ema",
 )
+_CHECKPOINT_MANIFEST_FILENAME = "manifest.json"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _hash_json_payload(payload: Mapping[str, Any] | None) -> str:
+    body = payload or {}
+    encoded = json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _manifest_default() -> dict[str, Any]:
+    return {
+        "version": 1,
+        "updated_at": "",
+        "best": None,
+        "last": None,
+        "ema_best": None,
+        "ema_last": None,
+        "history": [],
+    }
+
+
+def load_checkpoint_manifest(checkpoint_dir: Path | str) -> dict[str, Any]:
+    directory = Path(checkpoint_dir)
+    path = directory / _CHECKPOINT_MANIFEST_FILENAME
+    if not path.exists():
+        return _manifest_default()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Invalid checkpoint manifest format: {path}")
+    out = _manifest_default()
+    out.update(payload)
+    return out
+
+
+def write_checkpoint_manifest(
+    checkpoint_dir: Path | str,
+    manifest: Mapping[str, Any],
+) -> Path:
+    directory = Path(checkpoint_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / _CHECKPOINT_MANIFEST_FILENAME
+    path.write_text(json.dumps(dict(manifest), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def _build_manifest_entry(
+    *,
+    checkpoint_path: Path,
+    epoch: int,
+    step: int,
+    metric_name: str,
+    metric_value: float | None,
+    is_best: bool,
+    has_ema: bool,
+    model_family: str,
+    config: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    checkpoint_path = checkpoint_path.resolve()
+    entry: dict[str, Any] = {
+        "path": str(checkpoint_path),
+        "sha256": _sha256_file(checkpoint_path),
+        "size_bytes": int(checkpoint_path.stat().st_size),
+        "epoch": int(epoch),
+        "step": int(step),
+        "metric_name": str(metric_name),
+        "metric_value": float(metric_value) if metric_value is not None else None,
+        "is_best": bool(is_best),
+        "has_ema": bool(has_ema),
+        "model_family": str(model_family),
+        "config_sha256": _hash_json_payload(config),
+        "timestamp": datetime.now().isoformat(),
+    }
+    return entry
+
+
+def update_checkpoint_manifest(
+    checkpoint_dir: Path | str,
+    *,
+    checkpoint_path: Path | str,
+    epoch: int,
+    step: int,
+    metric_name: str,
+    metric_value: float | None,
+    is_best: bool,
+    has_ema: bool,
+    model_family: str,
+    config: Mapping[str, Any] | None = None,
+    history_limit: int = 200,
+) -> Path:
+    directory = Path(checkpoint_dir)
+    path = Path(checkpoint_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Checkpoint file not found for manifest update: {path}")
+
+    manifest = load_checkpoint_manifest(directory)
+    entry = _build_manifest_entry(
+        checkpoint_path=path,
+        epoch=epoch,
+        step=step,
+        metric_name=metric_name,
+        metric_value=metric_value,
+        is_best=is_best,
+        has_ema=has_ema,
+        model_family=model_family,
+        config=config,
+    )
+
+    history = list(manifest.get("history", []))
+    history.append(entry)
+    if history_limit > 0:
+        history = history[-int(history_limit) :]
+    manifest["history"] = history
+
+    manifest["last"] = entry
+    manifest["ema_last"] = entry if has_ema else None
+    if is_best:
+        manifest["best"] = entry
+        manifest["ema_best"] = entry if has_ema else None
+    elif manifest.get("best") is None:
+        manifest["best"] = entry
+        manifest["ema_best"] = entry if has_ema else None
+    manifest["updated_at"] = datetime.now().isoformat()
+
+    return write_checkpoint_manifest(directory, manifest)
+
+
+def get_model_family(model: nn.Module) -> str:
+    """Identify the model family for lineage tracking."""
+    if hasattr(model, "backbone") and "dinov2" in str(type(model.backbone)).lower():
+        return "TeacherModelV3"
+    return type(model).__name__
 
 
 def safe_torch_load(
@@ -132,6 +275,7 @@ def save_checkpoint(
     config: dict[str, Any] | None = None,
     is_best: bool = False,
     ema_state_dict: dict[str, Any] | None = None,
+    model_family: str | None = None,
 ) -> None:
     """Save a training checkpoint.
     
@@ -194,17 +338,31 @@ def save_checkpoint(
         if best_path.exists() and best_path.is_symlink():
             best_path.unlink()
         elif best_path.exists():
-            # Remove old best file if it's not a symlink
             best_path.unlink()
         
-        # Create relative symlink
         try:
             best_path.symlink_to(path.name)
             LOGGER.info(f"Updated best checkpoint symlink -> {path.name}")
         except OSError:
-            # Fallback: copy file if symlink fails (e.g., on Windows)
             shutil.copy2(path, best_path)
             LOGGER.info(f"Copied best checkpoint to {best_path}")
+
+    # --- T1.6: Update governance manifest ---
+    try:
+        update_checkpoint_manifest(
+            checkpoint_dir=path.parent,
+            checkpoint_path=path,
+            epoch=epoch,
+            step=step,
+            metric_name=best_metric_name,
+            metric_value=best_metric if is_best else (metrics.get(best_metric_name) if metrics else None),
+            is_best=is_best,
+            has_ema=ema_state_dict is not None,
+            model_family=model_family or get_model_family(model),
+            config=config,
+        )
+    except Exception as e:
+        LOGGER.warning(f"Governance manifest update failed: {e}")
 
 
 def load_checkpoint(
@@ -321,6 +479,9 @@ def cleanup_old_checkpoints(
 
 __all__ = [
     "CheckpointMetadata",
+    "load_checkpoint_manifest",
+    "write_checkpoint_manifest",
+    "update_checkpoint_manifest",
     "safe_torch_load",
     "is_tensor_state_dict",
     "extract_model_state_dict",

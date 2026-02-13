@@ -215,6 +215,48 @@ def boundary_distance_transform_surrogate_loss(
     return _weighted_mean(per_instance, weights)
 
 
+    return _weighted_mean(per_instance, weights)
+
+
+def point_rend_loss(
+    point_logits: Tensor,
+    point_coords: Tensor,
+    target_masks: Tensor,
+    *,
+    instance_weights: Tensor | None = None,
+) -> Tensor:
+    """Compute PointRend loss.
+    
+    Args:
+        point_logits: [N, 1, P] predicted logits at points
+        point_coords: [N, P, 2] coordinates used for sampling
+        target_masks: [N, 1, H_gt, W_gt] ground truth masks
+        
+    Returns:
+        Scalar loss
+    """
+    # Sample GT at the same coordinates
+    # point_sample expects [N, C, H, W] and [N, P, 2] (or [N, 1, P, 2])
+    # Coords need to be [N, P, 2] -> [N, 1, P, 2] for grid_sample logic
+    from apex_x.model.point_rend import point_sample
+    
+    point_targets = point_sample(target_masks.float(), point_coords) # [N, 1, 1, P]
+    point_targets = point_targets.squeeze(2) # [N, 1, P]
+    
+    loss = f.binary_cross_entropy_with_logits(
+        point_logits, 
+        point_targets, 
+        reduction='none'
+    )
+    
+    if instance_weights is not None:
+        # loss: [N, 1, P]
+        # weights: [N] -> [N, 1, 1]
+        loss = loss * instance_weights.view(-1, 1, 1)
+        
+    return loss.mean()
+
+
 def instance_segmentation_losses(
     mask_logits: Tensor,
     target_masks: Tensor,
@@ -223,13 +265,17 @@ def instance_segmentation_losses(
     bce_weight: float = 1.0,
     dice_weight: float = 1.0,
     boundary_weight: float = 1.0,
+    lovasz_weight: float = 0.0,
+    point_weight: float = 0.0,
+    point_logits: Tensor | None = None,
+    point_coords: Tensor | None = None,
     boundary_iou_weight: float = 0.5,
     dt_iterations: int = 8,
     dt_temperature: float = 0.25,
 ) -> SegLossOutput:
-    """Compute BCE + Dice + differentiable boundary-DT surrogate losses."""
-    if bce_weight < 0.0 or dice_weight < 0.0 or boundary_weight < 0.0:
-        raise ValueError("bce_weight, dice_weight, and boundary_weight must be >= 0")
+    """Compute BCE + Dice + differentiable boundary-DT surrogate losses + Lovasz + PointRend."""
+    if bce_weight < 0.0 or dice_weight < 0.0 or boundary_weight < 0.0 or lovasz_weight < 0.0:
+        raise ValueError("weights must be >= 0")
 
     bce = mask_bce_loss(mask_logits, target_masks, instance_weights=instance_weights)
     dice = mask_dice_loss(mask_logits, target_masks, instance_weights=instance_weights)
@@ -240,7 +286,54 @@ def instance_segmentation_losses(
         dt_iterations=dt_iterations,
         dt_temperature=dt_temperature,
     )
-    total = bce_weight * bce + dice_weight * dice + boundary_weight * boundary
+    
+    lovasz = torch.tensor(0.0, device=mask_logits.device, dtype=mask_logits.dtype)
+    if lovasz_weight > 0.0:
+        from apex_x.losses.lovasz_loss import lovasz_loss
+        # Lovasz expects [B, H, W] or [B, 1, H, W], but we have [B, N, H, W]
+        # We handle it by flattening B*N into the batch dimension for Lovasz
+        B, N, H, W = mask_logits.shape
+        flat_logits = mask_logits.view(-1, H, W)
+        flat_targets = target_masks.view(-1, H, W)
+        
+        # Apply instance weights if present
+        if instance_weights is not None:
+             per_instance_lovasz = torch.stack([
+                 lovasz_loss(flat_logits[i:i+1], flat_targets[i:i+1], per_image=True)
+                 for i in range(B*N)
+             ]).view(B, N)
+             
+             weights = _normalize_instance_weights(
+                instance_weights,
+                batch_size=B,
+                num_instances=N,
+                device=mask_logits.device,
+                dtype=mask_logits.dtype,
+            )
+             lovasz = _weighted_mean(per_instance_lovasz, weights)
+        else:
+             lovasz = lovasz_loss(flat_logits, flat_targets, per_image=True)
+             
+    point_loss_val = torch.tensor(0.0, device=mask_logits.device, dtype=mask_logits.dtype)
+    if point_weight > 0.0 and point_logits is not None and point_coords is not None:
+        point_loss_val = point_rend_loss(
+            point_logits, 
+            point_coords, 
+            target_masks, 
+            instance_weights=instance_weights
+        )
+
+    total = (
+        bce_weight * bce + 
+        dice_weight * dice + 
+        boundary_weight * boundary + 
+        lovasz_weight * lovasz + 
+        point_weight * point_loss_val
+    )
+    
+    # Store point loss in metadata if possible or just log it
+    # We need to extend SegLossOutput or just fold it into total
+    
     return SegLossOutput(
         total_loss=total,
         bce_loss=bce,
@@ -345,6 +438,7 @@ def multi_scale_instance_segmentation_losses(
     bce_weight: float = 1.0,
     dice_weight: float = 1.0,
     boundary_weight: float = 1.0,
+    lovasz_weight: float = 0.0,
     dt_iterations: int = 8,
     dt_temperature: float = 0.25,
 ) -> SegLossOutput:
@@ -366,6 +460,7 @@ def multi_scale_instance_segmentation_losses(
         bce_weight: Weight for BCE loss component
         dice_weight: Weight for Dice loss component
         boundary_weight: Weight for boundary loss component
+        lovasz_weight: Weight for Lovasz loss component
         dt_iterations: Number of iterations for distance transform
         dt_temperature: Temperature for soft-min in distance transform
     
@@ -424,11 +519,12 @@ def multi_scale_instance_segmentation_losses(
             bce_weight=bce_weight,
             dice_weight=dice_weight,
             boundary_weight=boundary_weight,
+            lovasz_weight=lovasz_weight,
             dt_iterations=dt_iterations,
             dt_temperature=dt_temperature,
         )
         
-        # Accumulate weighted losses
+    # Accumulate weighted losses
         total_loss = total_loss + weight * scale_output.total_loss
         total_bce = total_bce + weight * scale_output.bce_loss
         total_dice = total_dice + weight * scale_output.dice_loss

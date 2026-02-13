@@ -265,8 +265,13 @@ def combined_seg_loss(
     return total, losses
 
 
+
+# Alias for compatibility with seg_loss.py
+lovasz_loss = lovasz_hinge
+
 __all__ = [
     "lovasz_hinge",
+    "lovasz_loss",
     "lovasz_softmax",
     "lovasz_instance_loss",
     "combined_seg_loss",

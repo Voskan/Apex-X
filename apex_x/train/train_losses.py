@@ -132,17 +132,43 @@ def compute_teacher_training_loss(
     # Extract GT from samples
     gt_boxes_list = []
     gt_classes_list = []
+    gt_masks_list = []
     
-    for sample in samples:
-        if sample.boxes_xyxy.shape[0] > 0:
-            gt_boxes_list.append(torch.from_numpy(sample.boxes_xyxy).to(device))
-        else:
-            gt_boxes_list.append(torch.zeros((0, 4), device=device))
+    if isinstance(samples, dict):
+        # Handle unified batch dict
+        batch_size = output.logits.shape[0]
+        boxes = samples.get("boxes")
+        labels = samples.get("labels")
+        masks = samples.get("masks")
+        batch_idx_tensor = samples.get("batch_idx")
         
-        if sample.class_ids.shape[0] > 0:
-            gt_classes_list.append(torch.from_numpy(sample.class_ids).to(device))
-        else:
-            gt_classes_list.append(torch.zeros((0,), dtype=torch.int64, device=device))
+        for i in range(batch_size):
+            if batch_idx_tensor is not None and boxes is not None:
+                mask_i = (batch_idx_tensor == i)
+                gt_boxes_list.append(boxes[mask_i].to(device))
+                gt_classes_list.append(labels[mask_i].to(device))
+                if masks is not None:
+                    gt_masks_list.append(masks[mask_i].to(device))
+            else:
+                gt_boxes_list.append(torch.zeros((0, 4), device=device))
+                gt_classes_list.append(torch.zeros((0,), dtype=torch.int64, device=device))
+    elif samples is not None:
+        # Handle list of TransformSample
+        for sample in samples:
+            if sample.boxes_xyxy.shape[0] > 0:
+                gt_boxes_list.append(torch.from_numpy(sample.boxes_xyxy).to(device))
+            else:
+                gt_boxes_list.append(torch.zeros((0, 4), device=device))
+            
+            if sample.class_ids.shape[0] > 0:
+                gt_classes_list.append(torch.from_numpy(sample.class_ids).to(device))
+            else:
+                gt_classes_list.append(torch.zeros((0,), dtype=torch.int64, device=device))
+            
+            if sample.masks is not None and sample.masks.shape[0] > 0:
+                gt_masks_list.append(torch.from_numpy(sample.masks).to(device))
+            else:
+                gt_masks_list.append(None)
     
     # Multi-level detection loss using SimOTA
     levels = [
@@ -256,15 +282,14 @@ def compute_teacher_training_loss(
     seg_batches = 0
     if output.masks is not None and output.masks.ndim == 4:
         pred_masks = output.masks
-        for batch_idx, sample in enumerate(samples[: pred_masks.shape[0]]):
-            if sample.masks is None or sample.masks.shape[0] <= 0:
+        for batch_idx in range(min(pred_masks.shape[0], len(gt_masks_list))):
+            gt_masks = gt_masks_list[batch_idx]
+            if gt_masks is None or gt_masks.shape[0] <= 0:
                 continue
             pred_batch = pred_masks[batch_idx]
             if pred_batch.ndim != 3 or pred_batch.shape[0] <= 0:
                 continue
-            gt_masks = torch.from_numpy(sample.masks).to(device=device, dtype=pred_batch.dtype)
-            if gt_masks.ndim == 2:
-                gt_masks = gt_masks.unsqueeze(0)
+            # (gt_masks is already on device and correct dtype from extraction)
             num_instances = min(int(pred_batch.shape[0]), int(gt_masks.shape[0]))
             if num_instances <= 0:
                 continue

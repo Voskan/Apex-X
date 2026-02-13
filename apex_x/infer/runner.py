@@ -11,8 +11,9 @@ import numpy as np
 import torch
 
 from apex_x.config import ApexXConfig
-from apex_x.model import ApexXModel, FFModule
+from apex_x.model import ApexXModel, FFModule, TeacherModelV3
 from apex_x.runtime import RuntimeCaps, TensorRTEngineExecutor, load_export_manifest
+from apex_x.infer.tta import TestTimeAugmentation
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,13 +132,50 @@ def _tile_utilities_torch(ff: torch.Tensor, tile_size: int) -> torch.Tensor:
 
 
 def _torch_model_forward(
-    model: ApexXModel,
+    model: ApexXModel | TeacherModelV3,
     input_batch: np.ndarray,
     *,
     use_runtime_plugins: bool,
+    use_tta: bool = False,
 ) -> dict[str, Any]:
     cfg: ApexXConfig = model.config
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    
+    # 1. Full SOTA Teacher Inference (Masks + Boxes)
+    if isinstance(model, TeacherModelV3) or use_tta:
+        model.to(device)
+        model.eval()
+        
+        with torch.inference_mode():
+            images_t = torch.from_numpy(np.asarray(input_batch, dtype=np.float32)).to(device)
+            
+            if use_tta:
+                tta_wrapper = TestTimeAugmentation(model)
+                out_list = tta_wrapper(images_t)
+                out = out_list[0]
+            else:
+                out = model(images_t)
+                
+            # Convert to runner-compatible format
+            det = {
+                "boxes": out["boxes"].cpu().numpy(),
+                "scores": out["scores"].cpu().numpy(),
+                "class_ids": out.get("classes", out.get("labels", torch.zeros_like(out["scores"]))).cpu().numpy(),
+            }
+            
+            result = {
+                "det": det,
+                "routing_diagnostics": out.get("routing_diagnostics", {}),
+                "selected_tiles": out.get("selected_tiles", []),
+                "feature_toggles": out.get("feature_toggles", {}),
+            }
+            
+            if "masks" in out:
+                result["masks"] = out["masks"].cpu().numpy()
+                
+            return result
+
+    # 2. Router-only / Legacy FFModule Path
     with torch.inference_mode():
         x = torch.from_numpy(np.asarray(input_batch, dtype=np.float32)).to(device)
         pv16 = _downsample_mean_torch(x, cfg.model.pv_stride)
@@ -501,6 +539,7 @@ def run_model_inference(
     precision_profile: str,
     selection_fallback_reason: str | None,
     runtime_caps: RuntimeCaps,
+    use_tta: bool = False,
 ) -> InferenceRunResult:
     total_started = time.perf_counter()
     backend_preflight_latency_ms = 0.0
@@ -518,12 +557,15 @@ def run_model_inference(
     if selected_backend == "cpu":
         model_output = _run_with_timing(lambda: model.forward(input_batch))
     elif selected_backend == "torch":
+        config_tta = getattr(model.config.train, "tta_enabled", False)
+        effective_tta = use_tta or config_tta
         try:
             model_output = _run_with_timing(
                 lambda: _torch_model_forward(
                     model,
                     input_batch,
                     use_runtime_plugins=False,
+                    use_tta=effective_tta,
                 )
             )
         except Exception as exc:
@@ -788,6 +830,7 @@ def evaluate_model_dataset(
     det_score_target: np.ndarray | None = None,
     selected_tiles_target: np.ndarray | None = None,
     max_samples: int | None = None,
+    use_tta: bool = False,
 ) -> ModelDatasetEvalSummary:
     if images.ndim != 4:
         raise ValueError("images must be [N,3,H,W]")
@@ -813,6 +856,7 @@ def evaluate_model_dataset(
             precision_profile=precision_profile,
             selection_fallback_reason=selection_fallback_reason,
             runtime_caps=runtime_caps,
+            use_tta=use_tta,
         )
         det_scores.append(float(result.det_score))
         selected_tiles.append(int(result.selected_tiles))

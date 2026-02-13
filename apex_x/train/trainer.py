@@ -21,6 +21,7 @@ from apex_x.data import (
     infer_dataset_type as infer_dataset_type_preflight,
     run_dataset_preflight,
     write_dataset_preflight_report,
+    standard_collate_fn,
 )
 from apex_x.model import (
     ApexXModel,
@@ -28,6 +29,7 @@ from apex_x.model import (
     DualPathFPN,
     PVModule,
     TeacherModel,
+    TeacherModelV3,
     TimmBackboneAdapter,
 )
 from apex_x.routing import (
@@ -47,9 +49,11 @@ from apex_x.utils import get_logger, log_event, seed_all
 
 
 from .checkpoint import CheckpointMetadata, cleanup_old_checkpoints, load_checkpoint, save_checkpoint
+from .checkpoint import update_checkpoint_manifest
 from .lr_scheduler import create_lr_scheduler
 from .pcgrad import apply_pcgradpp, diagnostics_to_dict
 from .train_losses import compute_teacher_training_loss
+from .train_losses_v3 import compute_v3_training_losses
 from .qat import QuantizationSummary, prepare_int8_ptq, prepare_int8_qat
 from .trainer_utils import add_train_epoch_method
 from .memory_manager import MemoryManager
@@ -160,7 +164,7 @@ def _build_train_report_markdown(report_payload: Mapping[str, Any]) -> str:
 
 
 def _identity_collate(batch: list[Any]) -> list[Any]:
-    """Pickle-safe identity collate used by trainer DataLoaders."""
+    """Deprecated: using standard_collate_fn instead."""
     return batch
 
 
@@ -277,7 +281,18 @@ class ApexXTrainer:
         if self.swa_model:
              LOGGER.info("SWA (Stochastic Weight Averaging) enabled.")
 
-    def _build_teacher_model(self, *, num_classes: int) -> TeacherModel:
+    def _build_teacher_model(self, *, num_classes: int) -> TeacherModel | TeacherModelV3:
+        # Check for V3 World-Class profile
+        if self.config.model.profile == "worldclass":
+             LOGGER.info("Building TeacherModelV3 (World-Class Profile)...")
+             return TeacherModelV3(
+                 num_classes=num_classes,
+                 backbone_model=self.config.model.backbone_model,
+                 lora_rank=self.config.model.lora_rank,
+                 fpn_channels=self.config.model.fpn_channels,
+                 # num_cascade_stages=3 # Default in V3
+             )
+
         # Keep the staged trainer CPU-fast by default, or use high-capacity backbone
         if self.backbone_type == "timm":
             pv_module = TimmBackboneAdapter(
@@ -365,6 +380,8 @@ class ApexXTrainer:
         scheduler: torch.optim.lr_scheduler._LRScheduler | None = None,
         metrics: dict[str, float] | None = None,
         is_best: bool = False,
+        selection_metric_name: str | None = None,
+        selection_metric_value: float | None = None,
     ) -> None:
         """Save a training checkpoint.
         
@@ -375,6 +392,8 @@ class ApexXTrainer:
             scheduler: Optional LR scheduler
             metrics: Training/validation metrics
             is_best: Whether this is the best checkpoint
+            selection_metric_name: Name of checkpoint-selection metric
+            selection_metric_value: Value of checkpoint-selection metric
         """
         if self.checkpoint_dir is None:
             LOGGER.warning("checkpoint_dir not set, skipping checkpoint save")
@@ -427,6 +446,25 @@ class ApexXTrainer:
         except OSError:
             import shutil
             shutil.copy2(ckpt_path, last_path)
+
+        metric_name = selection_metric_name or str(self.best_metric_name)
+        metric_value = selection_metric_value
+        if metric_value is None and metrics is not None:
+            maybe_value = metrics.get("selection_metric_value")
+            if isinstance(maybe_value, (int, float)) and np.isfinite(float(maybe_value)):
+                metric_value = float(maybe_value)
+        update_checkpoint_manifest(
+            self.checkpoint_dir,
+            checkpoint_path=ckpt_path,
+            epoch=epoch,
+            step=step,
+            metric_name=str(metric_name),
+            metric_value=metric_value,
+            is_best=bool(is_best),
+            has_ema=bool(ema_state),
+            model_family=type(self.teacher).__name__,
+            config=self.config.to_dict(),
+        )
     
     def load_training_checkpoint(
         self,
@@ -526,27 +564,11 @@ class ApexXTrainer:
                 if max_batches and batch_idx >= max_batches:
                     break
                 
-                # Extract batch components
-                if isinstance(batch_data, dict):
-                    images = batch_data.get("images")
-                    image_ids = batch_data.get("image_ids", [])
-                elif (
-                    isinstance(batch_data, list)
-                    and len(batch_data) > 0
-                    and hasattr(batch_data[0], "image")
-                ):
-                    image_ids = []
-                    images = torch.stack(
-                        [
-                            torch.from_numpy(sample.image).permute(2, 0, 1).float() / 255.0
-                            for sample in batch_data
-                        ],
-                        dim=0,
-                    )
-                else:
-                    # Fallback for simple batch format
-                    images = batch_data
-                    image_ids = []
+                if not isinstance(batch_data, dict):
+                    continue
+                    
+                images = batch_data.get("images")
+                image_ids = batch_data.get("image_ids", [])
                 
                 if images is None:
                     continue
@@ -555,80 +577,142 @@ class ApexXTrainer:
                 images = images.to(device)
                 
                 # Model forward pass
-                output = self.teacher(images)
+                output = self.teacher(images, use_ema=True)
                 
-                # Compute validation loss (simplified)
-                if hasattr(output, 'logits'):
-                    val_loss = output.logits.pow(2).mean()
-                    if hasattr(output, 'boundaries'):
-                        val_loss = val_loss + 0.05 * output.boundaries.abs().mean()
-                    total_loss += float(val_loss.item())
+                # Compute real validation loss
+                if isinstance(self.teacher, TeacherModelV3):
+                     val_loss_tens, _ = compute_v3_training_losses(
+                         outputs=output,
+                         targets=batch_data,
+                         model=self.teacher,
+                         config=self.config,
+                     )
+                else:
+                    val_loss_tens, _ = compute_teacher_training_loss(
+                        output=output,
+                        samples=batch_data,
+                        det_weight=1.0,
+                        boundary_weight=1.0,
+                        epoch=999,
+                        total_epochs=999,
+                        box_loss_type=self.config.train.box_loss_type,
+                        boundary_warmup_epochs=0,
+                        boundary_max_scale=1.0,
+                        box_warmup_epochs=0,
+                        box_scale_start=1.0,
+                        box_scale_end=1.0,
+                    )
+                total_loss += float(val_loss_tens.item())
                 
                 # Post-process detections for mAP
                 if compute_map and evaluator is not None:
-                    # Apply NMS and get final detections
-                    detections = post_process_detections(
-                        cls_logits_by_level=output.logits_by_level,
-                        box_reg_by_level=output.boxes_by_level,
-                        quality_by_level=output.quality_by_level,
-                        conf_threshold=conf_threshold,
-                        nms_threshold=nms_threshold,
-                        box_format="distance",  # or "direct" depending on head implementation
-                    )
+                    results = {}
                     
-                    # Convert to COCO format and update evaluator
-                    for det_idx, detection in enumerate(detections):
-                        if det_idx < len(image_ids):
-                            img_id = image_ids[det_idx]
-                            pred_masks = None
-                            if output.masks is not None and output.masks.ndim == 4 and det_idx < output.masks.shape[0]:
-                                pred_masks = output.masks[det_idx]
+                    if isinstance(self.teacher, TeacherModelV3):
+                        # V3 Output Processing
+                        boxes_all = output["boxes"] # [N_total, 4]
+                        scores_all = output["scores"] # [N_total, C]
+                        masks_all = output.get("masks") # [N_total, 1, 28, 28] or None
+                        batch_indices = output["batch_indices"] # [N_total]
+                        
+                        for i, img_id in enumerate(image_ids):
+                            # Ensure image_id is int for COCO
+                            if isinstance(img_id, torch.Tensor):
+                                img_id_val = int(img_id.item())
+                            else:
+                                img_id_val = int(img_id)
+                                
+                            mask_i = (batch_indices == i)
+                            if not mask_i.any():
+                                continue
                             
-                            # Convert to COCO format
-                            coco_dets = []
-                            boxes = detection['boxes'].cpu().numpy()
-                            scores = detection['scores'].cpu().numpy()
-                            classes = detection['classes'].cpu().numpy()
-                            image_h = int(images.shape[2])
-                            image_w = int(images.shape[3])
+                            boxes_i = boxes_all[mask_i]
+                            scores_i = scores_all[mask_i]
+                            masks_i = masks_all[mask_i] if masks_all is not None else None
                             
-                            for inst_idx, (box, score, cls_id) in enumerate(zip(boxes, scores, classes)):
-                                x1, y1, x2, y2 = box
-                                payload = {
-                                    'image_id': int(img_id),
-                                    'category_id': int(cls_id),
-                                    'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
-                                    'score': float(score),
-                                }
-
-                                mask_np = None
-                                if pred_masks is not None and inst_idx < pred_masks.shape[0]:
-                                    candidate = pred_masks[inst_idx].detach().cpu().numpy()
-                                    mask_np = (candidate > 0.5).astype(np.uint8)
-                                else:
-                                    x1i = int(max(0, min(image_w, np.floor(x1))))
-                                    y1i = int(max(0, min(image_h, np.floor(y1))))
-                                    x2i = int(max(0, min(image_w, np.ceil(x2))))
-                                    y2i = int(max(0, min(image_h, np.ceil(y2))))
-                                    fallback_mask = np.zeros((image_h, image_w), dtype=np.uint8)
-                                    if x2i > x1i and y2i > y1i:
-                                        fallback_mask[y1i:y2i, x1i:x2i] = 1
-                                    mask_np = fallback_mask
-
-                                if mask_np is not None:
-                                    try:
-                                        from pycocotools import mask as mask_utils
-
-                                        rle = mask_utils.encode(np.asfortranarray(mask_np))
-                                        rle["counts"] = rle["counts"].decode("utf-8")
-                                        payload["segmentation"] = rle
-                                    except Exception:
-                                        pass
-
-                                coco_dets.append(payload)
+                            # Filter low confidence
+                            max_scores, labels = scores_i.max(dim=1)
+                            keep = max_scores > conf_threshold
                             
-                            evaluator.update(coco_dets)
-                            all_image_ids.append(img_id)
+                            boxes_i = boxes_i[keep]
+                            labels = labels[keep] + 1 # 1-based class capability (bg is 0?) - Check COCO mapping
+                            scores_i = max_scores[keep]
+                            masks_i = masks_i[keep] if masks_i is not None else None
+                            
+                            # NMS (if not already done sufficiently by model)
+                            # TeacherV3 likely returns many boxes.
+                            from torchvision.ops import nms
+                            keep_nms = nms(boxes_i, scores_i, nms_threshold)
+                            
+                            results[img_id_val] = {
+                                "boxes": boxes_i[keep_nms],
+                                "scores": scores_i[keep_nms],
+                                "labels": labels[keep_nms],
+                                "masks": masks_i[keep_nms] if masks_i is not None else None,
+                            }
+
+                    else:
+                        # Legacy Output Processing
+                        from apex_x.model import post_process_detections
+                        detections = post_process_detections(
+                            cls_logits_by_level=output.logits_by_level,
+                            box_reg_by_level=output.boxes_by_level,
+                            quality_by_level=output.quality_by_level,
+                            conf_threshold=conf_threshold,
+                            nms_threshold=nms_threshold,
+                            box_format="distance",
+                        )
+                        
+                        for det_idx, detection in enumerate(detections):
+                            if det_idx < len(image_ids):
+                                img_id = image_ids[det_idx]
+                                
+                                pred_masks = None
+                                if output.masks is not None and output.masks.ndim == 4 and det_idx < output.masks.shape[0]:
+                                    pred_masks = output.masks[det_idx]
+                                
+                                coco_dets = []
+                                boxes = detection['boxes'].cpu().numpy()
+                                scores = detection['scores'].cpu().numpy()
+                                classes = detection['classes'].cpu().numpy()
+                                image_h, image_w = images.shape[2:]
+                                
+                                for inst_idx, (box, score, cls_id) in enumerate(zip(boxes, scores, classes)):
+                                    x1, y1, x2, y2 = box
+                                    payload = {
+                                        'image_id': int(img_id),
+                                        'category_id': int(cls_id),
+                                        'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
+                                        'score': float(score),
+                                    }
+
+                                    mask_np = None
+                                    if pred_masks is not None and inst_idx < pred_masks.shape[0]:
+                                        candidate = pred_masks[inst_idx].detach().cpu().numpy()
+                                        mask_np = (candidate > 0.5).astype(np.uint8)
+                                    else:
+                                        x1i, y1i = int(max(0, np.floor(x1))), int(max(0, np.floor(y1)))
+                                        x2i, y2i = int(min(image_w, np.ceil(x2))), int(min(image_h, np.ceil(y2)))
+                                        mask_np = np.zeros((image_h, image_w), dtype=np.uint8)
+                                        if x2i > x1i and y2i > y1i:
+                                            mask_np[y1i:y2i, x1i:x2i] = 1
+
+                                    if mask_np is not None:
+                                        try:
+                                            from pycocotools import mask as mask_utils
+                                            rle = mask_utils.encode(np.asfortranarray(mask_np))
+                                            rle["counts"] = rle["counts"].decode("utf-8")
+                                            payload["segmentation"] = rle
+                                        except ImportError:
+                                            pass
+
+                                    coco_dets.append(payload)
+                                
+                                evaluator.update(coco_dets)
+                                all_image_ids.append(img_id)
+
+                    if results:
+                        evaluator.update(results)
                 
                 total_batches += 1
                 
@@ -669,10 +753,15 @@ class ApexXTrainer:
         steps_per_epoch: int,
     ) -> tuple[torch.utils.data.DataLoader | None, int, str]:
         if not self.config.train.allow_synthetic_fallback:
+            # STRICT FAIL-FAST
+            LOGGER.error(f"CRITICAL: Data bootstrap failed and fallback is DISABLED. Reason: {reason}")
             raise RuntimeError(
+                f"Dataset bootstrap failed for dataset_type={dataset_type}. "
+                f"Reason: {reason}. "
                 "Synthetic fallback is disabled (train.allow_synthetic_fallback=false). "
-                f"Dataset bootstrap failed for dataset_type={dataset_type}: {reason}"
+                "Please fix your dataset path or configuration."
             )
+        
         LOGGER.warning(
             "synthetic_dataset_fallback_enabled",
             dataset_type=dataset_type,
@@ -718,12 +807,92 @@ class ApexXTrainer:
                         dataset_type=dataset_type,
                         steps_per_epoch=steps_per_epoch,
                     )
-                dataset = CocoDetectionDataset(
+                # 1. Initialize Raw Dataset (No Transforms)
+                raw_dataset = CocoDetectionDataset(
                     root=self.config.data.coco_train_images,
                     ann_file=self.config.data.coco_train_annotations,
-                    transforms=None,
+                    transforms=None, # Raw samples for CopyPaste/Mosaic source
                 )
+                
+                # 2. Build Advanced Transforms relying on the dataset
+                from apex_x.data.augmentations import CopyPasteAugmentation, MosaicAugmentation, MixUpAugmentation
+                from apex_x.data.transforms import TransformPipeline, MosaicV2
+                from apex_x.data.dataset_wrappers import AugmentedDataset
+                
+                # Base robust transforms (Resize, Color, Flip)
+                base_transform = build_robust_transforms(
+                    height=train_h,
+                    width=train_w,
+                    blur_prob=0.3,
+                    noise_prob=0.3,
+                    distort_prob=0.5,
+                )
+                
+                # Advanced Augmentations
+                # We define a custom pipeline list
+                aug_list = []
+                
+                # Mosaic (4-image) - Puts 4 images together, usually applied first
+                if self.config.data.mosaic_prob > 0:
+                    # MosaicV2 handles the 4-image logic internally if passed a list, 
+                    # OR we can use the MosaicAugmentation from augmentations.py which wraps the sampling logic.
+                    # augmentations.py MosaicAugmentation takes 'dataset' and does the sampling.
+                    aug_list.append(MosaicAugmentation(
+                        dataset=raw_dataset,
+                        output_size=max(train_h, train_w),
+                        mosaic_prob=self.config.data.mosaic_prob
+                    ))
+                
+                # CopyPaste - Pastes objects from other images
+                if self.config.data.copypaste_prob > 0:
+                    aug_list.append(CopyPasteAugmentation(
+                        dataset=raw_dataset,
+                        paste_prob=self.config.data.copypaste_prob,
+                        max_paste=5,
+                        blend_alpha=1.0
+                    ))
+                
+                # MixUp - Blends 2 images
+                if self.config.data.mixup_prob > 0:
+                    aug_list.append(MixUpAugmentation(
+                        dataset=raw_dataset,
+                        alpha=1.0,
+                        mixup_prob=self.config.data.mixup_prob
+                    ))
+                    
+                # Add base transforms (Resize, Geometry, Color)
+                # Note: Mosaic output is already resized to output_size, so base_transform resize is redundant but safe.
+                # If Mosaic didn't run, we need base_transform to resize.
+                
+                # Wrapping base_transform (AlbumentationsAdapter) to be call-compatible if needed,
+                # but TransformPipeline handles it.
+                
+                class CompositePipeline:
+                    def __init__(self, augs, base):
+                        self.augs = augs
+                        self.base = base
+                        
+                    def __call__(self, sample, rng=None):
+                        # Apply advanced augs (Mosaic/CopyPaste)
+                        for aug in self.augs:
+                            sample = aug(sample) # These don't take rng in signature in augmentations.py, they use random module
+                            
+                        # Apply base (Albumentations) - requires rng
+                        sample = self.base(sample, rng=rng)
+                        return sample
+
+                full_transform = CompositePipeline(aug_list, base_transform)
+                
+                # 3. Wrap with AugmentedDataset
+                dataset = AugmentedDataset(
+                    dataset=raw_dataset,
+                    transform=full_transform
+                )
+                
+                LOGGER.info(f"Initialized COCO Dataset with SOTA Augmentations (Mosaic={self.config.data.mosaic_prob}, CopyPaste={self.config.data.copypaste_prob})")
+
             elif dataset_type == "yolo":
+
                 root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
                 if not root_text:
                     return self._handle_synthetic_fallback(
@@ -780,7 +949,7 @@ class ApexXTrainer:
             shuffle=True,
             num_workers=self.config.train.dataloader_num_workers,
             pin_memory=self.config.train.dataloader_pin_memory,
-            collate_fn=_identity_collate,
+            collate_fn=standard_collate_fn,
         )
         steps_per_epoch = len(dataloader)
         return dataloader, steps_per_epoch, dataset_type
@@ -832,7 +1001,7 @@ class ApexXTrainer:
             shuffle=False,
             num_workers=self.config.train.dataloader_num_workers,
             pin_memory=self.config.train.dataloader_pin_memory,
-            collate_fn=_identity_collate,
+            collate_fn=standard_collate_fn,
         )
 
     @staticmethod
@@ -975,23 +1144,32 @@ class ApexXTrainer:
                         # Forward pass with AMP
                         out = self.teacher(image, use_ema=False)
                         # Compute training loss with real detection outputs
-                        total_loss, loss_components = compute_teacher_training_loss(
-                            output=out,
-                            samples=samples_for_loss,
-                            det_weight=1.0,
-                            boundary_weight=0.05,
-                            epoch=epoch,
-                            total_epochs=total_epochs,
-                            box_loss_type=self.config.train.box_loss_type,
-                            boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
-                            boundary_max_scale=self.config.train.loss_boundary_max_scale,
-                            box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
-                            box_scale_start=self.config.train.loss_box_scale_start,
-                            box_scale_end=self.config.train.loss_box_scale_end,
-                            max_det_component=self.config.train.loss_det_component_clip,
-                            max_boundary_component=self.config.train.loss_boundary_component_clip,
-                            max_seg_component=self.config.train.loss_seg_component_clip,
-                        )
+                        # Compute training loss with real detection outputs
+                        if isinstance(self.teacher, TeacherModelV3):
+                             total_loss, loss_components = compute_v3_training_losses(
+                                 outputs=out,
+                                 targets=samples_for_loss,
+                                 model=self.teacher,
+                                 config=self.config,
+                             )
+                        else:
+                             total_loss, loss_components = compute_teacher_training_loss(
+                                 output=out,
+                                 samples=samples_for_loss,
+                                 det_weight=1.0,
+                                 boundary_weight=0.05,
+                                 epoch=epoch,
+                                 total_epochs=total_epochs,
+                                 box_loss_type=self.config.train.box_loss_type,
+                                 boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                                 boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                                 box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                                 box_scale_start=self.config.train.loss_box_scale_start,
+                                 box_scale_end=self.config.train.loss_box_scale_end,
+                                 max_det_component=self.config.train.loss_det_component_clip,
+                                 max_boundary_component=self.config.train.loss_boundary_component_clip,
+                                 max_seg_component=self.config.train.loss_seg_component_clip,
+                             )
                         _update_loss_component_sums(loss_components)
                         
                         # Scale loss by accumulation steps
@@ -1050,23 +1228,31 @@ class ApexXTrainer:
                     with heavy_ops_autocast_context(self.precision_policy):
                         out = self.teacher(image, use_ema=False)
                         # Compute training loss with real detection outputs
-                        total_loss, loss_components = compute_teacher_training_loss(
-                            output=out,
-                            samples=samples_for_loss,
-                            det_weight=1.0,
-                            boundary_weight=0.05,
-                            epoch=epoch,
-                            total_epochs=total_epochs,
-                            box_loss_type=self.config.train.box_loss_type,
-                            boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
-                            boundary_max_scale=self.config.train.loss_boundary_max_scale,
-                            box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
-                            box_scale_start=self.config.train.loss_box_scale_start,
-                            box_scale_end=self.config.train.loss_box_scale_end,
-                            max_det_component=self.config.train.loss_det_component_clip,
-                            max_boundary_component=self.config.train.loss_boundary_component_clip,
-                            max_seg_component=self.config.train.loss_seg_component_clip,
-                        )
+                        if isinstance(self.teacher, TeacherModelV3):
+                             total_loss, loss_components = compute_v3_training_losses(
+                                 outputs=out,
+                                 samples=samples_for_loss,
+                                 model=self.teacher,
+                                 config=self.config,
+                             )
+                        else:
+                             total_loss, loss_components = compute_teacher_training_loss(
+                                 output=out,
+                                 samples=samples_for_loss,
+                                 det_weight=1.0,
+                                 boundary_weight=0.05,
+                                 epoch=epoch,
+                                 total_epochs=total_epochs,
+                                 box_loss_type=self.config.train.box_loss_type,
+                                 boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                                 boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                                 box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                                 box_scale_start=self.config.train.loss_box_scale_start,
+                                 box_scale_end=self.config.train.loss_box_scale_end,
+                                 max_det_component=self.config.train.loss_det_component_clip,
+                                 max_boundary_component=self.config.train.loss_boundary_component_clip,
+                                 max_seg_component=self.config.train.loss_seg_component_clip,
+                             )
                         _update_loss_component_sums(loss_components)
                         
                         # Scale loss by accumulation steps
@@ -1618,23 +1804,31 @@ class ApexXTrainer:
                     optimizer.zero_grad(set_to_none=True)
                 with torch.cuda.amp.autocast():
                     out = self.teacher(image, use_ema=False)
-                    total_loss, _ = compute_teacher_training_loss(
-                        output=out,
-                        samples=samples_for_loss,
-                        det_weight=1.0,
-                        boundary_weight=0.1,  # Higher boundary focus in finetuning
-                        epoch=epoch,
-                        total_epochs=total_epochs,
-                        box_loss_type=self.config.train.box_loss_type,
-                        boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
-                        boundary_max_scale=self.config.train.loss_boundary_max_scale,
-                        box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
-                        box_scale_start=self.config.train.loss_box_scale_start,
-                        box_scale_end=self.config.train.loss_box_scale_end,
-                        max_det_component=self.config.train.loss_det_component_clip,
-                        max_boundary_component=self.config.train.loss_boundary_component_clip,
-                        max_seg_component=self.config.train.loss_seg_component_clip,
-                    )
+                    if isinstance(self.teacher, TeacherModelV3):
+                        total_loss, _ = compute_v3_training_losses(
+                            outputs=out,
+                            targets=samples_for_loss,
+                            model=self.teacher,
+                            config=self.config,
+                         )
+                    else:
+                        total_loss, _ = compute_teacher_training_loss(
+                            output=out,
+                            samples=samples_for_loss,
+                            det_weight=1.0,
+                            boundary_weight=0.1,  # Higher boundary focus in finetuning
+                            epoch=epoch,
+                            total_epochs=total_epochs,
+                            box_loss_type=self.config.train.box_loss_type,
+                            boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                            boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                            box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                            box_scale_start=self.config.train.loss_box_scale_start,
+                            box_scale_end=self.config.train.loss_box_scale_end,
+                            max_det_component=self.config.train.loss_det_component_clip,
+                            max_boundary_component=self.config.train.loss_boundary_component_clip,
+                            max_seg_component=self.config.train.loss_seg_component_clip,
+                        )
                     total_loss = total_loss / self.gradient_accumulation_steps
                 if not total_loss.requires_grad:
                     LOGGER.warning(
@@ -1663,23 +1857,31 @@ class ApexXTrainer:
                     optimizer.zero_grad(set_to_none=True)
                 with heavy_ops_autocast_context(self.precision_policy):
                     out = self.teacher(image, use_ema=False)
-                    total_loss, _ = compute_teacher_training_loss(
-                        output=out,
-                        samples=samples_for_loss,
-                        det_weight=1.0,
-                        boundary_weight=0.1,
-                        epoch=epoch,
-                        total_epochs=total_epochs,
-                        box_loss_type=self.config.train.box_loss_type,
-                        boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
-                        boundary_max_scale=self.config.train.loss_boundary_max_scale,
-                        box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
-                        box_scale_start=self.config.train.loss_box_scale_start,
-                        box_scale_end=self.config.train.loss_box_scale_end,
-                        max_det_component=self.config.train.loss_det_component_clip,
-                        max_boundary_component=self.config.train.loss_boundary_component_clip,
-                        max_seg_component=self.config.train.loss_seg_component_clip,
-                    )
+                    if isinstance(self.teacher, TeacherModelV3):
+                        total_loss, _ = compute_v3_training_losses(
+                            outputs=out,
+                            targets=samples_for_loss,
+                            model=self.teacher,
+                            config=self.config,
+                         )
+                    else:
+                        total_loss, _ = compute_teacher_training_loss(
+                            output=out,
+                            samples=samples_for_loss,
+                            det_weight=1.0,
+                            boundary_weight=0.1,
+                            epoch=epoch,
+                            total_epochs=total_epochs,
+                            box_loss_type=self.config.train.box_loss_type,
+                            boundary_warmup_epochs=self.config.train.loss_boundary_warmup_epochs,
+                            boundary_max_scale=self.config.train.loss_boundary_max_scale,
+                            box_warmup_epochs=self.config.train.loss_box_warmup_epochs,
+                            box_scale_start=self.config.train.loss_box_scale_start,
+                            box_scale_end=self.config.train.loss_box_scale_end,
+                            max_det_component=self.config.train.loss_det_component_clip,
+                            max_boundary_component=self.config.train.loss_boundary_component_clip,
+                            max_seg_component=self.config.train.loss_seg_component_clip,
+                        )
                     total_loss = total_loss / self.gradient_accumulation_steps
                 if not total_loss.requires_grad:
                     LOGGER.warning(
@@ -1902,6 +2104,8 @@ class ApexXTrainer:
                     optimizer=checkpoint_optimizer,
                     metrics=metrics_payload,
                     is_best=is_best,
+                    selection_metric_name=str(metric_name),
+                    selection_metric_value=float(metric_value),
                 )
 
             log_event(

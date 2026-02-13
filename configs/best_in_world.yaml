@@ -1,0 +1,82 @@
+# Best-in-World Training Configuration
+# Target: 100% Roof Segmenation Accuracy
+# Architecture: TeacherModelV3 (DINOv2 + Cascade + BiFPN)
+
+model:
+  profile: worldclass
+  input_height: 1024
+  input_width: 1024
+  nesting_depth: 2
+  kmax_l0: 128
+  kmax_l1: 64
+  backbone_model: "facebook/dinov2-large"
+  lora_rank: 16
+  fpn_channels: 256
+
+routing:
+  budget_total: 128.0
+  budget_b1: 64.0
+  budget_b2: 32.0
+  budget_b3: 16.0
+  cost_heavy: 1.0
+  cost_cheap: 0.1
+  theta_on: 0.5
+  theta_off: 0.4
+  theta_split: 0.5
+
+train:
+  output_dir: outputs/best_in_world
+  save_interval: 1
+  val_interval: 1
+  primary_metric: mAP_segm
+  
+  # Math & Optimization
+  use_amp: true
+  tf32_enabled: true
+  swa_enabled: true
+  swa_start_epoch: 20
+  
+  # Loss Weights (SOTA)
+  # Loss Weights (SOTA)
+  loss_box_loss_type: ciou
+  cls_loss_type: ranksort  # Direct AP Optimization
+  use_lovasz_loss: true
+  lovasz_weight: 0.5
+  boundary_weight: 1.0  # High boundary accuracy
+  point_weight: 1.0     # PointRend refinomend
+  distill_weight: 0.5  # Feature distillation from DINOv2
+  mask_quality_weight: 1.0 # Mask Scoring R-CNN
+  
+  # PointRend Config
+  point_rend:
+    num_points: 8096
+    oversample_ratio: 3
+    importance_sample_ratio: 0.75
+  
+  # Curriculum
+  curriculum_stages:
+    - det_stability
+    - seg_refinement
+    - hard_mining
+
+data:
+  # Augmentations
+  use_copy_paste: true
+  copy_paste_prob: 0.5
+  mosaic_prob: 0.8
+  mixup_prob: 0.2
+  flip_prob: 0.5
+  hsv_prob: 0.3
+  
+  # Scaling
+  scale_min: 0.5
+  scale_max: 2.0
+  
+  num_workers: 8
+  prefetch_factor: 2
+
+runtime:
+  backend: cuda
+  precision_profile: high_precision
+  fallback_policy: strict
+  deterministic: false # Allow cudnn benchmarking for speed

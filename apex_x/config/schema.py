@@ -33,6 +33,25 @@ PROFILE_PRESETS: dict[str, dict[str, tuple[int, ...]]] = {
 
 
 @dataclass(slots=True)
+class PointRendConfig:
+    num_points: int = 1024
+    oversample_ratio: float = 3.0
+    importance_sample_ratio: float = 0.75
+    
+    def validate(self) -> None:
+        if self.num_points <= 0:
+            raise ValueError("point_rend.num_points must be > 0")
+        if self.oversample_ratio < 1.0:
+            raise ValueError("point_rend.oversample_ratio must be >= 1.0")
+        if not (0.0 <= self.importance_sample_ratio <= 1.0):
+            raise ValueError("point_rend.importance_sample_ratio must be in [0, 1]")
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> PointRendConfig:
+        return cls(**dict(data))
+
+
+@dataclass(slots=True)
 class ModelConfig:
     profile: str = "small"
     pv_channels: tuple[int, ...] = ()
@@ -57,6 +76,12 @@ class ModelConfig:
 
     input_height: int = 128
     input_width: int = 128
+
+    # V3 World Class Configs
+    backbone_model: str = "facebook/dinov2-small"
+    lora_rank: int = 4
+    fpn_channels: int = 256
+    point_rend: PointRendConfig = field(default_factory=PointRendConfig)
 
     def __post_init__(self) -> None:
         self.profile = self.profile.lower()
@@ -131,6 +156,15 @@ class ModelConfig:
                 raise ValueError("model.kmax_l2 must be 0 when nesting_depth=1")
         if nesting_depth == 2 and (self.kmax_l1 <= 0 or self.kmax_l2 <= 0):
             raise ValueError("model.kmax_l1 and model.kmax_l2 must be > 0 when nesting_depth=2")
+        
+        if self.profile == "worldclass":
+            if not self.backbone_model:
+                raise ValueError("model.backbone_model must be set for worldclass profile")
+            if self.lora_rank <= 0:
+                raise ValueError("model.lora_rank must be > 0")
+            if self.fpn_channels <= 0:
+                raise ValueError("model.fpn_channels must be > 0")
+            self.point_rend.validate()
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> ModelConfig:
@@ -138,6 +172,10 @@ class ModelConfig:
         for key in ("pv_channels", "pv_strides", "ff_channels", "ff_strides"):
             if key in parsed:
                 parsed[key] = tuple(int(v) for v in parsed[key])
+        
+        if "point_rend" in parsed:
+            parsed["point_rend"] = PointRendConfig.from_dict(parsed["point_rend"])
+            
         return cls(**parsed)
 
 
@@ -339,7 +377,9 @@ class DataConfig:
 
     flip_prob: float = 0.5
     hsv_prob: float = 0.5
-    mosaic_prob: float = 0.0
+    mosaic_prob: float = 0.5
+    mixup_prob: float = 0.15
+    copypaste_prob: float = 0.5
     scale_min: float = 0.8
     scale_max: float = 1.2
 
@@ -353,6 +393,8 @@ class DataConfig:
             ("flip_prob", self.flip_prob),
             ("hsv_prob", self.hsv_prob),
             ("mosaic_prob", self.mosaic_prob),
+            ("mixup_prob", self.mixup_prob),
+            ("copypaste_prob", self.copypaste_prob),
         ):
             if not (0.0 <= value <= 1.0):
                 raise ValueError(f"data.{name} must be within [0, 1]")

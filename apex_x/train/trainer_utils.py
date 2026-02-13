@@ -5,6 +5,7 @@ import shutil
 import torch
 from apex_x.utils import get_logger
 from .train_losses import compute_teacher_training_loss
+from apex_x.data import standard_collate_fn
 
 LOGGER = get_logger(__name__)
 
@@ -42,27 +43,14 @@ def train_epoch_impl(
     device = next(trainer.teacher.parameters()).device
     
     for batch_idx, batch in enumerate(train_loader):
-        if not isinstance(batch, list):
+        if not isinstance(batch, dict):
             continue
         
-        # Stack images
-        images = []
-        for sample in batch:
-            if isinstance(sample.image, torch.Tensor):
-                images.append(sample.image)
-            else:
-                images.append(torch.from_numpy(sample.image))
-        
-        if len(images) == 0:
+        images = batch.get('images')
+        if images is None:
             continue
-        
-        image_batch = torch.stack(images).to(device)
-        
-        # Ensure NCHW format
-        if image_batch.ndim == 3:
-            image_batch = image_batch.unsqueeze(0)
-        if image_batch.shape[1] != 3:
-            image_batch = image_batch.permute(0, 3, 1, 2)
+            
+        image_batch = images.to(device)
         
         # Forward pass
         optimizer.zero_grad()

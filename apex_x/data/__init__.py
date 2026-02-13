@@ -48,6 +48,10 @@ def dummy_batch(height: int = 128, width: int = 128) -> np.ndarray:
     return np.zeros((1, 3, height, width), dtype=np.float32)
 
 
+from .yolo import YOLOSegmentationDataset, yolo_collate_fn
+from .collate import standard_collate_fn
+
+
 __all__ = [
     "CocoPolygon",
     "CocoRLE",
@@ -85,4 +89,5 @@ __all__ = [
     "LargeScaleJitter",
     "YOLOSegmentationDataset",
     "yolo_collate_fn",
+    "standard_collate_fn",
 ]

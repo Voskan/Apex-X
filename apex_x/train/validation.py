@@ -60,33 +60,19 @@ def validate_epoch(
     
     with torch.inference_mode():
         for batch_idx, batch in enumerate(val_loader):
-            # Handle different batch formats
-            if isinstance(batch, (list, tuple)) and hasattr(batch[0], 'image'):
-                # TransformSample list from YOLO dataset
-                images = torch.stack([
-                    torch.from_numpy(s.image).permute(2, 0, 1).float() / 255.0
-                    for s in batch
-                ]).to(device_obj, non_blocking=non_blocking)
-                
-                # Build targets
-                all_boxes = [torch.from_numpy(s.boxes_xyxy) for s in batch if s.boxes_xyxy.shape[0] > 0]
-                all_labels = [torch.from_numpy(s.class_ids) for s in batch if s.class_ids.shape[0] > 0]
-                all_masks = [torch.from_numpy(s.masks) for s in batch if s.masks is not None and s.masks.shape[0] > 0]
-                
-                targets = {
-                    'boxes': torch.cat(all_boxes).to(device_obj, non_blocking=non_blocking) if all_boxes else torch.zeros((0, 4), device=device_obj),
-                    'labels': torch.cat(all_labels).to(device_obj, non_blocking=non_blocking) if all_labels else torch.zeros((0,), dtype=torch.long, device=device_obj),
-                    'masks': torch.cat(all_masks).to(device_obj, non_blocking=non_blocking) if all_masks else None,
-                }
-            elif isinstance(batch, dict):
-                images = batch.get('image')
-                if images is None:
-                    images = batch.get('images')
+            if isinstance(batch, dict):
+                images = batch.get('images')
                 if images is None:
                     continue
                 images = images.to(device_obj, non_blocking=non_blocking)
-                targets = {k: v.to(device_obj, non_blocking=non_blocking) if isinstance(v, torch.Tensor) else v 
-                          for k, v in batch.items() if k != 'image' and k != 'images'}
+                
+                # The StandardCollate format maps directly to compute_v3_training_losses expectations
+                targets = {
+                    'boxes': batch.get('boxes').to(device_obj, non_blocking=non_blocking) if batch.get('boxes') is not None else None,
+                    'labels': batch.get('labels').to(device_obj, non_blocking=non_blocking) if batch.get('labels') is not None else None,
+                    'masks': batch.get('masks').to(device_obj, non_blocking=non_blocking) if batch.get('masks') is not None else None,
+                    'batch_idx': batch.get('batch_idx').to(device_obj, non_blocking=non_blocking) if batch.get('batch_idx') is not None else None,
+                }
             else:
                 continue
             

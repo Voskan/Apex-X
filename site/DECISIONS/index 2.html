@@ -1,0 +1,2797 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Universal Vision Dynamic Compute Graph">
+      
+      
+      
+        <link rel="canonical" href="https://example.com/apex-x/DECISIONS/">
+      
+      
+        <link rel="prev" href="../CONTEXT/">
+      
+      
+        <link rel="next" href="../PRD/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Decisions - Apex-X</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architectural-decisions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Apex-X" class="md-header__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Apex-X
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Decisions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../benchmarks/" class="md-tabs__link">
+          
+  
+  
+  Overview
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PRD/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PERF/" class="md-tabs__link">
+          
+  
+  
+  Performance
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runtime/PLUGIN_SPEC/" class="md-tabs__link">
+          
+  
+  
+  Runtime
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../release/CHECKLIST/" class="md-tabs__link">
+          
+  
+  
+  Release
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TODO/" class="md-tabs__link">
+          
+  
+  
+  Activity
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Apex-X" class="md-nav__button md-logo" aria-label="Apex-X" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Apex-X
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://example.com/apex-x" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    apex-x
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overview
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0001-authoritative-documentation-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0001: Authoritative Documentation Split
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0002-cpu-only-reference-baseline-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0002: CPU-Only Reference Baseline First
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0003-deterministic-greedy-budgeting-for-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0003: Deterministic Greedy Budgeting for Inference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0004-ordering-modes-required-in-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0004: Ordering Modes Required in Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0005-naming-conventions-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0005: Naming Conventions Baseline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0006-tensor-shape-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0006: Tensor Shape Conventions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0007-determinism-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0007: Determinism Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0008-runtime-selection-vs-execution-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0008: Runtime Selection vs Execution Traceability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0009-eval-dataset-optional-target-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0009: Eval Dataset Optional Target Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0010-go-runtime-bridge-backends-and-error-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0010: Go Runtime Bridge Backends and Error Taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0011-budget-aware-temporal-hysteresis-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0011: Budget-Aware Temporal Hysteresis Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0012-recursive-quadtree-split-policy-for-l2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0012: Recursive Quadtree Split Policy for L2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0013-adaptive-dual-budget-controller-stabilizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0013: Adaptive Dual-Budget Controller Stabilizers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0014-pcgrad-shared-trunk-scope-with-conflict-rate-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0014: PCGrad++ Shared-Trunk Scope with Conflict-Rate Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0015-fp8-requested-vs-effective-telemetry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0015: FP8 Requested-vs-Effective Telemetry Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0016-oracle-sampling-triad-and-delta-label-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0016: Oracle Sampling Triad and Delta-Label Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0017-tensorrt-int8-sensitive-layer-fp16-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0017: TensorRT INT8 Sensitive-Layer FP16 Enforcement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0018-tensorrt-plugin-creator-contract-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0018: TensorRT Plugin Creator Contract Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0019-tensorrt-int8-calibration-cache-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0019: TensorRT INT8 Calibration Cache Governance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0020-tensorrt-parity-harness-matrix-sweep-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0020: TensorRT Parity Harness Matrix + Sweep Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0021-triton-tilessm-long-sequence-chunked-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0021: Triton TileSSM Long-Sequence Chunked Execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0022-triton-tileunpack-blend-dispatch-parity-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0022: Triton TileUnpack Blend Dispatch Parity Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0023-ff-heavy-path-stage-1-fused-selector-gating" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0023: FF Heavy-Path Stage-1 Fused Selector Gating
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0024-triton-autotune-registry-and-benchmark-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0024: Triton Autotune Registry and Benchmark Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0025-unified-perf-regression-wrappers-including-tensorrt-shape-sweep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0025: Unified Perf Regression Wrappers Including TensorRT Shape Sweep
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PRD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINEERING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../QAT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QAT Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FP8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FP8 Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Performance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERF_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU Bench
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CI_GPU/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GPU CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runtime
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/PLUGIN_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/CAPS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TensorRT
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    TensorRT
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_BUILD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_INT8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    INT8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TENSORRT_POST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Postprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/GO_SERVICE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Triton
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Triton
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TilePack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_TILEUNPACK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TileUnpack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fusion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_SSM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SSM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime/TRITON_FUSED_STAGE1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/CHECKLIST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/MIGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Activity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Activity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TODO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0001-authoritative-documentation-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0001: Authoritative Documentation Split
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0002-cpu-only-reference-baseline-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0002: CPU-Only Reference Baseline First
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0003-deterministic-greedy-budgeting-for-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0003: Deterministic Greedy Budgeting for Inference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0004-ordering-modes-required-in-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0004: Ordering Modes Required in Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0005-naming-conventions-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0005: Naming Conventions Baseline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0006-tensor-shape-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0006: Tensor Shape Conventions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0007-determinism-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0007: Determinism Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0008-runtime-selection-vs-execution-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0008: Runtime Selection vs Execution Traceability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0009-eval-dataset-optional-target-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0009: Eval Dataset Optional Target Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0010-go-runtime-bridge-backends-and-error-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0010: Go Runtime Bridge Backends and Error Taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0011-budget-aware-temporal-hysteresis-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0011: Budget-Aware Temporal Hysteresis Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0012-recursive-quadtree-split-policy-for-l2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0012: Recursive Quadtree Split Policy for L2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0013-adaptive-dual-budget-controller-stabilizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0013: Adaptive Dual-Budget Controller Stabilizers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0014-pcgrad-shared-trunk-scope-with-conflict-rate-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0014: PCGrad++ Shared-Trunk Scope with Conflict-Rate Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0015-fp8-requested-vs-effective-telemetry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0015: FP8 Requested-vs-Effective Telemetry Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0016-oracle-sampling-triad-and-delta-label-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0016: Oracle Sampling Triad and Delta-Label Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0017-tensorrt-int8-sensitive-layer-fp16-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0017: TensorRT INT8 Sensitive-Layer FP16 Enforcement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0018-tensorrt-plugin-creator-contract-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0018: TensorRT Plugin Creator Contract Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0019-tensorrt-int8-calibration-cache-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0019: TensorRT INT8 Calibration Cache Governance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0020-tensorrt-parity-harness-matrix-sweep-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0020: TensorRT Parity Harness Matrix + Sweep Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0021-triton-tilessm-long-sequence-chunked-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0021: Triton TileSSM Long-Sequence Chunked Execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0022-triton-tileunpack-blend-dispatch-parity-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0022: Triton TileUnpack Blend Dispatch Parity Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0023-ff-heavy-path-stage-1-fused-selector-gating" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0023: FF Heavy-Path Stage-1 Fused Selector Gating
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0024-triton-autotune-registry-and-benchmark-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0024: Triton Autotune Registry and Benchmark Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adr-0025-unified-perf-regression-wrappers-including-tensorrt-shape-sweep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADR-0025: Unified Perf Regression Wrappers Including TensorRT Shape Sweep
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="architectural-decisions">Architectural Decisions</h1>
+<h2 id="adr-0001-authoritative-documentation-split">ADR-0001: Authoritative Documentation Split</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision: Keep requirements in <code>docs/PRD.md</code> and implementation contract in <code>docs/ENGINEERING_SPEC.md</code>.</li>
+<li>Rationale: Separates product scope from engineering detail while preserving traceability.</li>
+<li>Consequence: Any architecture change must update both files.</li>
+</ul>
+<h2 id="adr-0002-cpu-only-reference-baseline-first">ADR-0002: CPU-Only Reference Baseline First</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision: Start with a pure Python + NumPy CPU baseline before runtime kernels.</li>
+<li>Rationale: Fast iteration, deterministic debugging, and testable contracts independent of GPU/runtime stack.</li>
+<li>Consequence: Runtime parity work follows once behavior is stabilized.</li>
+</ul>
+<h2 id="adr-0003-deterministic-greedy-budgeting-for-inference">ADR-0003: Deterministic Greedy Budgeting for Inference</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision: Use utility-per-cost greedy selection with fixed <code>Kmax</code> buffers.</li>
+<li>Rationale: Deterministic, simple, and export/runtime friendly.</li>
+<li>Consequence: Potential global-optimality gap vs exact knapsack is accepted for speed and determinism.</li>
+</ul>
+<h2 id="adr-0004-ordering-modes-required-in-contract">ADR-0004: Ordering Modes Required in Contract</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision: Support both Hilbert and multi-direction ordering modes.</li>
+<li>Rationale: Preserves geometry for sequence mixing and supports runtime experimentation.</li>
+<li>Consequence: Ordering determinism tests are mandatory.</li>
+</ul>
+<h2 id="adr-0005-naming-conventions-baseline">ADR-0005: Naming Conventions Baseline</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision:</li>
+<li>Python modules/files use <code>snake_case</code>.</li>
+<li>Classes use <code>PascalCase</code>.</li>
+<li>Protocol interfaces use <code>*Protocol</code> suffix (for example <code>RouterProtocol</code>).</li>
+<li>Config sections use stable top-level keys: <code>model</code>, <code>routing</code>, <code>train</code>, <code>data</code>, <code>runtime</code>.</li>
+<li>Rationale: Consistent naming lowers integration friction and improves discoverability across modules.</li>
+<li>Consequence: New public interfaces and new files must follow these naming rules.</li>
+</ul>
+<h2 id="adr-0006-tensor-shape-conventions">ADR-0006: Tensor Shape Conventions</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision:</li>
+<li>Image/features default to channel-first <code>NCHW</code> (<code>[B,C,H,W]</code>).</li>
+<li>Detection boxes use <code>[B,N,4]</code> with <code>cx,cy,w,h</code>.</li>
+<li>Packed tile tensors use <code>[B,K,C,t,t]</code>.</li>
+<li>Tile index tensors use <code>[B,K]</code> and rely on fixed <code>Kmax</code> contracts.</li>
+<li>Rationale: Stable tensor contracts are required for deterministic runtime behavior and export parity.</li>
+<li>Consequence: Any shape-contract change must update <code>docs/PRD.md</code>, <code>docs/ENGINEERING_SPEC.md</code>, and tests.</li>
+</ul>
+<h2 id="adr-0007-determinism-rules">ADR-0007: Determinism Rules</h2>
+<ul>
+<li>Date: 2026-02-07</li>
+<li>Decision:</li>
+<li>Inference tile selection uses deterministic greedy utility-per-cost with fixed <code>Kmax</code>.</li>
+<li>Tile ordering remains deterministic (Hilbert or multi-direction scan).</li>
+<li>Reproducibility utilities (<code>seed_all</code>, deterministic toggles) are part of baseline workflow.</li>
+<li>Export/runtime path must avoid Python-side inference control flow.</li>
+<li>Rationale: Determinism is a hard product constraint for regression tracking and deployment confidence.</li>
+<li>Consequence: Any nondeterministic path requires explicit rationale and targeted determinism tests.</li>
+</ul>
+<h2 id="adr-0008-runtime-selection-vs-execution-traceability">ADR-0008: Runtime Selection vs Execution Traceability</h2>
+<ul>
+<li>Date: 2026-02-10</li>
+<li>Decision:</li>
+<li>Runtime metadata must distinguish:<ul>
+<li>requested backend</li>
+<li>selected backend</li>
+<li>actual execution backend</li>
+<li>selection and execution fallback reasons</li>
+<li>latency breakdown (<code>total</code>, <code>backend_execute</code>, <code>backend_preflight</code>)</li>
+</ul>
+</li>
+<li>TensorRT CLI inference must execute real serialized engines when runtime artifacts are provided, instead of placeholder stubs.</li>
+<li>Rationale: Backend fallback chains can otherwise hide real execution behavior and invalidate performance/correctness evidence.</li>
+<li>Consequence:</li>
+<li>Runner/CLI reports are required to expose full backend selection and execution trace fields.</li>
+<li>TensorRT runtime path must enforce explicit engine artifact contract and deterministic strict/permissive behavior.</li>
+<li>Go runtime service <code>/predict</code> payloads must expose the same runtime metadata key schema.</li>
+<li>Go runtime service must map queue saturation to HTTP <code>429</code> and request timeout to HTTP <code>504</code>.</li>
+<li>Go runtime service should support optional shadow-canary parity telemetry for safe rollout validation.</li>
+</ul>
+<h2 id="adr-0009-eval-dataset-optional-target-contract">ADR-0009: Eval Dataset Optional Target Contract</h2>
+<ul>
+<li>Date: 2026-02-10</li>
+<li>Decision:</li>
+<li><code>eval --dataset-npz</code> supports optional scalar target keys:<ul>
+<li><code>det_score_target</code> (compat alias <code>det_scores_target</code>)</li>
+<li><code>selected_tiles_target</code> (compat alias <code>selected_tiles_targets</code>)</li>
+</ul>
+</li>
+<li>When <code>det_score_target</code> exists, <code>model_eval</code> report includes deterministic regression metrics
+    (<code>mae</code>, <code>rmse</code>, <code>bias</code>, <code>r2</code>, <code>pearson_corr</code>) in addition to aggregate model outputs.</li>
+<li>When <code>selected_tiles_target</code> exists, <code>model_eval</code> report includes
+    (<code>mae</code>, <code>rmse</code>, <code>bias</code>, <code>exact_match_rate</code>).</li>
+<li>Rationale: This adds lightweight, repeatable quality tracking on environments
+  where full box/mask ground-truth evaluation is not yet wired end-to-end.</li>
+<li>Consequence:</li>
+<li>Dataset shape/length validation is strict and fails early on mismatch.</li>
+<li>Future full GT parity work can extend this contract without breaking current reports.</li>
+</ul>
+<h2 id="adr-0010-go-runtime-bridge-backends-and-error-taxonomy">ADR-0010: Go Runtime Bridge Backends and Error Taxonomy</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Go runtime adapters may execute real ORT/TRT inference through an external bridge command:<ul>
+<li><code>APEXX_ORT_BRIDGE_CMD</code></li>
+<li><code>APEXX_TRT_BRIDGE_CMD</code></li>
+</ul>
+</li>
+<li>ORT/TRT adapters must fail closed when bridge/native execution is unavailable
+    (no synthetic score fallback in production path).</li>
+<li>Bridge contract is JSON stdin/stdout and implemented by <code>apex_x/runtime/service_bridge.py</code>.</li>
+<li>Backend errors are classified and mapped explicitly:<ul>
+<li>backend unavailable -&gt; HTTP <code>503</code></li>
+<li>backend inference/protocol failures -&gt; HTTP <code>502</code></li>
+</ul>
+</li>
+<li>Canary mode payload capture must be policy-driven and optional:<ul>
+<li><code>off|mismatch|error|all</code></li>
+<li>JSONL sink with max-size guard</li>
+</ul>
+</li>
+<li>Rationale: Native Go bindings are environment-dependent; bridge mode enables real backend execution
+  while preserving deterministic HTTP failure semantics.</li>
+<li>Consequence:</li>
+<li>Service behavior remains SLA-safe under backend faults with stable status-code policy.</li>
+<li>Canary overhead and timeout/overflow rates are enforced by CI gate test thresholds.</li>
+<li>Native CGO TensorRT execution is still tracked separately until full implementation and GPU validation.</li>
+</ul>
+<h2 id="adr-0011-budget-aware-temporal-hysteresis-metrics">ADR-0011: Budget-Aware Temporal Hysteresis Metrics</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Temporal hysteresis rollout supports optional per-frame active cap (<code>max_active</code>) to preserve
+    budget constraints during state carryover.</li>
+<li>Clipping priority is deterministic:<ol>
+<li>keep previously-active tiles</li>
+<li>higher utility first</li>
+<li>lower tile id tie-break</li>
+</ol>
+</li>
+<li>Temporal quality gates expose explicit metrics:<ul>
+<li><code>tile_flip_rate</code></li>
+<li><code>temporal_consistency</code></li>
+<li><code>mean_active_ratio</code></li>
+</ul>
+</li>
+<li>Rationale: Hysteresis reduces flicker but can temporarily retain extra tiles; budget-aware clipping
+  keeps anti-flicker behavior without violating frame-level active limits.</li>
+<li>Consequence:</li>
+<li>Routing APIs now include budget-aware hysteresis update and sequence stability summaries.</li>
+<li>Sequence-level tests are required to prove reduced flip churn under budget caps.</li>
+</ul>
+<h2 id="adr-0012-recursive-quadtree-split-policy-for-l2">ADR-0012: Recursive Quadtree Split Policy for L2</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Inference budgeting supports deterministic recursive split selection to depth 2:<ul>
+<li><code>L0</code> selection under <code>B1</code></li>
+<li><code>L0 -&gt; L1</code> split parent selection under <code>B2</code></li>
+<li><code>L1 -&gt; L2</code> split parent selection under <code>B3</code></li>
+</ul>
+</li>
+<li>Parent ordering at each split stage uses:<ol>
+<li>split score (<code>S/O_split</code>) descending</li>
+<li>tile id ascending tie-break</li>
+</ol>
+</li>
+<li>Child expansion remains capacity-constrained by <code>Kmax_L1</code> and <code>Kmax_L2</code>.</li>
+<li>Rationale: Quality-sensitive regions often require second-level refinement; deterministic recursion
+  keeps behavior reproducible while honoring explicit multi-level budget constraints.</li>
+<li>Consequence:</li>
+<li>Routing layer now exposes a three-stage deterministic selection API.</li>
+<li>Tests must cover <code>B1/B2/B3</code> constraints, tie-break determinism, and <code>Kmax</code> limits.</li>
+</ul>
+<h2 id="adr-0013-adaptive-dual-budget-controller-stabilizers">ADR-0013: Adaptive Dual-Budget Controller Stabilizers</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Dual budget update supports optional adaptive controls:<ul>
+<li>step decay (<code>mu_lr / (1 + decay * step)</code>)</li>
+<li>EMA-based scale modulation with bounded range (<code>lr_min_scale..lr_max_scale</code>)</li>
+<li>normalized-error deadband (<code>|error/B| &lt;= deadband_ratio</code>)</li>
+<li>delta clipping (<code>[-delta_clip, +delta_clip]</code>)</li>
+</ul>
+</li>
+<li>Dual variable remains projected into fixed bounds <code>[mu_min, mu_max]</code>.</li>
+<li>Rationale: Constant-rate dual ascent can oscillate near target budgets and overreact to noisy cost traces.
+  Adaptive scaling plus deadband/clipping improves convergence stability without changing base objective.</li>
+<li>Consequence:</li>
+<li>Training config now exposes explicit dual schedule/stabilizer parameters.</li>
+<li>Stage-3 trainer metrics include dual controller dynamics (<code>effective_lr</code>, <code>error_ema</code>, update count).</li>
+<li>Convergence tests must cover over-budget, under-budget, deadband, and clip-capped behavior.</li>
+</ul>
+<h2 id="adr-0014-pcgrad-shared-trunk-scope-with-conflict-rate-telemetry">ADR-0014: PCGrad++ Shared-Trunk Scope with Conflict-Rate Telemetry</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>PCGrad++ projection is applied only to shared trunk parameters.</li>
+<li>Head-specific parameters always use standard total-loss gradients (no projection).</li>
+<li>Diagnostics must include conflict metrics before and after projection:<ul>
+<li><code>conflicting_pairs</code></li>
+<li><code>conflicting_pairs_after</code></li>
+<li><code>total_pairs</code></li>
+<li><code>conflict_rate_before</code></li>
+<li><code>conflict_rate_after</code></li>
+</ul>
+</li>
+<li>Rationale: Restricting projection to shared trunk prevents unintended task-head updates, while
+  before/after metrics quantify whether projection actually reduces gradient conflict pressure.</li>
+<li>Consequence:</li>
+<li>Trainer reports now include PCGrad diagnostics payloads suitable for CI/report tracking.</li>
+<li>Tests must prove head gradients remain unchanged and conflict-rate reduction is non-regressive.</li>
+</ul>
+<h2 id="adr-0015-fp8-requested-vs-effective-telemetry-contract">ADR-0015: FP8 Requested-vs-Effective Telemetry Contract</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>FP8-capable flows must expose explicit requested-vs-effective precision telemetry:<ul>
+<li><code>requested_dtype</code></li>
+<li><code>effective_dtype</code></li>
+<li><code>fp8_requested</code></li>
+<li><code>fp8_enabled</code></li>
+<li><code>fp8_fallback_reason</code></li>
+</ul>
+</li>
+<li>FP8 fallback reasons must use canonical runtime reason-codes.</li>
+<li>GPU benchmark and regression wrappers accept explicit FP8 request mode (<code>--dtype fp8</code>).</li>
+<li>Rationale: Operational readiness requires proving whether FP8 was actually enabled or silently
+  downgraded; requested-vs-effective telemetry prevents false confidence in perf claims.</li>
+<li>Consequence:</li>
+<li>FP8 rollout evidence is now testable on non-CUDA hosts (fallback telemetry) and measurable on
+    supported GPUs via explicit FP8 benchmark artifacts.</li>
+</ul>
+<h2 id="adr-0016-oracle-sampling-triad-and-delta-label-diagnostics">ADR-0016: Oracle Sampling Triad and Delta-Label Diagnostics</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Oracle tile subset sampling combines three components:<ul>
+<li>random subset</li>
+<li>uncertainty-weighted subset</li>
+<li>long-tail subset (deterministic top scores from remaining tiles)</li>
+</ul>
+</li>
+<li>Oracle delta labels are clipped by configured <code>clamp_abs</code>, and trainer reports:<ul>
+<li>sample composition counts</li>
+<li>delta distribution stats</li>
+<li>clipping ratio</li>
+</ul>
+</li>
+<li>Rationale: Mixing random + uncertain + long-tail examples improves utility-head coverage while
+  clipping/diagnostics prevents silent instability from outlier labels.</li>
+<li>Consequence:</li>
+<li><code>sample_oracle_set(...)</code> now supports long-tail selection inputs.</li>
+<li>Stage-2 trainer metrics/logs expose explicit oracle distribution + clipping diagnostics.</li>
+</ul>
+<h2 id="adr-0017-tensorrt-int8-sensitive-layer-fp16-enforcement">ADR-0017: TensorRT INT8 Sensitive-Layer FP16 Enforcement</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>In TensorRT INT8 builds, sensitive layers (matched by configurable keywords, default
+    <code>router</code> and <code>kan</code>) are forced to FP16 precision constraints.</li>
+<li>Precision constraint enforcement is strict by default:<ul>
+<li>build fails if matched layer cannot be constrained via TensorRT APIs.</li>
+</ul>
+</li>
+<li>Build results expose per-layer precision evidence (<code>layer_precision_status</code>).</li>
+<li>Rationale: Routing/decision layers are numerically sensitive; silently quantizing them to INT8
+  can destabilize gating behavior and degrade quality.</li>
+<li>Consequence:</li>
+<li><code>TensorRTEngineBuildConfig</code> includes strict precision-constraint policy.</li>
+<li>Tests validate keyword-based enforcement, strict failure behavior, and emitted precision report.</li>
+</ul>
+<h2 id="adr-0018-tensorrt-plugin-creator-contract-validation">ADR-0018: TensorRT Plugin Creator Contract Validation</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>TensorRT builder validates plugin creator contracts before engine build:<ul>
+<li>creator presence in registry</li>
+<li>version match</li>
+<li>namespace match</li>
+<li>plugin field-signature metadata coverage</li>
+</ul>
+</li>
+<li>Strict plugin validation remains default and fails build on required-plugin mismatches.</li>
+<li>Optional plugin mismatches are reported as warnings when strict mode is disabled.</li>
+<li>Rationale: Plugin name-only checks are insufficient for production safety; ABI/contract drifts can
+  silently break builds or runtime behavior.</li>
+<li>Consequence:</li>
+<li><code>TensorRTEngineBuildConfig</code> supports explicit <code>PluginContract</code> overrides.</li>
+<li><code>PluginStatus</code> now carries detailed mismatch diagnostics for actionable failures.</li>
+<li>Tests cover version/namespace/field-signature mismatch behaviors without requiring CUDA runtime.</li>
+</ul>
+<h2 id="adr-0019-tensorrt-int8-calibration-cache-governance">ADR-0019: TensorRT INT8 Calibration Cache Governance</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>TensorRT INT8 calibration cache reuse is governed by deterministic cache keys that include:<ul>
+<li>model/export identity hash</li>
+<li>plugin contract metadata (version + namespace)</li>
+<li>precision profile</li>
+<li>calibration dataset version</li>
+</ul>
+</li>
+<li>Calibration dataset version supports:<ul>
+<li>explicit configuration (<code>calibration_dataset_version</code>)</li>
+<li>deterministic auto-digest from calibration batches</li>
+</ul>
+</li>
+<li>Calibrator cache files use structured metadata when key governance is active;
+    stale/mismatched keys are invalidated automatically.</li>
+<li>Legacy raw cache blobs are accepted only when key governance is disabled.</li>
+<li>Rationale: INT8 accuracy/perf stability requires preventing stale calibration reuse after model,
+  plugin, precision-profile, or dataset changes.</li>
+<li>Consequence:</li>
+<li><code>EngineBuildResult</code> now exposes <code>calibration_cache_key</code> and <code>calibration_dataset_version</code>.</li>
+<li>Non-CUDA tests validate deterministic key behavior and stale-cache invalidation rules.</li>
+</ul>
+<h2 id="adr-0020-tensorrt-parity-harness-matrix-sweep-contract">ADR-0020: TensorRT Parity Harness Matrix + Sweep Contract</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Parity validation for TensorRT readiness is executed as backend-pair matrix checks:<ul>
+<li>reference vs triton</li>
+<li>reference vs tensorrt</li>
+<li>triton vs tensorrt</li>
+</ul>
+</li>
+<li>Matrix checks are composed into profile-aware sweep runs covering shape and precision cases.</li>
+<li>CPU-safe parity harness tests are mandatory to keep matrix/sweep semantics stable even when
+    CUDA/TensorRT runtime is unavailable on CI host.</li>
+<li>Rationale: Production parity readiness needs a repeatable structure, not ad-hoc pair checks.
+  Matrix+sweep contract ensures consistent coverage expansion from CPU-safe CI to deployment GPUs.</li>
+<li>Consequence:</li>
+<li><code>apex_x/runtime/parity.py</code> now exposes matrix+sweep APIs and aggregate sweep reporting.</li>
+<li>CUDA-host execution remains required to close final parity evidence for Triton/TensorRT runtime.</li>
+</ul>
+<h2 id="adr-0021-triton-tilessm-long-sequence-chunked-execution">ADR-0021: Triton TileSSM Long-Sequence Chunked Execution</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Triton TileSSM forward scan no longer hard-fails for long sequences beyond single-launch
+    specialization bounds.</li>
+<li>For <code>K</code> above the per-launch limit, runtime executes chunked launches and streams recurrent
+    state between chunks.</li>
+<li>Rationale: Large-scene workloads should remain on accelerated path where possible; hard
+  sequence caps force unnecessary fallback and create avoidable latency cliffs.</li>
+<li>Consequence:</li>
+<li><code>tilessm_scan_triton(...)</code> now supports long-sequence chunking semantics.</li>
+<li>CPU-safe tests validate chunk partitioning and state carry-over contract.</li>
+<li>Deployment CUDA benchmarks remain required for final perf evidence.</li>
+</ul>
+<h2 id="adr-0022-triton-tileunpack-blend-dispatch-parity-contract">ADR-0022: Triton TileUnpack Blend Dispatch Parity Contract</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li><code>tileunpack_dispatch(...)</code> no longer treats <code>overlap_mode=\"blend\"</code> as a forced
+    reference-only branch.</li>
+<li>Blend overlap semantics remain ordered and parity-equivalent to reference behavior.</li>
+<li>Rationale: Forced fallback branches in supported overlap modes prevent full accelerated runtime
+  readiness and obscure backend capability expectations.</li>
+<li>Consequence:</li>
+<li>Blend dispatch path now uses <code>tileunpack_triton(...)</code> entrypoint when accelerated path is
+    selected.</li>
+<li>CPU/GPU overlap tests were expanded to validate blend dispatch contract and parity behavior.</li>
+</ul>
+<h2 id="adr-0023-ff-heavy-path-stage-1-fused-selector-gating">ADR-0023: FF Heavy-Path Stage-1 Fused Selector Gating</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>FF heavy-path inference can use Stage-1 fused dispatch only when strict compatibility
+    predicates are satisfied:<ul>
+<li>eval mode</li>
+<li>identity refine block</li>
+<li>effectively constant FiLM parameters</li>
+<li>unique selected tile indices</li>
+</ul>
+</li>
+<li>non-compatible cases deterministically use decomposed <code>pack -&gt; FiLM -&gt; unpack</code> path.</li>
+<li>Rationale: Stage-1 fused kernel offers speed benefits but is not mathematically equivalent to
+  the full decomposed path for arbitrary FiLM/refine dynamics; gating preserves correctness.</li>
+<li>Consequence:</li>
+<li>runtime selector now chooses fused path only for compatible inference cases.</li>
+<li>unit tests cover activation, parity in compatible mode, and fallback behavior.</li>
+</ul>
+<h2 id="adr-0024-triton-autotune-registry-and-benchmark-telemetry">ADR-0024: Triton Autotune Registry and Benchmark Telemetry</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>Triton kernels with autotune candidates publish per-op/per-shape-bucket selected config
+    telemetry into a shared in-process registry.</li>
+<li>Registry entries are keyed by <code>op_name + shape_bucket</code> and track:<ul>
+<li>selected launch config metadata</li>
+<li>selection source (<code>triton_best_config</code>, <code>heuristic</code>, <code>registry_cache</code>)</li>
+<li>cache counters (<code>launches</code>, <code>cache_hits</code>, <code>cache_misses</code>)</li>
+</ul>
+</li>
+<li>GPU benchmark report includes registry telemetry in both JSON and Markdown outputs.</li>
+<li>Rationale: Performance readiness needs explicit visibility into which launch configs are used
+  per workload shape; without this, regressions can hide behind implicit runtime autotune behavior.</li>
+<li>Consequence:</li>
+<li>Triton tile/fusion/fused-stage1 kernels now emit autotune registry events.</li>
+<li><code>gpu_bench</code> now emits <code>triton_autotune.summary</code> and <code>triton_autotune.entries</code>.</li>
+<li>CPU-safe tests validate registry cache accounting and report formatting contract.</li>
+</ul>
+<h2 id="adr-0025-unified-perf-regression-wrappers-including-tensorrt-shape-sweep">ADR-0025: Unified Perf Regression Wrappers Including TensorRT Shape Sweep</h2>
+<ul>
+<li>Date: 2026-02-11</li>
+<li>Decision:</li>
+<li>CPU, GPU, and TensorRT perf regression wrappers use one shared pass/fail formula based on
+    baseline ratio + absolute tolerance.</li>
+<li>TensorRT shape-sweep regression is tracked with a dedicated wrapper:<ul>
+<li><code>scripts/perf_regression_trt.py</code></li>
+<li>baseline: <code>scripts/perf_baseline_trt.json</code></li>
+</ul>
+</li>
+<li>GPU CI/weekly workflows execute TRT compare + trend only when <code>TRT_ENGINE_PATH</code> is provided.</li>
+<li>Rationale: Performance governance must be consistent across runtime tiers; TRT coverage should not
+  rely on ad-hoc checks or manual inspection.</li>
+<li>Consequence:</li>
+<li>TRT shape-sweep now has baseline-template, compare, and trend artifact modes aligned with CPU/GPU.</li>
+<li>Deployment runner validation remains required for final threshold tuning and mandatory gate policy.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
