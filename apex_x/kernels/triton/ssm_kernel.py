@@ -67,7 +67,7 @@ def triton_selective_scan(x, a, b, c):
     grid = (B * D,)
     selective_scan_kernel[grid](
         x, a, b, c, y,
-        B, L, D, d_state=S,
+        B, L, D, S,
         x.stride(0), x.stride(1), x.stride(2),
         a.stride(0), a.stride(1), a.stride(2),
         b.stride(0), b.stride(1), b.stride(2),
