@@ -66,24 +66,48 @@ class TeacherModelV5(nn.Module):
         
         coarse_masks = self.mask_head(feats, det_out["boxes"], image_size=images.shape[2:])
         
-        # INR Head Refinement (Infinite resolution)
-        # For training, query on a grid matching the mask resolution
+        # 5. INR Head Refinement (Instance-aware Infinite resolution)
+        # We query the INR head for each detected instance box (100 per image)
+        num_boxes = final_boxes[0].shape[0]
         grid_h, grid_w = 28, 28
-        coords = torch.stack(torch.meshgrid(
-            torch.linspace(-1, 1, grid_h), 
-            torch.linspace(-1, 1, grid_w), 
-            indexing="ij"
-        ), dim=-1).to(images.device).unsqueeze(0).expand(B, -1, -1, -1).reshape(B, -1, 2)
+        W_im, H_im = images.shape[-1], images.shape[-2]
         
-        # [B, P, 1]
-        inr_refined = self.inr_head(feats, coords)
-        inr_mask = inr_refined.reshape(B, 1, grid_h, grid_w)
+        # Create base local grid
+        yy, xx = torch.meshgrid(
+            torch.linspace(-1, 1, grid_h, device=images.device),
+            torch.linspace(-1, 1, grid_w, device=images.device),
+            indexing="ij"
+        )
+        local_grid = torch.stack([xx, yy], dim=-1) # [28, 28, 2]
+        
+        inst_coords = []
+        for b in range(B):
+            boxes = final_boxes[b] # [100, 4] (x1, y1, x2, y2)
+            x1, y1, x2, y2 = boxes[:, 0:1], boxes[:, 1:2], boxes[:, 2:3], boxes[:, 3:4]
+            
+            # Map local [-1, 1] to box coordinates, then to global [-1, 1]
+            scaled_grid_x = x1.view(-1, 1, 1, 1) + (local_grid[..., 0] + 1) / 2 * (x2 - x1).view(-1, 1, 1, 1)
+            scaled_grid_y = y1.view(-1, 1, 1, 1) + (local_grid[..., 1] + 1) / 2 * (y2 - y1).view(-1, 1, 1, 1)
+            
+            global_grid_x = (scaled_grid_x / W_im) * 2 - 1
+            global_grid_y = (scaled_grid_y / H_im) * 2 - 1
+            
+            inst_coords.append(torch.stack([global_grid_x, global_grid_y], dim=-1))
+            
+        all_coords = torch.cat(inst_coords, dim=0).reshape(B * num_boxes, -1, 2) # [B*100, 28*28, 2]
+        
+        # Expand features for instance query
+        feats_expanded = feats.repeat_interleave(num_boxes, dim=0)
+        
+        # [B*100, P, 1]
+        inr_refined = self.inr_head(feats_expanded, all_coords)
+        final_masks = inr_refined.reshape(B * num_boxes, 1, grid_h, grid_w)
         
         # ⚠️ SOTA Alignment: Returning keys exactly as expected by train_losses_v3
         return {
             "boxes": torch.cat(final_boxes, dim=0) if final_boxes else torch.zeros(0, 4, device=images.device),
             "scores": det_out["scores"][-1],
-            "masks": inr_mask, # INR is the primary high-res mask for SOTA
+            "masks": final_masks, # TotalInst masks
             "coarse_mask": coarse_masks[-1] if isinstance(coarse_masks, list) else coarse_masks,
             "routing": routing,
             "features": feats
