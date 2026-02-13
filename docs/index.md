@@ -22,6 +22,7 @@ Primary documentation entrypoints:
 - `python -m apex_x.cli bench ...`
 - `python -m apex_x.cli ablate ...`
 - `python -m apex_x.cli export ...`
+- `python -m apex_x.cli dataset-preflight ...`
 
 ## Validation rule for docs
 

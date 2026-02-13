@@ -71,6 +71,13 @@ Default behavior:
 
 This prevents silent synthetic training when real dataset loading fails.
 
+Run explicit dataset contract preflight:
+
+```bash
+python -m apex_x.cli dataset-preflight configs/coco_baseline.yaml \
+  --output-json artifacts/dataset_preflight.json
+```
+
 For explicit smoke/debug synthetic runs only:
 
 ```bash

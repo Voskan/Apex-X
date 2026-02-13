@@ -26,6 +26,7 @@ def test_trainer_run_multi_epoch_saves_checkpoint_lifecycle(tmp_path: Path) -> N
     assert (ckpt_dir / "last.pt").exists()
     assert (Path(cfg.train.output_dir) / "train_report.json").exists()
     assert (Path(cfg.train.output_dir) / "train_report.md").exists()
+    assert (Path(cfg.train.output_dir) / "dataset_preflight.json").exists()
     report_payload = json.loads((Path(cfg.train.output_dir) / "train_report.json").read_text())
     assert "stages" in report_payload
     assert isinstance(report_payload["stages"], list)

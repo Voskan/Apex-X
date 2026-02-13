@@ -10,7 +10,7 @@ from typing import cast
 import numpy as np
 
 from apex_x.config import ApexXConfig, load_yaml_config
-from apex_x.data import dummy_batch
+from apex_x.data import dummy_batch, run_dataset_preflight, write_dataset_preflight_report
 from apex_x.export import ApexXExporter, ShapeMode
 from apex_x.infer import (
     evaluate_fixture_file,
@@ -720,6 +720,30 @@ def preflight_cmd(profile: str = "worldclass") -> None:
     print("preflight ok profile=worldclass")
 
 
+def dataset_preflight_cmd(
+    config: str,
+    set_values: list[str] | None = None,
+    dataset_path: str | None = None,
+    output_json: str = "artifacts/dataset_preflight.json",
+) -> None:
+    overrides = set_values or []
+    cfg = _load_config(Path(config), overrides)
+    report = run_dataset_preflight(cfg, dataset_path=dataset_path)
+    out_path = write_dataset_preflight_report(report, path=output_json)
+    status = "ok" if report.passed else "fail"
+    print(
+        f"dataset_preflight {status} "
+        f"type={report.dataset_type} "
+        f"errors={len(report.errors)} "
+        f"warnings={len(report.warnings)} "
+        f"output={out_path}"
+    )
+    if not report.passed:
+        for err in report.errors[:10]:
+            print(f"- {err}")
+        raise SystemExit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Apex-X CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -808,6 +832,15 @@ def main() -> None:
     preflight_parser = subparsers.add_parser("preflight")
     preflight_parser.add_argument("--profile", default="worldclass")
 
+    dataset_preflight_parser = subparsers.add_parser("dataset-preflight")
+    dataset_preflight_parser.add_argument("config", help="Path to config")
+    dataset_preflight_parser.add_argument("--set", "-s", action="append", dest="set_values")
+    dataset_preflight_parser.add_argument("--dataset-path")
+    dataset_preflight_parser.add_argument(
+        "--output-json",
+        default="artifacts/dataset_preflight.json",
+    )
+
     args = parser.parse_args()
 
     if args.command == "train":
@@ -876,6 +909,13 @@ def main() -> None:
         )
     elif args.command == "preflight":
         preflight_cmd(args.profile)
+    elif args.command == "dataset-preflight":
+        dataset_preflight_cmd(
+            args.config,
+            args.set_values,
+            args.dataset_path,
+            args.output_json,
+        )
 
 
 if __name__ == "__main__":

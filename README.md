@@ -51,6 +51,13 @@ python -m apex_x.cli train examples/smoke_cpu.yaml \
   --set train.allow_synthetic_fallback=true
 ```
 
+### Dataset Preflight
+
+```bash
+python -m apex_x.cli dataset-preflight configs/coco_baseline.yaml \
+  --output-json artifacts/dataset_preflight.json
+```
+
 ### Eval
 
 ```bash

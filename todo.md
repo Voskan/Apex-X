@@ -41,7 +41,7 @@ No task is done without:
 | T0.14 | Notebook checkpoint/image robustness gate | P0 | [~] |
 | T1.1 | Unify real dataloaders (COCO + satellite + YOLO) | P1 | [~] |
 | T1.4 | Integrate test split evaluation + final report artifact | P1 | [~] |
-| T1.5 | Dataset contract validation (fail-fast preflight) | P1 | [ ] |
+| T1.5 | Dataset contract validation (fail-fast preflight) | P1 | [~] |
 | T1.6 | Checkpoint manifest governance (best/last/ema/export) | P1 | [ ] |
 | T5.1 | Close deployment-open tasks from `docs/TODO.md` | P1 | [ ] |
 | T2.1 | Unified device policy | P2 | [ ] |
@@ -314,8 +314,26 @@ Validation:
 
 ---
 
-### [ ] T1.5 Dataset contract validation (fail-fast preflight)
+### [~] T1.5 Dataset contract validation (fail-fast preflight)
 Priority: `P1`
+
+Progress (2026-02-13):
+- added unified preflight module:
+  - `apex_x/data/preflight.py`
+  - dataset type inference (`auto|coco|yolo|satellite|synthetic`)
+  - contract checks for COCO/YOLO/Satellite (paths, annotation parsing, class bounds, sampled mask/polygon validity)
+- integrated preflight into trainer run:
+  - writes `dataset_preflight.json` into `train.output_dir`
+  - hard-fails training when preflight report has errors
+- added CLI command:
+  - `python -m apex_x.cli dataset-preflight <config> ...`
+- added tests:
+  - `tests/test_data_preflight.py`
+  - `tests/test_cli_dataset_preflight.py`
+  - trainer lifecycle test now asserts preflight artifact exists
+
+Remaining:
+- extend preflight checks to explicitly validate held-out `val/test` split contracts (currently focused on train split)
 
 Implementation:
 1. Add preflight checks for paths/annotations/class bounds/mask validity.

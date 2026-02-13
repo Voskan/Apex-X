@@ -1892,10 +1892,14 @@
 - <code>train.allow_synthetic_fallback = false</code>
 - invalid/missing dataset configuration causes a hard error</p>
 <p>This prevents silent synthetic training when real dataset loading fails.</p>
+<p>Run explicit dataset contract preflight:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>dataset-preflight<span class="w"> </span>configs/coco_baseline.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--output-json<span class="w"> </span>artifacts/dataset_preflight.json
+</code></pre></div>
 <p>For explicit smoke/debug synthetic runs only:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>examples/smoke_cpu.yaml<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--steps-per-stage<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--set<span class="w"> </span>train.allow_synthetic_fallback<span class="o">=</span><span class="nb">true</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>examples/smoke_cpu.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--steps-per-stage<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--set<span class="w"> </span>train.allow_synthetic_fallback<span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
 <p>Training report (<code>train_report.json</code>) now includes dataset mode:
 - <code>real</code>
@@ -1940,13 +1944,13 @@ when supported by your PyTorch version.</p>
 - <code>loss_boundary_component_clip</code>
 - <code>loss_seg_component_clip</code></p>
 <h2 id="6-resume-training">6. Resume training</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>configs/coco_baseline.yaml<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--resume<span class="w"> </span>artifacts/train_output/checkpoints/last.pt
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>-m<span class="w"> </span>apex_x.cli<span class="w"> </span>train<span class="w"> </span>configs/coco_baseline.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--resume<span class="w"> </span>artifacts/train_output/checkpoints/last.pt
 </code></pre></div>
 <h2 id="7-common-troubleshooting">7. Common troubleshooting</h2>
 <h3 id="missing-worldclass-dependencies">Missing worldclass dependencies</h3>
 <p>If <code>TeacherModelV3</code>/DINOv2 path fails with missing modules, install:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;apex-x[worldclass]&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;apex-x[worldclass]&quot;</span>
 </code></pre></div>
 <h3 id="dataset-path-errors">Dataset path errors</h3>
 <p>If training fails with synthetic fallback disabled, either:
@@ -1958,11 +1962,11 @@ If you load checkpoints manually in custom code, use the same helper APIs from
 <code>apex_x.train.checkpoint</code>.</p>
 <h2 id="8-notebook-inference-smoke-artifact-cpucuda">8. Notebook Inference Smoke Artifact (CPU/CUDA)</h2>
 <p>Use this reproducible smoke runner before manual notebook checks:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>scripts/notebook_checkpoint_smoke.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--checkpoint<span class="w"> </span>outputs/a100_v3_1024px/best_1024.pt<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--image<span class="w"> </span>/path/to/image.png<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--devices<span class="w"> </span>cpu,cuda<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--output-json<span class="w"> </span>artifacts/notebook_smoke/report.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>scripts/notebook_checkpoint_smoke.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--checkpoint<span class="w"> </span>outputs/a100_v3_1024px/best_1024.pt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--image<span class="w"> </span>/path/to/image.png<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>--devices<span class="w"> </span>cpu,cuda<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--output-json<span class="w"> </span>artifacts/notebook_smoke/report.json
 </code></pre></div>
 <p>Notes:
 - If <code>cuda</code> is unavailable, the CUDA run is marked as <code>skip</code> in JSON.

@@ -18,6 +18,9 @@ from apex_x.data import (
     SatelliteDataset,
     YOLOSegmentationDataset,
     build_robust_transforms,
+    infer_dataset_type as infer_dataset_type_preflight,
+    run_dataset_preflight,
+    write_dataset_preflight_report,
 )
 from apex_x.model import (
     ApexXModel,
@@ -656,21 +659,7 @@ class ApexXTrainer:
         return metrics
 
     def _infer_dataset_type(self, dataset_path: str | Path | None) -> str:
-        configured = str(self.config.data.dataset_type).strip().lower()
-        if configured != "auto":
-            return configured
-
-        if self.config.data.coco_train_images and self.config.data.coco_train_annotations:
-            return "coco"
-
-        root_text = str(dataset_path) if dataset_path is not None else str(self.config.data.dataset_root)
-        root_text = root_text.strip()
-        if root_text:
-            root = Path(root_text).expanduser()
-            if (root / "data.yaml").exists():
-                return "yolo"
-            return "satellite"
-        return "synthetic"
+        return infer_dataset_type_preflight(self.config, dataset_path)
 
     def _handle_synthetic_fallback(
         self,
@@ -1746,6 +1735,19 @@ class ApexXTrainer:
         generator.manual_seed(seed)
         self._prepare_quantization(generator)
 
+        output_dir = Path(self.config.train.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        dataset_preflight = run_dataset_preflight(self.config, dataset_path=dataset_path)
+        dataset_preflight_path = write_dataset_preflight_report(
+            dataset_preflight,
+            path=output_dir / "dataset_preflight.json",
+        )
+        if not dataset_preflight.passed:
+            raise RuntimeError(
+                "Dataset preflight failed. "
+                f"See report: {dataset_preflight_path}"
+            )
+
         train_h = min(self.config.model.input_height, 512)
         train_w = min(self.config.model.input_width, 512)
         val_loader = self._build_validation_dataloader(
@@ -1932,9 +1934,6 @@ class ApexXTrainer:
             },
         )
 
-        output_dir = Path(self.config.train.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
         legacy_checkpoint_path = output_dir / "teacher_checkpoint.pt"
         torch.save(self.teacher.state_dict(), legacy_checkpoint_path)
 
@@ -1954,6 +1953,10 @@ class ApexXTrainer:
                 "mode": str(stage1_metrics.get("dataset_mode", "unknown")),
                 "backend": str(stage1_metrics.get("dataset_backend", "unknown")),
                 "allow_synthetic_fallback": bool(self.config.train.allow_synthetic_fallback),
+                "preflight_report": str(dataset_preflight_path),
+                "preflight_passed": bool(dataset_preflight.passed),
+                "preflight_errors": list(dataset_preflight.errors),
+                "preflight_warnings": list(dataset_preflight.warnings),
             },
             "history": history,
             "final": {

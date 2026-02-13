@@ -2,6 +2,11 @@
 
 import numpy as np
 
+from .augmentations import (
+    CopyPasteAugmentation,
+    MixUpAugmentation,
+    MosaicAugmentation,
+)
 from .coco import (
     CocoAnnotation,
     CocoBBox,
@@ -17,6 +22,13 @@ from .coco import (
     segmentation_to_mask,
 )
 from .coco_dataset import PYCOCOTOOLS_AVAILABLE, CocoDetectionDataset, coco_collate_fn
+from .lsj_augmentation import LargeScaleJitter
+from .preflight import (
+    DatasetPreflightReport,
+    infer_dataset_type,
+    run_dataset_preflight,
+    write_dataset_preflight_report,
+)
 from .satellite import SatelliteDataset, SatelliteTile
 from .transforms import (
     AlbumentationsAdapter,
@@ -29,15 +41,6 @@ from .transforms import (
     build_robust_transforms,
     sanitize_sample,
 )
-from .augmentations import (
-    MosaicAugmentation,
-    MixUpAugmentation,
-    CopyPasteAugmentation,
-)
-from .lsj_augmentation import LargeScaleJitter
-
-
-
 from .yolo import YOLOSegmentationDataset, yolo_collate_fn
 
 
@@ -72,6 +75,10 @@ __all__ = [
     "CocoDetectionDataset",
     "coco_collate_fn",
     "PYCOCOTOOLS_AVAILABLE",
+    "DatasetPreflightReport",
+    "infer_dataset_type",
+    "run_dataset_preflight",
+    "write_dataset_preflight_report",
     "MosaicAugmentation",
     "MixUpAugmentation",
     "CopyPasteAugmentation",
@@ -79,4 +86,3 @@ __all__ = [
     "YOLOSegmentationDataset",
     "yolo_collate_fn",
 ]
-
