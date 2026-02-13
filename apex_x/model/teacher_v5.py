@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from .hybrid_backbone_v5 import HybridBackboneV5
-from .kan_like import AdaptiveKAN
+from apex_x.routing import RouterKANLike
 from .inr_head import ImplicitNeuralHead
 from .cascade_head import CascadeDetHead
 from .cascade_mask_head import CascadeMaskHead
@@ -21,7 +21,7 @@ class TeacherModelV5(nn.Module):
         self.backbone = HybridBackboneV5(ssm_dim=ssm_dim)
         
         # 2. Adaptive KAN Router (Decides routing to INR or PointRend)
-        self.router = AdaptiveKAN(in_channels=ssm_dim, num_heads=2)
+        self.router = RouterKANLike(in_channels=ssm_dim, num_outputs=2)
         
         # 3. Detection Head (Standard Cascade for initial seeds)
         self.det_head = CascadeDetHead(in_channels=ssm_dim, num_classes=num_classes)
