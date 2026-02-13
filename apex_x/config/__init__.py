@@ -6,6 +6,7 @@ from .schema import (
     RoutingConfig,
     RuntimeConfig,
     TrainConfig,
+    LossConfig,
 )
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "ModelConfig",
     "RoutingConfig",
     "TrainConfig",
+    "LossConfig",
     "DataConfig",
     "RuntimeConfig",
     "load_yaml_config",

@@ -449,12 +449,27 @@ class RuntimeConfig:
 
 
 @dataclass(slots=True)
+class LossConfig:
+    topological_persistence: bool = False
+    flow_symmetry: bool = False
+    self_distillation: bool = False
+    
+    def validate(self) -> None:
+        pass
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> LossConfig:
+        return cls(**dict(data))
+
+
+@dataclass(slots=True)
 class ApexXConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     routing: RoutingConfig = field(default_factory=RoutingConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
     data: DataConfig = field(default_factory=DataConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
+    loss: LossConfig = field(default_factory=LossConfig)
 
     def __post_init__(self) -> None:
         self.validate()
@@ -465,6 +480,7 @@ class ApexXConfig:
         self.train.validate()
         self.data.validate()
         self.runtime.validate()
+        self.loss.validate()
 
         if (
             not self.model.disable_nesting
@@ -484,4 +500,5 @@ class ApexXConfig:
             train=TrainConfig.from_dict(data.get("train", {})),
             data=DataConfig.from_dict(data.get("data", {})),
             runtime=RuntimeConfig.from_dict(data.get("runtime", {})),
+            loss=LossConfig.from_dict(data.get("loss", {})),
         )

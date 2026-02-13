@@ -45,6 +45,8 @@ The **Ascension V5** architecture is the production standard for Apex-X.
 ### V5 Entrypoints (Hierarchy)
 - **\ud83c\udfc6 [Recommended] Professional Trainer**: [ascension_v5_pro_trainer.ipynb](file:///Users/voskan/Desktop/apex_x/examples/ascension_v5_pro_trainer.ipynb)
   - *Features*: Dataset EDA, SOTA Monitoring, ONNX Export, High-Res Stability. **Use this for all production work.**
+- **\ud83d\udd2c [Recommended] Pro Inference Dashboard**: [ascension_v5_pro_inference.ipynb](file:///Users/voskan/Desktop/apex_x/notebooks/ascension_v5_pro_inference.ipynb)
+  - *Features*: Sub-pixel zoom, TTA visualization, FPS benchmarking, ONNX parity checks.
 - **\ud83d\udd27 [Legacy] Stabilized Trainer**: `train_v5_stabilized.ipynb` (Mathematical fix for inf loss).
 - **\ud83d\udea7 [Legacy] Initial V5 Draft**: `train_v5_ascension.ipynb` (Reference integration only).
 
