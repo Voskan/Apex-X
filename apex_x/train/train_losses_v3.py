@@ -472,7 +472,11 @@ def compute_v3_training_losses(
         gt_masks = targets["masks"] # [B, N, H, W]
         if gt_masks is not None and gt_masks.numel() > 0:
             # Combine instances into a semantic map for BFF training
-            semantic_gt = (gt_masks.sum(dim=1) > 0.5).float() # [B, H, W]
+            if gt_masks.ndim == 4:
+                semantic_gt = (gt_masks.sum(dim=1) > 0.5).float() # [B, H, W]
+            else:
+                # Already a semantic map [B, H, W]
+                semantic_gt = (gt_masks > 0.5).float()
             
             # Interpolate bff_pred to GT resolution if needed (BFF is usually H/4)
             if bff_pred.shape[-2:] != semantic_gt.shape[-2:]:
