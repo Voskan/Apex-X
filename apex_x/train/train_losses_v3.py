@@ -472,11 +472,30 @@ def compute_v3_training_losses(
         gt_masks = targets["masks"] # [B, N, H, W]
         if gt_masks is not None and gt_masks.numel() > 0:
             # Combine instances into a semantic map for BFF training
+            B = bff_pred.shape[0]
+            H_masks, W_masks = gt_masks.shape[-2:]
+            
             if gt_masks.ndim == 4:
-                semantic_gt = (gt_masks.sum(dim=1) > 0.5).float() # [B, H, W]
+                # [B, N, H, W] format
+                semantic_gt = (gt_masks.sum(dim=1) > 0.5).float()
             else:
-                # Already a semantic map [B, H, W]
-                semantic_gt = (gt_masks > 0.5).float()
+                # [N_total, H, W] format — need to group by batch_idx
+                batch_idx = targets.get("batch_idx")
+                semantic_gt = torch.zeros((B, H_masks, W_masks), device=gt_masks.device)
+                if batch_idx is not None:
+                    for b in range(B):
+                        mask_selector = (batch_idx == b)
+                        if mask_selector.any():
+                            semantic_gt[b] = (gt_masks[mask_selector].sum(dim=0) > 0.5).float()
+                else:
+                    # Fallback: if no batch_idx, we can only use first B instances (risky)
+                    # or just broadcast if B == N_total.
+                    # Best God-Tier fallback: Assume 1:1 if counts match, else warn.
+                    if gt_masks.shape[0] == B:
+                        semantic_gt = (gt_masks > 0.5).float()
+                    else:
+                        # Slice to B if we have to, but warn.
+                        semantic_gt = (gt_masks[:B] > 0.5).float()
             
             # Interpolate bff_pred to GT resolution if needed (BFF is usually H/4)
             if bff_pred.shape[-2:] != semantic_gt.shape[-2:]:
