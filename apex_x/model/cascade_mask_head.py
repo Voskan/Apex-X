@@ -59,6 +59,9 @@ class CascadeMaskStage(nn.Module):
         Returns:
             Mask logits [N, 1, mask_size, mask_size]
         """
+        if self.training and roi_features.requires_grad:
+            from torch.utils.checkpoint import checkpoint
+            return checkpoint(self.mask_head, roi_features, use_reentrant=False)
         return self.mask_head(roi_features)
 
 

@@ -156,6 +156,16 @@ class TeacherModelV3(nn.Module):
         max_proposals: int = 300,
     ) -> list[Tensor]:
         """Fast vectorised RPN proposal generation.
+        
+        Args:
+            fpn_features: Pyramid features
+            image_size: (H, W)
+            max_proposals: Max proposals per image
+        """
+        # God-Tier Optimization: Throttle proposals during training to prevent OOM
+        # 128 is more than enough for training signal, keeps VRAM low.
+        if self.training and max_proposals > 128:
+            max_proposals = 128
 
         Returns one tensor of shape ``[N, 4]`` **per batch element**.
         """
