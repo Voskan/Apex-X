@@ -106,12 +106,16 @@ class CascadeMaskHead(nn.Module):
         self,
         features: Tensor,
         boxes: list[list[Tensor]],
+        *,
+        image_size: tuple[int, int] | None = None,
     ) -> list[Tensor]:
         """Progressive mask refinement for batches.
         
         Args:
             features: Feature maps [B, C, H, W]
             boxes: List of stages, each containing a list of boxes per batch element [S, B, N_i, 4]
+            image_size: Optional ``(H, W)`` of input image used to map
+                image-space boxes to feature-space for RoIAlign.
             
         Returns:
             List of mask logits from each stage [S, N_total, 1, H_mask, W_mask]
@@ -127,6 +131,7 @@ class CascadeMaskHead(nn.Module):
                 features,
                 flat_boxes,
                 output_size=(14, 14),
+                image_size=image_size,
             )
             
             # 3. Predict masks
@@ -156,13 +161,31 @@ class CascadeMaskHead(nn.Module):
         features: Tensor,
         boxes_with_batch: Tensor,
         output_size: tuple[int, int] = (14, 14),
+        image_size: tuple[int, int] | None = None,
     ) -> Tensor:
         """RoI Align for mask features."""
+        if boxes_with_batch.numel() == 0:
+            B, C, _, _ = features.shape
+            N = boxes_with_batch.shape[0]
+            return torch.zeros((N, C, *output_size), device=features.device, dtype=features.dtype)
+
+        boxes = boxes_with_batch
+        if image_size is not None:
+            img_h, img_w = image_size
+            feat_h, feat_w = features.shape[-2:]
+            scale_x = float(feat_w) / max(float(img_w), 1.0)
+            scale_y = float(feat_h) / max(float(img_h), 1.0)
+            boxes = boxes_with_batch.clone()
+            boxes[:, 1] = boxes[:, 1] * scale_x
+            boxes[:, 3] = boxes[:, 3] * scale_x
+            boxes[:, 2] = boxes[:, 2] * scale_y
+            boxes[:, 4] = boxes[:, 4] * scale_y
+
         try:
             from torchvision.ops import roi_align
             return roi_align(
                 features,
-                boxes_with_batch,
+                boxes,
                 output_size=output_size,
                 spatial_scale=1.0,
                 sampling_ratio=2,

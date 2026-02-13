@@ -158,12 +158,16 @@ class CascadeDetHead(nn.Module):
         self,
         features: Tensor,
         initial_boxes: list[Tensor] | Tensor,
+        *,
+        image_size: tuple[int, int] | None = None,
     ) -> dict[str, list[list[Tensor]] | list[Tensor]]:
         """Forward pass through cascade stages.
         
         Args:
             features: Feature maps [B, C, H, W]
             initial_boxes: List of boxes per batch element [B, N_i, 4]
+            image_size: Optional ``(H, W)`` of input image used to map
+                image-space boxes to feature-space for RoIAlign.
             
         Returns:
             Dict with cascade outputs:
@@ -190,6 +194,7 @@ class CascadeDetHead(nn.Module):
                 features,
                 flat_boxes,
                 output_size=(7, 7),
+                image_size=image_size,
             )
             
             # 3. Forward through stage
@@ -245,6 +250,7 @@ class CascadeDetHead(nn.Module):
         features: Tensor,
         boxes_with_batch: Tensor,
         output_size: tuple[int, int] = (7, 7),
+        image_size: tuple[int, int] | None = None,
     ) -> Tensor:
         """RoI Align pooling.
         
@@ -252,15 +258,33 @@ class CascadeDetHead(nn.Module):
             features: Feature maps [B, C, H, W]
             boxes_with_batch: Boxes [N, 5] (batch_idx, x1, y1, x2, y2)
             output_size: Output spatial size
+            image_size: Optional source image size ``(H, W)`` for coordinate scaling
             
         Returns:
             RoI features [N, C, H_out, W_out]
         """
+        if boxes_with_batch.numel() == 0:
+            B, C, _, _ = features.shape
+            N = boxes_with_batch.shape[0]
+            return torch.zeros((N, C, *output_size), device=features.device, dtype=features.dtype)
+
+        boxes = boxes_with_batch
+        if image_size is not None:
+            img_h, img_w = image_size
+            feat_h, feat_w = features.shape[-2:]
+            scale_x = float(feat_w) / max(float(img_w), 1.0)
+            scale_y = float(feat_h) / max(float(img_h), 1.0)
+            boxes = boxes_with_batch.clone()
+            boxes[:, 1] = boxes[:, 1] * scale_x
+            boxes[:, 3] = boxes[:, 3] * scale_x
+            boxes[:, 2] = boxes[:, 2] * scale_y
+            boxes[:, 4] = boxes[:, 4] * scale_y
+
         try:
             from torchvision.ops import roi_align
             return roi_align(
                 features,
-                boxes_with_batch,
+                boxes,
                 output_size=output_size,
                 spatial_scale=1.0,
                 sampling_ratio=2,

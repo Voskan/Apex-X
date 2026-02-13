@@ -222,7 +222,11 @@ class TeacherModelV3(nn.Module):
         # 4. cascade detection -------------------------------------------------
         # use the 2nd-finest FPN level (P4-equivalent)
         det_feat_idx = min(1, len(fpn_features) - 1)
-        det_output = self.det_head(fpn_features[det_feat_idx], proposals_batch)
+        det_output = self.det_head(
+            fpn_features[det_feat_idx],
+            proposals_batch,
+            image_size=(H, W),
+        )
 
         all_boxes = det_output["boxes"]       # list[list[Tensor]] -> [Stage][Batch]
         all_scores = det_output["scores"]     # list[Tensor] -> [Stage][B*N, C]
@@ -242,7 +246,11 @@ class TeacherModelV3(nn.Module):
         # CascadeMaskHead expects `features` as a *single* tensor and
         # boxes as a list of stages, each being a list of boxes per batch element.
         mask_feat = fpn_features[det_feat_idx]
-        all_masks = self.mask_head(mask_feat, all_boxes[1:])  # Skip initial proposals
+        all_masks = self.mask_head(
+            mask_feat,
+            all_boxes[1:],  # Skip initial proposals
+            image_size=(H, W),
+        )
 
         final_masks_flat = all_masks[-1] if all_masks else None
         if final_masks_flat is not None:
