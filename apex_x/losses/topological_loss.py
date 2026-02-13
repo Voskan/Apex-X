@@ -25,43 +25,47 @@ class TopologicalPersistenceLoss(nn.Module):
             pred_probs: [B, 1, H, W] sigmoid probabilities
             gt_masks: [B, 1, H, W] binary ground truth
         """
-        # 1. Soft Euler Characteristic Calculation
+        B, C, H, W = pred_probs.shape
+        num_pixels = H * W
+        eps = 1e-6
+        
+        # Clamp for numerical stability in products
+        p = pred_probs.clamp(min=eps, max=1.0 - eps)
+        
+        # 1. Soft Euler Characteristic Calculation (Area-Normalized)
         # V: Soft vertices (sum of probabilities)
-        v = pred_probs.sum(dim=(2, 3))
+        v = p.sum(dim=(2, 3))
         
         # E: Soft edges (horizontal and vertical adjacencies)
-        # horizontal: p(i, j) * p(i, j+1)
-        e_h = (pred_probs[:, :, :, :-1] * pred_probs[:, :, :, 1:]).sum(dim=(2, 3))
-        # vertical: p(i, j) * p(i+1, j)
-        e_v = (pred_probs[:, :, :-1, :] * pred_probs[:, :, 1:, :]).sum(dim=(2, 3))
+        e_h = (p[:, :, :, :-1] * p[:, :, :, 1:]).sum(dim=(2, 3))
+        e_v = (p[:, :, :-1, :] * p[:, :, 1:, :]).sum(dim=(2, 3))
         e = e_h + e_v
         
         # F: Soft faces (2x2 squares)
-        # p(i, j) * p(i+1, j) * p(i, j+1) * p(i+1, j+1)
-        f = (pred_probs[:, :, :-1, :-1] * 
-             pred_probs[:, :, 1:, :-1] * 
-             pred_probs[:, :, :-1, 1:] * 
-             pred_probs[:, :, 1:, 1:]).sum(dim=(2, 3))
+        f = (p[:, :, :-1, :-1] * 
+             p[:, :, 1:, :-1] * 
+             p[:, :, :-1, 1:] * 
+             p[:, :, 1:, 1:]).sum(dim=(2, 3))
         
-        soft_ec = v - e + f
+        soft_ec = (v - e + f) / num_pixels
         
-        # 2. GT EC (Analytical)
-        # We calculate it once for GT
+        # 2. GT EC (Analytical, Area-Normalized)
         with torch.no_grad():
-            v_gt = gt_masks.sum(dim=(2, 3))
-            e_h_gt = (gt_masks[:, :, :, :-1] * gt_masks[:, :, :, 1:]).sum(dim=(2, 3))
-            e_v_gt = (gt_masks[:, :, :-1, :] * gt_masks[:, :, 1:, :]).sum(dim=(2, 3))
-            f_gt = (gt_masks[:, :, :-1, :-1] * 
-                    gt_masks[:, :, 1:, :-1] * 
-                    gt_masks[:, :, :-1, 1:] * 
-                    gt_masks[:, :, 1:, 1:]).sum(dim=(2, 3))
-            gt_ec = v_gt - (e_h_gt + e_v_gt) + f_gt
+            gt = gt_masks.float()
+            v_gt = gt.sum(dim=(2, 3))
+            e_h_gt = (gt[:, :, :, :-1] * gt[:, :, :, 1:]).sum(dim=(2, 3))
+            e_v_gt = (gt[:, :, :-1, :] * gt[:, :, 1:, :]).sum(dim=(2, 3))
+            f_gt = (gt[:, :, :-1, :-1] * 
+                    gt[:, :, 1:, :-1] * 
+                    gt[:, :, :-1, 1:] * 
+                    gt[:, :, 1:, 1:]).sum(dim=(2, 3))
+            gt_ec = (v_gt - (e_h_gt + e_v_gt) + f_gt) / num_pixels
             
-        # 3. Persistence Loss: Match EC and penalize "dust" (high frequency small components)
+        # 3. Persistence Loss: Match EC
         ec_loss = F.mse_loss(soft_ec, gt_ec)
         
-        # Total variation as a proxy for boundary smoothness (Topological Regularization)
-        tv_loss = (torch.abs(pred_probs[:, :, :, 1:] - pred_probs[:, :, :, :-1]).mean() + 
-                   torch.abs(pred_probs[:, :, 1:, :] - pred_probs[:, :, :-1, :]).mean())
+        # Total variation as a proxy for boundary smoothness
+        tv_loss = (torch.abs(p[:, :, :, 1:] - p[:, :, :, :-1]).mean() + 
+                   torch.abs(p[:, :, 1:, :] - p[:, :, :-1, :]).mean())
                    
         return (ec_loss * self.scale) + (tv_loss * 0.1)

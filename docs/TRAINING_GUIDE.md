@@ -36,15 +36,23 @@ Worldclass startup checklist (run before any DINOv2/V3 flow):
 4. Start one of the supported entrypoints:
    - CLI: `python -m apex_x.cli train configs/worldclass.yaml ...`
    - Wrapper: `python scripts/train_worldclass_coco.py --config configs/worldclass.yaml ...`
-   - V5 Notebook: `examples/train_v5_ascension.ipynb`
+   - V5 Notebook (Stabilized): [train_v5_stabilized.ipynb](file:///Users/voskan/Desktop/apex_x/examples/train_v5_stabilized.ipynb)
 
 ## 2. Ascension V5 (The Flagship)
 
 The **Ascension V5** architecture is the production standard for Apex-X.
 
-### V5 Entrypoints
-- **Training**: [train_v5_ascension.ipynb](file:///Users/voskan/Desktop/apex_x/examples/train_v5_ascension.ipynb)
-- **Inference**: [inference_v5_ascension.ipynb](file:///Users/voskan/Desktop/apex_x/notebooks/inference_v5_ascension.ipynb)
+### V5 Entrypoints (Hierarchy)
+- **\ud83c\udfc6 [Recommended] Professional Trainer**: [ascension_v5_pro_trainer.ipynb](file:///Users/voskan/Desktop/apex_x/examples/ascension_v5_pro_trainer.ipynb)
+  - *Features*: Dataset EDA, SOTA Monitoring, ONNX Export, High-Res Stability. **Use this for all production work.**
+- **\ud83d\udd27 [Legacy] Stabilized Trainer**: `train_v5_stabilized.ipynb` (Mathematical fix for inf loss).
+- **\ud83d\udea7 [Legacy] Initial V5 Draft**: `train_v5_ascension.ipynb` (Reference integration only).
+
+### SOTA Convergence & Stability
+For high-resolution training (1024px+):
+1. **Unified Collation**: Use `standard_collate_fn` to avoid batch-format mismatches during validation.
+2. **Topological Normalization**: Losses are now area-normalized to prevent gradient explosion.
+3. **Weight Init**: `TeacherModelV5` includes God-tier initialization for INR and KAN heads.
 
 ### SOTA Loss Configuration
 To achieve world-class results, ensure your configuration enables the following:

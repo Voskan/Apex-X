@@ -11,6 +11,21 @@ from torch import nn
 import numpy as np
 
 
+class DictionaryWrapper(nn.Module):
+    """Wraps a model that returns a dict to return a tuple for ONNX."""
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+        self.output_keys = []
+        
+    def forward(self, x: torch.Tensor):
+        out = self.model(x)
+        if isinstance(out, dict):
+            if not self.output_keys:
+                self.output_keys = sorted(out.keys())
+            return tuple(out[k] for k in self.output_keys)
+        return out
+
 def export_to_onnx(
     model: nn.Module,
     output_path: str | Path,
@@ -39,23 +54,38 @@ def export_to_onnx(
     # Create dummy input
     dummy_input = torch.randn(*input_shape)
     
+    # Check for dict output and wrap if necessary
+    with torch.no_grad():
+        test_out = model(dummy_input)
+    
+    export_model = model
+    if isinstance(test_out, dict):
+        if verbose:
+            print(f"📦 Detected dictionary output with keys: {sorted(test_out.keys())}")
+            print("   Wrapping model for ONNX tuple-output compatibility.")
+        export_model = DictionaryWrapper(model)
+        # Initialize keys
+        export_model(dummy_input)
+        output_names = export_model.output_keys
+    else:
+        output_names = ['output']
+
     # Default dynamic axes (batch size and resolution)
     if dynamic_axes is None:
-        dynamic_axes = {
-            'input': {0: 'batch_size', 2: 'height', 3: 'width'},
-            'output': {0: 'batch_size'},
-        }
+        dynamic_axes = {'input': {0: 'batch_size', 2: 'height', 3: 'width'}}
+        for i, name in enumerate(output_names):
+            dynamic_axes[name] = {0: 'batch_size'}
     
     # Export to ONNX
     torch.onnx.export(
-        model,
+        export_model,
         dummy_input,
         str(output_path),
         export_params=True,
         opset_version=opset_version,
         do_constant_folding=True,
         input_names=['input'],
-        output_names=['output'],
+        output_names=output_names,
         dynamic_axes=dynamic_axes,
         verbose=verbose,
     )

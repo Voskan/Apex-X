@@ -34,6 +34,20 @@ class TeacherModelV5(nn.Module):
         
         # 6. PointRend (Standard SOTA fallback)
         self.point_rend = PointRendModule(in_channels=ssm_dim, out_channels=1)
+        
+        self._init_weights()
+
+    def _init_weights(self):
+        """God-tier initialization for stability."""
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.trunc_normal_(m.weight, std=0.02)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+        
+        # Ensure the router starts balanced
+        if hasattr(self.router, 'gate'):
+            nn.init.constant_(self.router.gate.weight, 0)
 
     def forward(self, images: torch.Tensor):
         # Backbone Features [B, C, H_feat, W_feat]
