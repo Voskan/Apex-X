@@ -19,6 +19,7 @@ from .pv_module import PVModule, PVModuleOutput
 from .pv_dinov2 import PVModuleDINOv2, LoRAAdapter, DINOV2_AVAILABLE
 from .teacher import TeacherDistillOutput, TeacherModel, flatten_logits_for_distill
 from .teacher_v3 import TeacherModelV3  # NEW: World-class v2.0 model
+from .teacher_v5 import TeacherModelV5  # FLAGSHIP: Ascension V5
 from .post_process import (
     compute_anchor_centers,
     decode_boxes_distance,
@@ -61,7 +62,8 @@ __all__ = [
     "TileRefineBlock",
     "TeacherDistillOutput",
     "TeacherModel",
-    "TeacherModelV3",  # NEW
+    "TeacherModelV3",
+    "TeacherModelV5",
     "flatten_logits_for_distill",
     "TimmBackboneAdapter",
     "TrackEmbeddingHead",
