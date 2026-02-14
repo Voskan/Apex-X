@@ -52,7 +52,7 @@ class TopologicalPersistenceLoss(nn.Module):
              p[:, :, :-1, 1:] * 
              p[:, :, 1:, 1:]).sum(dim=(2, 3))
         
-        soft_ec = (v - e + f) / num_pixels
+        soft_ec = (v - e + f)
         
         # 2. GT EC (Analytical, Area-Normalized)
         with torch.no_grad():
@@ -64,10 +64,10 @@ class TopologicalPersistenceLoss(nn.Module):
                     gt[:, :, 1:, :-1] * 
                     gt[:, :, :-1, 1:] * 
                     gt[:, :, 1:, 1:]).sum(dim=(2, 3))
-            gt_ec = (v_gt - (e_h_gt + e_v_gt) + f_gt) / num_pixels
+            gt_ec = (v_gt - (e_h_gt + e_v_gt) + f_gt)
             
         # 3. Persistence Loss: Match EC
-        ec_loss = F.mse_loss(soft_ec, gt_ec)
+        ec_loss = F.mse_loss(soft_ec, gt_ec) * 100.0
         
         # Total variation as a proxy for boundary smoothness
         tv_loss = (torch.abs(p[:, :, :, 1:] - p[:, :, :, :-1]).mean() + 

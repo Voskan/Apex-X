@@ -58,12 +58,13 @@ def bbox_iou(
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
 
         if MPDIoU:
+            c2 = cw**2 + ch**2 + eps  # convex diagonal squared
             # MPDIoU: Minimum Point Distance IoU
             # d1: distance between top-left corners
             # d2: distance between bottom-right corners
             d1 = (b1_x1 - b2_x1) ** 2 + (b1_y1 - b2_y1) ** 2
             d2 = (b1_x2 - b2_x2) ** 2 + (b1_y2 - b2_y2) ** 2
-            return iou - d1 / (w1 ** 2 + h1 ** 2 + eps) - d2 / (w1 ** 2 + h1 ** 2 + eps)
+            return iou - d1 / c2 - d2 / c2
         
         if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = cw**2 + ch**2 + eps  # convex diagonal squared
